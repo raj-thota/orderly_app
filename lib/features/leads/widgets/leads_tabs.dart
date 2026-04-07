@@ -64,7 +64,7 @@ class LeadsTabs extends StatelessWidget {
                   ),
                 );
               }),
-            )
+            ),
           ],
         ),
       ),

@@ -13,8 +13,7 @@ class WhatsAppInputScreen extends ConsumerStatefulWidget {
       _WhatsAppInputScreenState();
 }
 
-class _WhatsAppInputScreenState
-    extends ConsumerState<WhatsAppInputScreen> {
+class _WhatsAppInputScreenState extends ConsumerState<WhatsAppInputScreen> {
   final TextEditingController controller = TextEditingController();
   final SpeechToText speech = SpeechToText();
 
@@ -96,9 +95,9 @@ class _WhatsAppInputScreenState
 
     Navigator.pop(context);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Entry created 🚀")),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text("Entry created 🚀")));
   }
 
   String _mapStatus(Map<String, dynamic> parsed) {
@@ -140,7 +139,6 @@ class _WhatsAppInputScreenState
               gradient: LinearGradient(
                 colors: [Colors.deepPurple, Colors.deepPurple],
               ),
-
             ),
             child: Row(
               children: [
@@ -150,11 +148,10 @@ class _WhatsAppInputScreenState
                   child: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
+                      color: Colors.white.withValues(alpha: 0.15),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.arrow_back,
-                        color: Colors.white),
+                    child: const Icon(Icons.arrow_back, color: Colors.white),
                   ),
                 ),
 
@@ -185,7 +182,7 @@ class _WhatsAppInputScreenState
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.06),
+                        color: Colors.black.withValues(alpha: 0.06),
                         blurRadius: 12,
                       ),
                     ],
@@ -197,8 +194,7 @@ class _WhatsAppInputScreenState
                           controller: controller,
                           maxLines: 5,
                           decoration: const InputDecoration(
-                            hintText:
-                                "Paste or speak message...",
+                            hintText: "Paste or speak message...",
                             border: InputBorder.none,
                           ),
                         ),
@@ -210,26 +206,20 @@ class _WhatsAppInputScreenState
                       GestureDetector(
                         onTap: toggleListening,
                         child: AnimatedContainer(
-                          duration:
-                              const Duration(milliseconds: 200),
+                          duration: const Duration(milliseconds: 200),
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: isListening
-                                ? Colors.red
-                                : Colors.deepPurple,
+                            color: isListening ? Colors.red : Colors.deepPurple,
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.deepPurple
-                                    .withOpacity(0.4),
+                                color: Colors.deepPurple.withValues(alpha: 0.4),
                                 blurRadius: 8,
                               ),
                             ],
                           ),
                           child: Icon(
-                            isListening
-                                ? Icons.mic
-                                : Icons.mic_none,
+                            isListening ? Icons.mic : Icons.mic_none,
                             color: Colors.white,
                           ),
                         ),
@@ -247,8 +237,7 @@ class _WhatsAppInputScreenState
                       SizedBox(
                         height: 14,
                         width: 14,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2),
+                        child: CircularProgressIndicator(strokeWidth: 2),
                       ),
                       SizedBox(width: 10),
                       Text("Trudy is thinking..."),
@@ -267,35 +256,30 @@ class _WhatsAppInputScreenState
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color:
-                              Colors.black.withOpacity(0.05),
+                          color: Colors.black.withValues(alpha: 0.05),
                           blurRadius: 10,
                         ),
                       ],
                     ),
                     child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         /// BADGE
                         Container(
-                          padding:
-                              const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
-                            color: Colors.deepPurple
-                                .withOpacity(0.1),
-                            borderRadius:
-                                BorderRadius.circular(20),
+                            color: Colors.deepPurple.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
                             parsed!["type"] == "order"
                                 ? "🔥 Hot Lead"
-                                : parsed!["type"] ==
-                                        "follow_up"
-                                    ? "⏳ Follow-up"
-                                    : "💬 Inquiry",
+                                : parsed!["type"] == "follow_up"
+                                ? "⏳ Follow-up"
+                                : "💬 Inquiry",
                             style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -318,8 +302,7 @@ class _WhatsAppInputScreenState
 
                         Text(
                           "👉 ${getAction()}",
-                          style: TextStyle(
-                              color: Colors.grey.shade700),
+                          style: TextStyle(color: Colors.grey.shade700),
                         ),
 
                         const SizedBox(height: 14),
@@ -332,17 +315,12 @@ class _WhatsAppInputScreenState
                         _row("Intent", parsed!["intent"]),
 
                         if (parsed!["date"] != null)
-                          _row(
-                              "Follow-up",
-                              parsed!["date"]
-                                  .toString()),
+                          _row("Follow-up", parsed!["date"].toString()),
 
                         const SizedBox(height: 10),
 
-                        if ((parsed!["items"] ?? [])
-                            .isNotEmpty)
-                          ...parsed!["items"]
-                              .map<Widget>((i) {
+                        if ((parsed!["items"] ?? []).isNotEmpty)
+                          ...parsed!["items"].map<Widget>((i) {
                             return Text(
                               "• ${i["name"]} x${i["qty"]} ₹${i["price"]}",
                             );
@@ -356,18 +334,13 @@ class _WhatsAppInputScreenState
                   /// CTA
                   Container(
                     decoration: BoxDecoration(
-                      borderRadius:
-                          BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(14),
                       gradient: const LinearGradient(
-                        colors: [
-                          Color(0xFF6A1B9A),
-                          Color(0xFF8E24AA)
-                        ],
+                        colors: [Color(0xFF6A1B9A), Color(0xFF8E24AA)],
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.deepPurple
-                              .withOpacity(0.4),
+                          color: Colors.deepPurple.withValues(alpha: 0.4),
                           blurRadius: 10,
                         ),
                       ],
@@ -375,18 +348,13 @@ class _WhatsAppInputScreenState
                     child: ElevatedButton(
                       onPressed: processMessage,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            Colors.transparent,
-                        shadowColor:
-                            Colors.transparent,
-                        padding:
-                            const EdgeInsets.symmetric(
-                                vertical: 16),
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
                       child: const Text(
                         "Create Entry",
-                        style: TextStyle(
-                            color: Colors.white),
+                        style: TextStyle(color: Colors.white),
                       ),
                     ),
                   ),
@@ -406,17 +374,12 @@ class _WhatsAppInputScreenState
         children: [
           SizedBox(
             width: 100,
-            child: Text(
-              label,
-              style: TextStyle(
-                  color: Colors.grey.shade600),
-            ),
+            child: Text(label, style: TextStyle(color: Colors.grey.shade600)),
           ),
           Expanded(
             child: Text(
               value?.toString() ?? "-",
-              style: const TextStyle(
-                  fontWeight: FontWeight.w500),
+              style: const TextStyle(fontWeight: FontWeight.w500),
             ),
           ),
         ],

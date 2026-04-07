@@ -5,17 +5,41 @@ class AuthService {
 
   User? get currentUser => supabase.auth.currentUser;
 
+  String _normalizePhone(String phone) {
+    final cleaned = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+    if (cleaned.startsWith('+')) {
+      return cleaned;
+    }
+    return '+91$cleaned';
+  }
+
   /// 🔥 GOOGLE LOGIN
   Future<void> signInWithGoogle() async {
     await supabase.auth.signInWithOAuth(
       OAuthProvider.google,
       redirectTo: 'io.supabase.flutter://login-callback',
+      authScreenLaunchMode: LaunchMode.externalApplication,
     );
   }
 
   /// EMAIL (keep if needed)
   Future<void> signInWithEmail(String email) async {
     await supabase.auth.signInWithOtp(email: email);
+  }
+
+  Future<void> sendOtp(String phone) async {
+    await supabase.auth.signInWithOtp(phone: _normalizePhone(phone));
+  }
+
+  Future<AuthResponse> verifyPhoneOtp({
+    required String phone,
+    required String otp,
+  }) async {
+    return supabase.auth.verifyOTP(
+      phone: _normalizePhone(phone),
+      token: otp,
+      type: OtpType.sms,
+    );
   }
 
   Future<void> logout() async {

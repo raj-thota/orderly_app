@@ -13,18 +13,14 @@ class TermsScreen extends StatelessWidget {
         children: const [
           LegalTitle("Usage Terms"),
 
+          LegalPoint("Closr helps manage leads and customer interactions."),
+          LegalPoint("You agree to use the app responsibly."),
+          LegalPoint("Closr does not guarantee business results."),
           LegalPoint(
-              "Closr helps manage leads and customer interactions."),
-          LegalPoint(
-              "You agree to use the app responsibly."),
-          LegalPoint(
-              "Closr does not guarantee business results."),
-          LegalPoint(
-              "We are not responsible for decisions made using this app."),
-          LegalPoint(
-              "Features and terms may change over time."),
-          LegalPoint(
-              "Continued use means acceptance of updated terms."),
+            "We are not responsible for decisions made using this app.",
+          ),
+          LegalPoint("Features and terms may change over time."),
+          LegalPoint("Continued use means acceptance of updated terms."),
 
           SizedBox(height: 20),
 

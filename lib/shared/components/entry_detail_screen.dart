@@ -93,7 +93,7 @@ class EntryDetailScreen extends ConsumerWidget {
           const SizedBox(height: 16),
 
           _card(
-            color: Colors.deepPurple.withOpacity(0.05),
+            color: Colors.deepPurple.withValues(alpha: 0.05),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -101,8 +101,10 @@ class EntryDetailScreen extends ConsumerWidget {
                   children: const [
                     Icon(Icons.auto_awesome, color: Colors.deepPurple),
                     SizedBox(width: 8),
-                    Text("Smart Insight",
-                        style: TextStyle(fontWeight: FontWeight.w600)),
+                    Text(
+                      "Smart Insight",
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -114,11 +116,18 @@ class EntryDetailScreen extends ConsumerWidget {
                   children: ai["actions"].map<Widget>((a) {
                     return InkWell(
                       onTap: () => _handleAction(
-                          a["type"], controller, liveLead, phone, context),
+                        a["type"],
+                        controller,
+                        liveLead,
+                        phone,
+                        context,
+                      ),
                       borderRadius: BorderRadius.circular(10),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(10),
@@ -128,7 +137,7 @@ class EntryDetailScreen extends ConsumerWidget {
                       ),
                     );
                   }).toList(),
-                )
+                ),
               ],
             ),
           ),
@@ -170,17 +179,13 @@ class EntryDetailScreen extends ConsumerWidget {
 
           Row(
             children: [
-              _secondaryButton(
-                "Follow-up",
-                Icons.schedule,
-                () {
-                  controller.followUp(
-                    liveLead,
-                    "Follow-up",
-                    DateTime.now().add(const Duration(days: 1)),
-                  );
-                },
-              ),
+              _secondaryButton("Follow-up", Icons.schedule, () {
+                controller.followUp(
+                  liveLead,
+                  "Follow-up",
+                  DateTime.now().add(const Duration(days: 1)),
+                );
+              }),
               const SizedBox(width: 10),
               _secondaryButton(
                 "Done",
@@ -201,8 +206,7 @@ class EntryDetailScreen extends ConsumerWidget {
 
           const SizedBox(height: 20),
 
-          const Text("Activity",
-              style: TextStyle(fontWeight: FontWeight.w600)),
+          const Text("Activity", style: TextStyle(fontWeight: FontWeight.w600)),
 
           const SizedBox(height: 10),
 
@@ -212,8 +216,13 @@ class EntryDetailScreen extends ConsumerWidget {
     );
   }
 
-  void _handleAction(String type, dynamic controller,
-      Map<String, dynamic> lead, String phone, BuildContext context) {
+  void _handleAction(
+    String type,
+    dynamic controller,
+    Map<String, dynamic> lead,
+    String phone,
+    BuildContext context,
+  ) {
     if (type == "call") {
       _call(phone);
     } else if (type == "whatsapp") {
@@ -228,9 +237,9 @@ class EntryDetailScreen extends ConsumerWidget {
       );
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(type.toUpperCase())),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(type.toUpperCase())));
   }
 
   Widget _card({required Widget child, Color? color}) {
@@ -241,10 +250,10 @@ class EntryDetailScreen extends ConsumerWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
-          )
+          ),
         ],
       ),
       child: child,
@@ -261,9 +270,10 @@ class EntryDetailScreen extends ConsumerWidget {
           child: Text(name[0].toUpperCase()),
         ),
         const SizedBox(width: 10),
-        Text(name,
-            style: const TextStyle(
-                fontSize: 16, fontWeight: FontWeight.w600)),
+        Text(
+          name,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
       ],
     );
   }
@@ -280,7 +290,11 @@ class EntryDetailScreen extends ConsumerWidget {
   }
 
   Widget _primaryButton(
-      String label, IconData icon, Color color, VoidCallback onTap) {
+    String label,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return Expanded(
       child: InkWell(
         onTap: onTap,
@@ -304,8 +318,7 @@ class EntryDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _secondaryButton(
-      String label, IconData icon, VoidCallback onTap) {
+  Widget _secondaryButton(String label, IconData icon, VoidCallback onTap) {
     return Expanded(
       child: InkWell(
         onTap: onTap,
@@ -317,11 +330,7 @@ class EntryDetailScreen extends ConsumerWidget {
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
-            children: [
-              Icon(icon),
-              const SizedBox(height: 4),
-              Text(label),
-            ],
+            children: [Icon(icon), const SizedBox(height: 4), Text(label)],
           ),
         ),
       ),

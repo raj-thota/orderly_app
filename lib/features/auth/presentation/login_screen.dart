@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../controller/auth_controller.dart';
 import '../../../main.dart';
 
@@ -143,17 +144,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         onPressed: state.isLoading
                             ? null
                             : () async {
-                                await ref
-                                    .read(authProvider.notifier)
-                                    .loginWithGoogle();
-
-                                if (!mounted) return;
-
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text("Redirecting to Google..."),
                                   ),
                                 );
+
+                                await ref
+                                    .read(authProvider.notifier)
+                                    .loginWithGoogle();
                               },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF6C4ED9),
@@ -183,9 +182,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                         color: Colors.white,
                                         borderRadius: BorderRadius.circular(6),
                                       ),
-                                      child: Image.network(
-                                        "https://cdn-icons-png.flaticon.com/512/2991/2991148.png",
-                                        height: 16,
+                                      child: const FaIcon(
+                                        FontAwesomeIcons.google,
+                                        size: 16,
+                                        color: Color(0xFFDB4437),
                                       ),
                                     ),
                                     const SizedBox(width: 10),

@@ -5,14 +5,14 @@ class StatCard extends StatelessWidget {
   final String count;
   final Color color;
 
-  const StatCard(this.title, this.count, this.color);
+  const StatCard(this.title, this.count, this.color, {super.key});
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
       child: Container(
-        margin: EdgeInsets.symmetric(horizontal: 6),
-        padding: EdgeInsets.all(18),
+        margin: const EdgeInsets.symmetric(horizontal: 6),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
@@ -20,20 +20,22 @@ class StatCard extends StatelessWidget {
             BoxShadow(
               color: Colors.black12,
               blurRadius: 6,
-              offset: Offset(0, 3),
-            )
+              offset: const Offset(0, 3),
+            ),
           ],
         ),
         child: Column(
           children: [
-            Text(count,
-                style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: color)),
-            SizedBox(height: 4),
-            Text(title,
-                style: TextStyle(color: Colors.grey)),
+            Text(
+              count,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(title, style: TextStyle(color: Colors.grey)),
           ],
         ),
       ),

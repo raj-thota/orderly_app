@@ -39,9 +39,7 @@ class StorageService {
   Future<void> saveLeads(List<Map<String, dynamic>> leads) async {
     final prefs = await SharedPreferences.getInstance();
 
-    final encoded = jsonEncode(
-      leads.map((lead) => _encode(lead)).toList(),
-    );
+    final encoded = jsonEncode(leads.map((lead) => _encode(lead)).toList());
 
     await prefs.setString(_leadsKey, encoded);
   }
@@ -92,10 +90,7 @@ class StorageService {
           }).toList(),
         );
       } else if (value is Map) {
-        return MapEntry(
-          key,
-          _decodeMap(Map<String, dynamic>.from(value)),
-        );
+        return MapEntry(key, _decodeMap(Map<String, dynamic>.from(value)));
       }
       return MapEntry(key, value);
     });

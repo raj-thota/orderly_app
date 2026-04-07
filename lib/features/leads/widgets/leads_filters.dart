@@ -71,8 +71,7 @@ class LeadsFilters extends StatelessWidget {
             },
             borderRadius: BorderRadius.circular(10),
             child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
               child: Row(
                 children: [
                   Text(
@@ -106,18 +105,17 @@ class LeadsFilters extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeInOut,
-          padding:
-              const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           decoration: BoxDecoration(
             color: isActive ? Colors.deepPurple : Colors.grey.shade200,
             borderRadius: BorderRadius.circular(20),
             boxShadow: isActive
                 ? [
                     BoxShadow(
-                      color: Colors.deepPurple.withValues(alpha: 0.25 * 255),
+                      color: Colors.deepPurple.withValues(alpha: 0.25),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
-                    )
+                    ),
                   ]
                 : [],
           ),

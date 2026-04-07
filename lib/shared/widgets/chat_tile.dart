@@ -5,19 +5,17 @@ class ChatTile extends StatelessWidget {
   final String msg;
   final String status;
 
-  const ChatTile(this.name, this.msg, this.status);
+  const ChatTile(this.name, this.msg, this.status, {super.key});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.symmetric(vertical: 6),
-      padding: EdgeInsets.all(14),
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black12, blurRadius: 4)
-        ],
+        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
       ),
       child: Row(
         children: [
@@ -32,11 +30,9 @@ class ChatTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name,
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                SizedBox(height: 2),
-                Text(msg,
-                    style: TextStyle(color: Colors.grey)),
+                Text(name, style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 2),
+                Text(msg, style: TextStyle(color: Colors.grey)),
               ],
             ),
           ),
@@ -44,11 +40,9 @@ class ChatTile extends StatelessWidget {
           Text(
             status,
             style: TextStyle(
-              color: status == "Order"
-                  ? Colors.green
-                  : Colors.orange,
+              color: status == "Order" ? Colors.green : Colors.orange,
             ),
-          )
+          ),
         ],
       ),
     );

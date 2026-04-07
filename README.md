@@ -1,17 +1,21 @@
-# orderly_app
+# Closr
 
-A new Flutter project.
+Closr is a Flutter CRM app for turning chat conversations into leads, follow-ups,
+and orders.
 
-## Getting Started
+## Local setup
 
-This project is a starting point for a Flutter application.
+Closr reads Supabase credentials from compile-time variables first, with a
+tracked fallback file at `assets/env/default.env`.
 
-A few resources to get you started if this is your first Flutter project:
+Run the app with:
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+```bash
+flutter run \
+  --dart-define=SUPABASE_URL=your-project-url \
+  --dart-define=SUPABASE_ANON_KEY=your-anon-key
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+For quick local-only testing, you can also fill in
+`assets/env/default.env`, but `--dart-define` is the safer option because it
+keeps secrets out of the repo.

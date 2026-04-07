@@ -103,10 +103,7 @@ class _AppIntroScreenState extends State<AppIntroScreen>
                           color: const Color(0xFFF5F3FF),
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: Image.asset(
-                          "assets/logo/logo.png",
-                          height: 48,
-                        ),
+                        child: Image.asset("assets/logo/logo.png", height: 48),
                       ),
 
                       const SizedBox(height: 16),
@@ -321,7 +318,7 @@ class _AppIntroScreenState extends State<AppIntroScreen>
             child: Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.deepPurple.withOpacity(0.1),
+                color: Colors.deepPurple.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(icon, color: Colors.deepPurple, size: 20),
@@ -374,7 +371,7 @@ class _AppIntroScreenState extends State<AppIntroScreen>
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: active
-              ? Colors.deepPurple.withOpacity(0.15)
+              ? Colors.deepPurple.withValues(alpha: 0.15)
               : Colors.grey.shade300,
           shape: BoxShape.circle,
         ),

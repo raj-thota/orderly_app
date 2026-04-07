@@ -19,14 +19,15 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     final otp = otpController.text.trim();
 
     if (otp.length < 4) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Enter valid OTP")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Enter valid OTP")));
       return;
     }
 
-    final success =
-        await ref.read(authProvider.notifier).verifyOtp(otp);
+    final success = await ref
+        .read(authProvider.notifier)
+        .verifyOtp(widget.phone, otp);
 
     if (!mounted) return;
 
@@ -37,20 +38,35 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
         (route) => false,
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Invalid OTP")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Invalid OTP")));
     }
   }
 
   void resendOtp() async {
-    await ref.read(authProvider.notifier).sendOtp(widget.phone);
+    try {
+      await ref.read(authProvider.notifier).sendOtp(widget.phone);
+    } catch (_) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Could not resend OTP")));
+      return;
+    }
 
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("OTP resent")),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text("OTP resent")));
+  }
+
+  @override
+  void dispose() {
+    otpController.dispose();
+    super.dispose();
   }
 
   @override
@@ -85,10 +101,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
               /// 🔥 TITLE
               const Text(
                 "Verify your number",
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
 
               const SizedBox(height: 8),
@@ -137,10 +150,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                     "Didn’t receive OTP?",
                     style: TextStyle(color: Colors.grey),
                   ),
-                  TextButton(
-                    onPressed: resendOtp,
-                    child: const Text("Resend"),
-                  ),
+                  TextButton(onPressed: resendOtp, child: const Text("Resend")),
                 ],
               ),
 

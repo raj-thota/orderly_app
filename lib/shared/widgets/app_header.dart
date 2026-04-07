@@ -4,7 +4,7 @@ import 'package:orderly_app/features/auth/controller/user_provider.dart';
 import 'package:orderly_app/features/notifications/presentation/notifications_screen.dart';
 import 'package:orderly_app/features/profile/presentation/profile_screen.dart';
 import 'package:orderly_app/features/leads/controller/leads_controller.dart';
-import 'package:orderly_app/shared/components/help_and-support_screen.dart';
+import 'package:orderly_app/shared/components/help_and_support_screen.dart';
 
 class AppHeader extends ConsumerWidget {
   const AppHeader({super.key});
@@ -58,9 +58,11 @@ class AppHeader extends ConsumerWidget {
                   height: 42,
                   width: 42,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.12),
+                    color: Colors.white.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white.withOpacity(0.15)),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.15),
+                    ),
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
@@ -169,9 +171,9 @@ class AppHeader extends ConsumerWidget {
       height: 42,
       width: 42,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.12),
+        color: Colors.white.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.15)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
       ),
       child: Icon(icon, color: Colors.white, size: 20),
     );

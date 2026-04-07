@@ -14,16 +14,21 @@ class PrivacyPolicyScreen extends StatelessWidget {
           LegalTitle("Your Privacy Matters"),
 
           LegalPoint(
-              "Closr collects only the information necessary to provide and improve the service."),
+            "Closr collects only the information necessary to provide and improve the service.",
+          ),
           LegalPoint(
-              "We may collect basic account data such as your name and email."),
+            "We may collect basic account data such as your name and email.",
+          ),
           LegalPoint(
-              "Your data is securely stored using trusted infrastructure."),
+            "Your data is securely stored using trusted infrastructure.",
+          ),
           LegalPoint("We do NOT sell your personal data."),
           LegalPoint(
-              "Your data is used only to improve product experience and support."),
+            "Your data is used only to improve product experience and support.",
+          ),
           LegalPoint(
-              "You can request deletion of your data anytime by contacting support."),
+            "You can request deletion of your data anytime by contacting support.",
+          ),
 
           SizedBox(height: 20),
 

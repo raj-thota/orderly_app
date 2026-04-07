@@ -1,7 +1,5 @@
 class LeadsSorter {
-  static List<Map<String, dynamic>> sort(
-    List<Map<String, dynamic>> leads,
-  ) {
+  static List<Map<String, dynamic>> sort(List<Map<String, dynamic>> leads) {
     leads.sort((a, b) {
       final p1 = _priority(a);
       final p2 = _priority(b);
@@ -35,9 +33,7 @@ class LeadsSorter {
   }
 
   static bool _isSameDay(DateTime a, DateTime b) {
-    return a.day == b.day &&
-        a.month == b.month &&
-        a.year == b.year;
+    return a.day == b.day && a.month == b.month && a.year == b.year;
   }
 
   static DateTime _startOfDay(DateTime d) {

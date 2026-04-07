@@ -1,32 +1,32 @@
 import 'package:flutter/material.dart';
 
 class SubscriptionScreen extends StatelessWidget {
+  const SubscriptionScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Upgrade")),
+      appBar: AppBar(title: const Text("Upgrade")),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Go Pro 🚀",
-                style: TextStyle(
-                    fontSize: 22, fontWeight: FontWeight.bold)),
+            const Text(
+              "Go Pro 🚀",
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
 
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
 
             feature("WhatsApp integration"),
             feature("Auto lead detection"),
             feature("AI chat analysis"),
             feature("Smart reminders"),
 
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
 
-            ElevatedButton(
-              onPressed: () {},
-              child: Text("Upgrade Now"),
-            )
+            ElevatedButton(onPressed: () {}, child: const Text("Upgrade Now")),
           ],
         ),
       ),
@@ -38,8 +38,8 @@ class SubscriptionScreen extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          Icon(Icons.check, color: Colors.green),
-          SizedBox(width: 10),
+          const Icon(Icons.check, color: Colors.green),
+          const SizedBox(width: 10),
           Text(text),
         ],
       ),

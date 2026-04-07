@@ -17,7 +17,8 @@ final userProfileProvider = FutureProvider<Map<String, dynamic>?>((ref) async {
   return {
     ...(data ?? {}),
 
-    "business_name": data?["business_name"] ??
+    "business_name":
+        data?["business_name"] ??
         metadata["full_name"] ??
         metadata["name"] ??
         "Your Business",

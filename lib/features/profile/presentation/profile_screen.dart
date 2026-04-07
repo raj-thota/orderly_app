@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orderly_app/features/auth/controller/user_provider.dart';
-import 'package:orderly_app/shared/components/help_and-support_screen.dart';
+import 'package:orderly_app/shared/components/help_and_support_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../auth/controller/auth_controller.dart';
@@ -36,20 +36,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     try {
       await supabase
           .from('users')
-          .update({
-            key: value,
-            "updated_at": DateTime.now().toIso8601String(),
-          })
+          .update({key: value, "updated_at": DateTime.now().toIso8601String()})
           .eq('id', user!.id);
 
-      if (mounted) setState(() {});
+      if (!mounted) return;
+
+      setState(() {});
 
       ref.invalidate(userProfileProvider);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Updated ✅")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Updated ✅")));
     } catch (e) {
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Error updating profile...")),
       );
@@ -61,19 +62,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final authState = ref.watch(authProvider);
     final meta = authState.user?.userMetadata;
 
-    
     final email = authState.user?.email ?? "";
 
     final profileAsync = ref.watch(userProfileProvider);
 
-        final name = profileAsync.when(
+    final name = profileAsync.when(
       data: (data) => data?["business_name"] ?? "Your Business",
       loading: () => "Loading...",
-      error: (_, __) => "Your Business",
+      error: (_, _) => "Your Business",
     );
-
-    final profile = profileAsync.value;
-
 
     businessController.text = profileAsync.value?["business_name"] ?? "";
     phoneController.text = profileAsync.value?["phone"] ?? "";
@@ -115,12 +112,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(name,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 16)),
-                            Text(email,
-                                style: const TextStyle(
-                                    color: Colors.grey, fontSize: 13)),
+                            Text(
+                              name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            Text(
+                              email,
+                              style: const TextStyle(
+                                color: Colors.grey,
+                                fontSize: 13,
+                              ),
+                            ),
                           ],
                         ),
                       ],
@@ -138,11 +143,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           value: profileAsync.value?["business_name"] ?? "",
                           controller: businessController,
                           isEditing: editingBusiness,
-                          onEdit: () =>
-                              setState(() => editingBusiness = true),
+                          onEdit: () => setState(() => editingBusiness = true),
                           onSave: () async {
                             await updateField(
-                                "business_name", businessController.text);
+                              "business_name",
+                              businessController.text,
+                            );
+                            if (!context.mounted) return;
                             setState(() => editingBusiness = false);
                           },
                         ),
@@ -156,15 +163,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           onSave: () async {
                             final value = phoneController.text.trim();
 
-                            final isValid = RegExp(r'^[0-9]{10}$').hasMatch(value);
+                            final isValid = RegExp(
+                              r'^[0-9]{10}$',
+                            ).hasMatch(value);
                             if (!isValid) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text("Enter valid 10-digit phone number")),
+                                const SnackBar(
+                                  content: Text(
+                                    "Enter valid 10-digit phone number",
+                                  ),
+                                ),
                               );
                               return;
                             }
 
                             await updateField("phone", value);
+                            if (!context.mounted) return;
                             setState(() => editingPhone = false);
                           },
                         ),
@@ -220,13 +234,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 onPressed: () async {
                   await ref.read(authProvider.notifier).logout();
 
-                  if (!mounted) return;
+                  if (!context.mounted) return;
 
                   Navigator.pushAndRemoveUntil(
                     context,
-                    MaterialPageRoute(
-                      builder: (_) => const LoginScreen(),
-                    ),
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
                     (route) => false,
                   );
                 },
@@ -238,7 +250,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 child: const Text(
                   "Logout",
                   style: TextStyle(
-                      fontWeight: FontWeight.bold, color: Colors.white70),
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white70,
+                  ),
                 ),
               ),
             ),
@@ -266,17 +280,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ? TextField(
                     controller: controller,
                     autofocus: true,
-                    keyboardType: label == "Phone" ? TextInputType.phone : TextInputType.text,
+                    keyboardType: label == "Phone"
+                        ? TextInputType.phone
+                        : TextInputType.text,
                     decoration: InputDecoration(
                       border: InputBorder.none,
-                      hintText: label == "Phone" ? "Enter valid phone number" : null,
+                      hintText: label == "Phone"
+                          ? "Enter valid phone number"
+                          : null,
                     ),
                     onChanged: (value) {
                       if (label == "Phone") {
                         final isValid = RegExp(r'^[0-9]{10}$').hasMatch(value);
                         if (!isValid && value.isNotEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("Enter valid 10-digit phone number")),
+                            const SnackBar(
+                              content: Text(
+                                "Enter valid 10-digit phone number",
+                              ),
+                            ),
                           );
                         }
                       }
@@ -285,9 +307,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 : Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(label,
-                          style: const TextStyle(
-                              fontSize: 12, color: Colors.grey)),
+                      Text(
+                        label,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
                       const SizedBox(height: 2),
                       Text(value.isEmpty ? "Not set" : value),
                     ],

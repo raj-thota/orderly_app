@@ -10,10 +10,7 @@ class LegalTitle extends StatelessWidget {
       padding: const EdgeInsets.only(top: 16, bottom: 8),
       child: Text(
         text,
-        style: const TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 16,
-        ),
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
       ),
     );
   }
@@ -32,10 +29,7 @@ class LegalPoint extends StatelessWidget {
         children: [
           const Text("• "),
           Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(color: Colors.grey),
-            ),
+            child: Text(text, style: const TextStyle(color: Colors.grey)),
           ),
         ],
       ),

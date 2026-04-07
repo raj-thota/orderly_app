@@ -9,18 +9,22 @@ class OrderDetailScreen extends ConsumerWidget {
   const OrderDetailScreen({super.key, required this.order});
 
   Future<void> _call(BuildContext context, String phone, String name) async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("📞 Calling $name...")),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text("📞 Calling $name...")));
 
     final url = Uri.parse("tel:$phone");
     await launchUrl(url);
   }
 
-  Future<void> _whatsapp(BuildContext context, String phone, String name) async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("💬 Opening WhatsApp for $name")),
-    );
+  Future<void> _whatsapp(
+    BuildContext context,
+    String phone,
+    String name,
+  ) async {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text("💬 Opening WhatsApp for $name")));
 
     final url = Uri.parse("https://wa.me/$phone");
     await launchUrl(url, mode: LaunchMode.externalApplication);
@@ -129,10 +133,7 @@ class OrderDetailScreen extends ConsumerWidget {
           const SizedBox(height: 10),
 
           if (items.isEmpty)
-            const Text(
-              "No items",
-              style: TextStyle(color: Colors.grey),
-            ),
+            const Text("No items", style: TextStyle(color: Colors.grey)),
 
           ...items.map<Widget>((i) {
             return Padding(
@@ -145,17 +146,21 @@ class OrderDetailScreen extends ConsumerWidget {
                 ],
               ),
             );
-          }).toList(),
+          }),
 
           const Divider(),
 
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text("Total",
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              Text("₹$amount",
-                  style: const TextStyle(fontWeight: FontWeight.bold)),
+              const Text(
+                "Total",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Text(
+                "₹$amount",
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
             ],
           ),
         ],
@@ -174,7 +179,9 @@ class OrderDetailScreen extends ConsumerWidget {
           const SizedBox(height: 12),
           _timelineItem("Order Created", true),
           _timelineItem(
-              "Processing", status == "processing" || status == "completed"),
+            "Processing",
+            status == "processing" || status == "completed",
+          ),
           _timelineItem("Completed", status == "completed"),
         ],
       ),
@@ -198,7 +205,14 @@ class OrderDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _actions(context, controller, order, phone, name, status) {
+  Widget _actions(
+    BuildContext context,
+    LeadsController controller,
+    Map<String, dynamic> order,
+    String phone,
+    String name,
+    String status,
+  ) {
     return Column(
       children: [
         Row(
@@ -226,16 +240,16 @@ class OrderDetailScreen extends ConsumerWidget {
         if (status == "pending")
           _btn("Start Order", Icons.play_arrow, Colors.orange, () {
             controller.updateOrderStatus(order, "processing");
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Order started 🚀")),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text("Order started 🚀")));
           }),
         if (status == "processing")
           _btn("Mark as Done", Icons.check, Colors.green, () {
             controller.updateOrderStatus(order, "completed");
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Order completed ✅")),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text("Order completed ✅")));
           }),
       ],
     );
@@ -262,7 +276,7 @@ class OrderDetailScreen extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Text(
@@ -281,7 +295,7 @@ class OrderDetailScreen extends ConsumerWidget {
       color: Colors.white,
       borderRadius: BorderRadius.circular(18),
       boxShadow: [
-        BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10),
+        BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10),
       ],
     );
   }
@@ -293,9 +307,9 @@ class OrderDetailScreen extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,

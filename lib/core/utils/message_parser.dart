@@ -37,10 +37,7 @@ class MessageParser {
       if (quantity != null && i + 1 < words.length) {
         final product = words[i + 1];
 
-        items.add({
-          "product": product,
-          "quantity": quantity,
-        });
+        items.add({"product": product, "quantity": quantity});
       }
     }
 

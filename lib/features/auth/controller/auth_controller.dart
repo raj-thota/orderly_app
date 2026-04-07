@@ -1,15 +1,20 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
+
 import '../../../core/services/auth_service.dart';
 
 final authProvider = StateNotifierProvider<AuthController, AuthState>((ref) {
   return AuthController();
 });
 
+const _userSentinel = Object();
+
 class AuthState {
   final bool isAuthenticated;
   final bool isLoading;
-  final User? user; // 🔥 added
+  final supabase.User? user;
 
   const AuthState({
     required this.isAuthenticated,
@@ -17,39 +22,40 @@ class AuthState {
     this.user,
   });
 
-  AuthState copyWith({bool? isAuthenticated, bool? isLoading, User? user}) {
+  AuthState copyWith({
+    bool? isAuthenticated,
+    bool? isLoading,
+    Object? user = _userSentinel,
+  }) {
     return AuthState(
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
       isLoading: isLoading ?? this.isLoading,
-      user: user ?? this.user,
+      user: identical(user, _userSentinel) ? this.user : user as supabase.User?,
     );
   }
 }
 
 class AuthController extends StateNotifier<AuthState> {
-  final _authService = AuthService();
-  final _supabase = Supabase.instance.client;
+  final AuthService _authService = AuthService();
+  final _supabase = supabase.Supabase.instance.client;
+  late final StreamSubscription<supabase.AuthState> _authSubscription;
 
   AuthController() : super(const AuthState(isAuthenticated: false)) {
     _listenToAuthChanges();
   }
 
   /// 🔥 LISTEN TO SUPABASE SESSION (CRITICAL)
-void _listenToAuthChanges() {
-  _supabase.auth.onAuthStateChange.listen((data) {
-    final session = data.session;
+  void _listenToAuthChanges() {
+    _authSubscription = _supabase.auth.onAuthStateChange.listen((data) {
+      final session = data.session;
 
-    print("AUTH EVENT: ${data.event}");
-    print("SESSION: $session");
-
-    state = state.copyWith(
-      isAuthenticated: session != null,
-      isLoading: false,
-      user: session?.user,
-    );
-  });
-}
-
+      state = state.copyWith(
+        isAuthenticated: session != null,
+        isLoading: false,
+        user: session?.user,
+      );
+    });
+  }
 
   /// 🔍 Check existing session (app start)
   Future<void> checkAuth() async {
@@ -66,13 +72,43 @@ void _listenToAuthChanges() {
     state = state.copyWith(isLoading: true);
 
     try {
-      await _supabase.auth.signInWithOAuth(
-        OAuthProvider.google,
-        redirectTo: 'io.supabase.flutter://login-callback',
-        authScreenLaunchMode: LaunchMode.externalApplication,
-      );
+      await _authService.signInWithGoogle();
     } catch (e) {
       state = state.copyWith(isLoading: false);
+    }
+  }
+
+  Future<void> sendOtp(String phone) async {
+    state = state.copyWith(isLoading: true);
+
+    try {
+      await _authService.sendOtp(phone);
+      state = state.copyWith(isLoading: false);
+    } catch (e) {
+      state = state.copyWith(isLoading: false);
+      rethrow;
+    }
+  }
+
+  Future<bool> verifyOtp(String phone, String otp) async {
+    state = state.copyWith(isLoading: true);
+
+    try {
+      final response = await _authService.verifyPhoneOtp(
+        phone: phone,
+        otp: otp,
+      );
+
+      state = state.copyWith(
+        isAuthenticated: response.session != null,
+        isLoading: false,
+        user: response.user,
+      );
+
+      return response.session != null;
+    } catch (e) {
+      state = state.copyWith(isLoading: false);
+      return false;
     }
   }
 
@@ -88,8 +124,14 @@ void _listenToAuthChanges() {
 
   /// 🚪 LOGOUT
   Future<void> logout() async {
-    await _supabase.auth.signOut();
+    await _authService.logout();
 
     state = const AuthState(isAuthenticated: false, user: null);
+  }
+
+  @override
+  void dispose() {
+    _authSubscription.cancel();
+    super.dispose();
   }
 }

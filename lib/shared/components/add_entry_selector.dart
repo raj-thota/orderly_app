@@ -31,10 +31,7 @@ class AddEntrySelector extends StatelessWidget {
 
             const Text(
               "Add Entry",
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-              ),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
             ),
 
             const SizedBox(height: 20),
@@ -73,9 +70,7 @@ class AddEntrySelector extends StatelessWidget {
 
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const AddEntryScreen(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const AddEntryScreen()),
                 );
               },
             ),
@@ -105,8 +100,8 @@ class AddEntrySelector extends StatelessWidget {
             gradient: isPrimary
                 ? LinearGradient(
                     colors: [
-                      color.withOpacity(0.15),
-                      color.withOpacity(0.05),
+                      color.withValues(alpha: 0.15),
+                      color.withValues(alpha: 0.05),
                     ],
                   )
                 : null,
@@ -114,12 +109,12 @@ class AddEntrySelector extends StatelessWidget {
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
               color: isPrimary
-                  ? color.withOpacity(0.3)
+                  ? color.withValues(alpha: 0.3)
                   : Colors.grey.shade200,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.04),
+                color: Colors.black.withValues(alpha: 0.04),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -131,7 +126,7 @@ class AddEntrySelector extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
+                  color: color.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(icon, color: color, size: 22),

@@ -3,8 +3,8 @@ import 'package:orderly_app/core/services/leads_service.dart';
 
 final leadsControllerProvider =
     StateNotifierProvider<LeadsController, List<Map<String, dynamic>>>((ref) {
-  return LeadsController();
-});
+      return LeadsController();
+    });
 
 class LeadsController extends StateNotifier<List<Map<String, dynamic>>> {
   final _service = LeadsService();
@@ -20,23 +20,23 @@ class LeadsController extends StateNotifier<List<Map<String, dynamic>>> {
     }
   }
 
-Future<void> addLead(
-  Map<String, dynamic> lead,
-  List<Map<String, dynamic>> items,
-) async {
-  try {
-    final leadId = await _service.addLead(lead);
+  Future<void> addLead(
+    Map<String, dynamic> lead,
+    List<Map<String, dynamic>> items,
+  ) async {
+    try {
+      final leadId = await _service.addLead(lead);
 
-    /// 🔥 SAVE ITEMS
-    if (items.isNotEmpty) {
-      await _service.addOrderItems(leadId, items);
+      /// 🔥 SAVE ITEMS
+      if (items.isNotEmpty) {
+        await _service.addOrderItems(leadId, items);
+      }
+
+      await loadLeads();
+    } catch (e) {
+      rethrow;
     }
-
-    await loadLeads();
-  } catch (e) {
-    rethrow;
   }
-}
 
   Future<void> editLead(
     Map<String, dynamic> lead,
@@ -113,5 +113,4 @@ Future<void> addLead(
       // Error setting follow up
     }
   }
-  
 }

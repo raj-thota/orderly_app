@@ -5,7 +5,6 @@ import 'package:orderly_app/core/services/auth_service.dart';
 import 'package:orderly_app/features/leads/controller/leads_controller.dart';
 import 'package:orderly_app/features/auth/controller/auth_controller.dart';
 import 'package:orderly_app/main.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -34,40 +33,45 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     _scaleAnimation = Tween<double>(
       begin: 0.92,
       end: 1.08,
-    ).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
 
     /// 🔥 Start app init
     Future.microtask(() => _initApp());
   }
-Future<void> _initApp() async {
-  final authController = ref.read(authProvider.notifier);
 
-  setState(() => loadingText = "Checking session...");
-
-  await authController.checkAuth();
-
-  final isLoggedIn = ref.read(authProvider).isAuthenticated;
-
-  if (isLoggedIn) {
-    setState(() => loadingText = "Setting up your workspace...");
-    await AuthService().ensureUserProfile();
-
-    setState(() => loadingText = "Loading your leads...");
-    await ref.read(leadsControllerProvider.notifier).loadLeads();
+  void _setLoadingText(String value) {
+    if (!mounted) return;
+    setState(() => loadingText = value);
   }
 
-  if (!mounted) return;
+  Future<void> _initApp() async {
+    final authController = ref.read(authProvider.notifier);
 
-  Navigator.pushReplacement(
-    context,
-    MaterialPageRoute(
-      builder: (_) =>
-          isLoggedIn ? const MainScreen() : const AppIntroScreen(),
-    ),
-  );
-}
+    _setLoadingText("Checking session...");
+
+    await authController.checkAuth();
+
+    final isLoggedIn = ref.read(authProvider).isAuthenticated;
+
+    if (isLoggedIn) {
+      _setLoadingText("Setting up your workspace...");
+      await AuthService().ensureUserProfile();
+
+      _setLoadingText("Loading your leads...");
+      await ref.read(leadsControllerProvider.notifier).loadLeads();
+    }
+
+    if (!mounted) return;
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            isLoggedIn ? const MainScreen() : const AppIntroScreen(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -80,10 +84,7 @@ Future<void> _initApp() async {
             children: [
               ScaleTransition(
                 scale: _scaleAnimation,
-                child: Image.asset(
-                  "assets/logo/logo.png",
-                  height: 90,
-                ),
+                child: Image.asset("assets/logo/logo.png", height: 90),
               ),
               const SizedBox(height: 24),
               const Text(

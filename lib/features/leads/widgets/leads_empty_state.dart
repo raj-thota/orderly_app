@@ -18,7 +18,7 @@ class LeadsEmptyState extends StatelessWidget {
               height: 90,
               width: 90,
               decoration: BoxDecoration(
-                color: Colors.deepPurple.withValues(alpha: 0.08 * 255),
+                color: Colors.deepPurple.withValues(alpha: 0.08),
                 shape: BoxShape.circle,
               ),
               child: const Icon(

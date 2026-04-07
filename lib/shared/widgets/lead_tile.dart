@@ -5,7 +5,7 @@ class LeadTile extends StatelessWidget {
   final String msg;
   final String status;
 
-  const LeadTile(this.name, this.msg, this.status);
+  const LeadTile(this.name, this.msg, this.status, {super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -23,24 +23,23 @@ class LeadTile extends StatelessWidget {
     }
 
     return Container(
-      margin: EdgeInsets.symmetric(vertical: 8),
-      padding: EdgeInsets.all(12),
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(color: Colors.black12, blurRadius: 5),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 5)],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name, style: TextStyle(fontWeight: FontWeight.bold)),
-                Text(msg),
-              ]),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(name, style: TextStyle(fontWeight: FontWeight.bold)),
+              Text(msg),
+            ],
+          ),
           Text(status, style: TextStyle(color: color)),
         ],
       ),

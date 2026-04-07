@@ -12,8 +12,9 @@ class NotificationsScreen extends ConsumerWidget {
     final now = DateTime.now();
 
     final today = leads.where((lead) {
-      if (lead["status"] != "follow" || lead["follow_up_date"] == null)
+      if (lead["status"] != "follow" || lead["follow_up_date"] == null) {
         return false;
+      }
 
       final date = DateTime.parse(lead["follow_up_date"]);
       return date.year == now.year &&
@@ -22,8 +23,9 @@ class NotificationsScreen extends ConsumerWidget {
     }).toList();
 
     final overdue = leads.where((lead) {
-      if (lead["status"] != "follow" || lead["follow_up_date"] == null)
+      if (lead["status"] != "follow" || lead["follow_up_date"] == null) {
         return false;
+      }
 
       final date = DateTime.parse(lead["follow_up_date"]);
       return date.isBefore(now) &&
@@ -149,7 +151,10 @@ class NotificationsScreen extends ConsumerWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+          ),
         ],
       ),
       child: Row(
@@ -158,7 +163,7 @@ class NotificationsScreen extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(Icons.notifications, color: color, size: 18),
@@ -221,7 +226,7 @@ class NotificationsScreen extends ConsumerWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.deepPurple.withOpacity(0.06),
+        color: Colors.deepPurple.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -264,9 +269,9 @@ class NotificationsScreen extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Text(
           text,

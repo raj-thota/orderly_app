@@ -56,9 +56,9 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen> {
 
   double get totalAmount {
     return items.fold(
-        0,
-        (sum, i) =>
-            sum + ((i["qty"] ?? 1) * (i["price"] ?? 0)));
+      0,
+      (sum, i) => sum + ((i["qty"] ?? 1) * (i["price"] ?? 0)),
+    );
   }
 
   Future<void> save() async {
@@ -94,13 +94,13 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen> {
 
       Navigator.pop(context);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(isEdit ? "Updated ✅" : "Added ✅")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(isEdit ? "Updated ✅" : "Added ✅")));
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Something went wrong ❌")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Something went wrong ❌")));
     }
   }
 
@@ -125,9 +125,7 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(isEdit ? "Edit Entry" : "Add Entry"),
-      ),
+      appBar: AppBar(title: Text(isEdit ? "Edit Entry" : "Add Entry")),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -158,7 +156,10 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen> {
                 backgroundColor: Colors.deepPurple,
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
-              child: Text(isEdit ? "Update" : "Create", style: const TextStyle(color: Colors.white)),
+              child: Text(
+                isEdit ? "Update" : "Create",
+                style: const TextStyle(color: Colors.white),
+              ),
             ),
           ],
         ),
@@ -177,8 +178,12 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen> {
     );
   }
 
-  Widget _input(TextEditingController c, String label,
-      {int maxLines = 1, bool required = false}) {
+  Widget _input(
+    TextEditingController c,
+    String label, {
+    int maxLines = 1,
+    bool required = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextFormField(
@@ -189,88 +194,94 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen> {
             : null,
         decoration: InputDecoration(
           labelText: label,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ),
     );
   }
 
   Widget _orderSection() {
-    return _card(children: [
-      const Align(
-        alignment: Alignment.centerLeft,
-        child: Text("Order Items",
-            style: TextStyle(fontWeight: FontWeight.w600)),
-      ),
-      const SizedBox(height: 10),
+    return _card(
+      children: [
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            "Order Items",
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
+        const SizedBox(height: 10),
 
-      ...List.generate(items.length, (index) {
-        final item = items[index];
+        ...List.generate(items.length, (index) {
+          final item = items[index];
 
-        return Row(
-          children: [
-            Expanded(
-              child: TextFormField(
-                initialValue: item["name"],
-                onChanged: (v) => item["name"] = v,
-                decoration: const InputDecoration(hintText: "Item"),
+          return Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  initialValue: item["name"],
+                  onChanged: (v) => item["name"] = v,
+                  decoration: const InputDecoration(hintText: "Item"),
+                ),
               ),
-            ),
-            const SizedBox(width: 6),
-            SizedBox(
-              width: 50,
-              child: TextFormField(
-                initialValue: item["qty"].toString(),
-                onChanged: (v) =>
-                    item["qty"] = int.tryParse(v) ?? 1,
+              const SizedBox(width: 6),
+              SizedBox(
+                width: 50,
+                child: TextFormField(
+                  initialValue: item["qty"].toString(),
+                  onChanged: (v) => item["qty"] = int.tryParse(v) ?? 1,
+                ),
               ),
-            ),
-            const SizedBox(width: 6),
-            SizedBox(
-              width: 70,
-              child: TextFormField(
-                initialValue: item["price"].toString(),
-                onChanged: (v) =>
-                    item["price"] = double.tryParse(v) ?? 0,
+              const SizedBox(width: 6),
+              SizedBox(
+                width: 70,
+                child: TextFormField(
+                  initialValue: item["price"].toString(),
+                  onChanged: (v) => item["price"] = double.tryParse(v) ?? 0,
+                ),
               ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.close),
-              onPressed: () => setState(() => items.removeAt(index)),
-            ),
-          ],
-        );
-      }),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => setState(() => items.removeAt(index)),
+              ),
+            ],
+          );
+        }),
 
-      TextButton(onPressed: addItem, child: const Text("+ Add Item")),
+        TextButton(onPressed: addItem, child: const Text("+ Add Item")),
 
-      Text("Total: ₹${totalAmount.toStringAsFixed(0)}",
-          style: const TextStyle(fontWeight: FontWeight.bold)),
-    ]);
+        Text(
+          "Total: ₹${totalAmount.toStringAsFixed(0)}",
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ],
+    );
   }
 
   Widget _followUpPicker() {
-    return _card(children: [
-      ListTile(
-        title: Text(selectedDate == null
-            ? "Select follow-up date"
-            : "${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}"),
-        trailing: const Icon(Icons.calendar_today),
-        onTap: () async {
-          final picked = await showDatePicker(
-            context: context,
-            initialDate: selectedDate ?? DateTime.now(),
-            firstDate: DateTime.now(),
-            lastDate: DateTime(2100),
-          );
-          if (picked != null) {
-            setState(() => selectedDate = picked);
-          }
-        },
-      )
-    ]);
+    return _card(
+      children: [
+        ListTile(
+          title: Text(
+            selectedDate == null
+                ? "Select follow-up date"
+                : "${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}",
+          ),
+          trailing: const Icon(Icons.calendar_today),
+          onTap: () async {
+            final picked = await showDatePicker(
+              context: context,
+              initialDate: selectedDate ?? DateTime.now(),
+              firstDate: DateTime.now(),
+              lastDate: DateTime(2100),
+            );
+            if (picked != null) {
+              setState(() => selectedDate = picked);
+            }
+          },
+        ),
+      ],
+    );
   }
 
   Widget _typeSelector() {
@@ -285,9 +296,7 @@ class _AddEntryScreenState extends ConsumerState<AddEntryScreen> {
               padding: const EdgeInsets.symmetric(vertical: 12),
               margin: const EdgeInsets.symmetric(horizontal: 4),
               decoration: BoxDecoration(
-                color: selected
-                    ? Colors.deepPurple
-                    : Colors.grey.shade200,
+                color: selected ? Colors.deepPurple : Colors.grey.shade200,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Center(

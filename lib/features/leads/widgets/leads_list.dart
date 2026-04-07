@@ -19,6 +19,12 @@ class LeadsList extends StatelessWidget {
     required this.onDelete,
   });
 
+  DateTime? parseDate(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    return DateTime.tryParse(value.toString());
+  }
+
   @override
   Widget build(BuildContext context) {
     if (leads.isEmpty) {
@@ -27,7 +33,7 @@ class LeadsList extends StatelessWidget {
           showModalBottomSheet(
             context: context,
             isScrollControlled: true,
-            builder: (_) => AddEntrySelector(),
+            builder: (_) => const AddEntrySelector(),
           );
         },
       );
@@ -58,13 +64,7 @@ class LeadsList extends StatelessWidget {
         itemBuilder: (context, index) {
           final lead = leads[index];
 
-          DateTime? _parseDate(dynamic value) {
-            if (value == null) return null;
-            if (value is DateTime) return value;
-            return DateTime.tryParse(value.toString());
-          }
-
-          final followUpDate = _parseDate(lead["follow_up_date"]);
+          final followUpDate = parseDate(lead["follow_up_date"]);
 
           final isOverdue =
               (lead["status"] ?? "").toString().toLowerCase() == "follow" &&
@@ -81,7 +81,7 @@ class LeadsList extends StatelessWidget {
               intent: lead["intent"],
               date: followUpDate,
               status: lead["status"],
-              createdAt: _parseDate(lead["created_at"]),
+              createdAt: parseDate(lead["created_at"]),
               isOverdue: isOverdue,
               onFollowUp: (note, date) => onFollowUp(lead, note, date),
               onDone: () => onDone(lead),

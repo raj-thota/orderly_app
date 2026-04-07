@@ -132,7 +132,9 @@ class NotificationService {
     final now = DateTime.now();
 
     final missed = leads.where((lead) {
-      if (lead["status"] != "follow" || lead["follow_up_date"] == null) return false;
+      if (lead["status"] != "follow" || lead["follow_up_date"] == null) {
+        return false;
+      }
 
       final date = DateTime.parse(lead["follow_up_date"]);
       return date.isBefore(now);

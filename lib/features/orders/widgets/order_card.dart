@@ -17,7 +17,10 @@ class OrderCard extends ConsumerWidget {
 
   /// 💬 WHATSAPP
   Future<void> _whatsapp(
-      BuildContext context, String phone, String name) async {
+    BuildContext context,
+    String phone,
+    String name,
+  ) async {
     final url = Uri.parse("https://wa.me/$phone");
     await launchUrl(url, mode: LaunchMode.externalApplication);
   }
@@ -97,7 +100,7 @@ class OrderCard extends ConsumerWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 14,
               offset: const Offset(0, 6),
             ),
@@ -123,10 +126,12 @@ class OrderCard extends ConsumerWidget {
                 if (isHot)
                   Container(
                     margin: const EdgeInsets.only(right: 6),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.1),
+                      color: Colors.red.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Text(
@@ -170,8 +175,10 @@ class OrderCard extends ConsumerWidget {
                 runSpacing: 6,
                 children: items.map<Widget>((item) {
                   return Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.grey.shade100,
                       borderRadius: BorderRadius.circular(8),
@@ -198,8 +205,10 @@ class OrderCard extends ConsumerWidget {
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.grey.shade200,
                     borderRadius: BorderRadius.circular(6),
@@ -218,13 +227,21 @@ class OrderCard extends ConsumerWidget {
             Row(
               children: [
                 Expanded(
-                  child: _btn(Icons.chat, "Chat", Colors.green,
-                      () => _whatsapp(context, phone, name)),
+                  child: _btn(
+                    Icons.chat,
+                    "Chat",
+                    Colors.green,
+                    () => _whatsapp(context, phone, name),
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: _btn(Icons.call, "Call", Colors.deepPurple,
-                      () => _call(context, phone, name)),
+                  child: _btn(
+                    Icons.call,
+                    "Call",
+                    Colors.deepPurple,
+                    () => _call(context, phone, name),
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -233,13 +250,13 @@ class OrderCard extends ConsumerWidget {
                     status == "pending"
                         ? "Start"
                         : status == "processing"
-                            ? "Done"
-                            : "Done",
+                        ? "Done"
+                        : "Done",
                     status == "completed"
                         ? Colors.grey
                         : status == "pending"
-                            ? Colors.orange
-                            : Colors.green,
+                        ? Colors.orange
+                        : Colors.green,
                     () {
                       if (status == "pending") {
                         controller.updateOrderStatus(liveOrder, "processing");
@@ -258,17 +275,16 @@ class OrderCard extends ConsumerWidget {
   }
 
   /// 🔘 PREMIUM BUTTON
-  Widget _btn(
-      IconData icon, String text, Color color, VoidCallback onTap) {
+  Widget _btn(IconData icon, String text, Color color, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
         height: 42,
         decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
+          color: color.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.25)),
+          border: Border.all(color: color.withValues(alpha: 0.25)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -311,7 +327,7 @@ class OrderCard extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Text(

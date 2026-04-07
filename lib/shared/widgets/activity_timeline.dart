@@ -12,8 +12,7 @@ class ActivityTimeline extends StatelessWidget {
     }
 
     final sorted = [...activities!]
-      ..sort((a, b) =>
-          (b["time"] as DateTime).compareTo(a["time"]));
+      ..sort((a, b) => (b["time"] as DateTime).compareTo(a["time"]));
 
     return Column(
       children: sorted.map((activity) {
@@ -64,7 +63,7 @@ class ActivityTimeline extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15 * 255),
+              color: color.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, size: 16, color: color),
@@ -79,9 +78,7 @@ class ActivityTimeline extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
 
                 if (activity["note"] != null)
@@ -94,10 +91,7 @@ class ActivityTimeline extends StatelessWidget {
 
                 Text(
                   _formatTime(time),
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey,
-                  ),
+                  style: const TextStyle(fontSize: 11, color: Colors.grey),
                 ),
               ],
             ),

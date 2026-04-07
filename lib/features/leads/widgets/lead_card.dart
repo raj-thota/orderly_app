@@ -39,9 +39,9 @@ class LeadCard extends StatelessWidget {
   Future<void> _makeCall(BuildContext context) async {
     final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Calling...")),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text("Calling...")));
 
     final url = Uri.parse("tel:$cleanPhone");
     if (await canLaunchUrl(url)) {
@@ -68,12 +68,13 @@ class LeadCard extends StatelessWidget {
     );
 
     if (selectedDate == null) return;
+    if (!context.mounted) return;
 
     final controller = TextEditingController();
 
     await showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text("Add follow-up note"),
         content: TextField(
           controller: controller,
@@ -83,11 +84,11 @@ class LeadCard extends StatelessWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text("Skip"),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text("Save"),
           ),
         ],
@@ -99,10 +100,13 @@ class LeadCard extends StatelessWidget {
       selectedDate,
     );
 
+    if (!context.mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content:
-            Text("Follow-up set for ${selectedDate.day}/${selectedDate.month}"),
+        content: Text(
+          "Follow-up set for ${selectedDate.day}/${selectedDate.month}",
+        ),
       ),
     );
   }
@@ -148,39 +152,39 @@ class LeadCard extends StatelessWidget {
   }
 
   /// ✨ PREMIUM BUTTON
-// ONLY CHANGES SHOWN — rest same imports
+  // ONLY CHANGES SHOWN — rest same imports
 
-Widget _button(String label, IconData icon, Color color, VoidCallback onTap) {
-  return Expanded(
-    child: InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        height: 42,
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.25)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 16, color: color),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: color,
+  Widget _button(String label, IconData icon, Color color, VoidCallback onTap) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          height: 42,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withValues(alpha: 0.25)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   void _showActions(BuildContext context) {
     showModalBottomSheet(
@@ -273,9 +277,10 @@ Widget _button(String label, IconData icon, Color color, VoidCallback onTap) {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(name,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w600)),
+                          Text(
+                            name,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
 
                           const SizedBox(height: 4),
 
@@ -283,8 +288,10 @@ Widget _button(String label, IconData icon, Color color, VoidCallback onTap) {
                             spacing: 6,
                             children: [
                               if (intent != null)
-                                _badge(_intentLabel(intent!),
-                                    _intentColor(intent!)),
+                                _badge(
+                                  _intentLabel(intent!),
+                                  _intentColor(intent!),
+                                ),
                               _badge(priority, Colors.grey),
                             ],
                           ),
@@ -315,8 +322,11 @@ Widget _button(String label, IconData icon, Color color, VoidCallback onTap) {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.lightbulb,
-                          size: 16, color: Colors.orange),
+                      const Icon(
+                        Icons.lightbulb,
+                        size: 16,
+                        color: Colors.orange,
+                      ),
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
@@ -338,8 +348,12 @@ Widget _button(String label, IconData icon, Color color, VoidCallback onTap) {
                   children: [
                     _button("Chat", Icons.chat, Colors.green, _openWhatsApp),
                     const SizedBox(width: 8),
-                    _button("Call", Icons.phone, Colors.deepPurple,
-                        () => _makeCall(context)),
+                    _button(
+                      "Call",
+                      Icons.phone,
+                      Colors.deepPurple,
+                      () => _makeCall(context),
+                    ),
                   ],
                 ),
 
@@ -347,11 +361,19 @@ Widget _button(String label, IconData icon, Color color, VoidCallback onTap) {
 
                 Row(
                   children: [
-                    _button("Follow", Icons.schedule, Colors.orange,
-                        () => _handleFollowUp(context)),
+                    _button(
+                      "Follow",
+                      Icons.schedule,
+                      Colors.orange,
+                      () => _handleFollowUp(context),
+                    ),
                     const SizedBox(width: 8),
-                    _button("Convert", Icons.check_circle, Colors.green,
-                        onDone ?? () {}),
+                    _button(
+                      "Convert",
+                      Icons.check_circle,
+                      Colors.green,
+                      onDone ?? () {},
+                    ),
                   ],
                 ),
               ],

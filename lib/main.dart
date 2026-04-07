@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:orderly_app/shared/components/add_entry_selector.dart';
+import 'package:orderly_app/app/app_bootstrap.dart';
+import 'package:orderly_app/app/app_setup_screen.dart';
 import 'package:orderly_app/app/splash_screen.dart';
+import 'package:orderly_app/shared/components/add_entry_selector.dart';
 
 // Core
 import 'core/services/notification_service.dart';
@@ -17,54 +17,37 @@ import 'features/orders/presentation/orders_screen.dart';
 // Shared Widgets
 import 'shared/widgets/app_bottom_nav.dart';
 
-import 'package:app_links/app_links.dart';
-
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final bootstrapState = await AppBootstrapper.bootstrap();
 
-  /// 🔐 LOAD ENV
-  await dotenv.load(fileName: ".env");
-
-  final appLinks = AppLinks();
-
-appLinks.uriLinkStream.listen((uri) async {
-  print("DEEP LINK RECEIVED: $uri");
-
-  final res = await Supabase.instance.client.auth.getSessionFromUrl(uri);
-
-  print("SESSION FROM URL: ${res.session}");
-});
-
-  /// 🔥 SUPABASE INIT
-  await Supabase.initialize(
-    url: dotenv.env['SUPABASE_URL']!,
-    anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
-    authOptions: const FlutterAuthClientOptions(
-      authFlowType: AuthFlowType.pkce,
-    ),
-  );
-
-  await NotificationService.init();
-
-  runApp(const ProviderScope(child: OrderlyApp()));
+  runApp(ProviderScope(child: OrderlyApp(bootstrapState: bootstrapState)));
 }
 
-class OrderlyApp extends ConsumerWidget {
-  const OrderlyApp({super.key});
+class OrderlyApp extends StatelessWidget {
+  final AppBootstrapState bootstrapState;
+
+  const OrderlyApp({
+    super.key,
+    this.bootstrapState = const AppBootstrapState.missingConfiguration(),
+  });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       title: "Closr",
       theme: ThemeData(
-        primarySwatch: Colors.deepPurple,
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6C4ED9)),
         scaffoldBackgroundColor: Colors.white,
+        useMaterial3: true,
       ),
-      home: const SplashScreen(),
+      home: bootstrapState.isReady
+          ? const SplashScreen()
+          : AppSetupScreen(message: bootstrapState.message),
     );
   }
 }
@@ -90,15 +73,7 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
 
-    /// ⚠️ Remove later (debug only)
-    Future.delayed(const Duration(seconds: 5), () {
-      NotificationService.showNotification(
-        title: "Test Notification",
-        body: "If you see this → working 🎉",
-      );
-    });
-
-    Future.delayed(const Duration(seconds: 2), () {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       NotificationService.checkAndTriggerSmartReminders();
     });
   }
@@ -120,7 +95,7 @@ class _MainScreenState extends State<MainScreen> {
           showModalBottomSheet(
             context: context,
             isScrollControlled: true,
-            builder: (_) => AddEntrySelector(),
+            builder: (_) => const AddEntrySelector(),
           );
         },
         child: const Icon(Icons.add, color: Colors.white),

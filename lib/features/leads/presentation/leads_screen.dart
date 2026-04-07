@@ -60,9 +60,17 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
 
     final filtered = leads.where((lead) {
       /// 🔥 TAB FILTER
-      if (selectedTab == 0 && (lead["status"] ?? "").toString().toLowerCase() != "new") return false;
-      if (selectedTab == 1 && (lead["status"] ?? "").toString().toLowerCase() != "follow") return false;
-      if (selectedTab == 2 && !_isHotLead(lead)) return false;
+      if (selectedTab == 0 &&
+          (lead["status"] ?? "").toString().toLowerCase() != "new") {
+        return false;
+      }
+      if (selectedTab == 1 &&
+          (lead["status"] ?? "").toString().toLowerCase() != "follow") {
+        return false;
+      }
+      if (selectedTab == 2 && !_isHotLead(lead)) {
+        return false;
+      }
 
       /// 🔍 SEARCH
       if (search.isNotEmpty) {

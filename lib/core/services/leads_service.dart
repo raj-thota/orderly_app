@@ -29,7 +29,6 @@ class LeadsService {
 
     if (user == null) throw Exception("User not logged in");
 
-
     final response = await supabase
         .from('leads')
         .insert({
