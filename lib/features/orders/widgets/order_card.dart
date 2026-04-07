@@ -1,40 +1,99 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orderly_app/features/leads/controller/leads_controller.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:orderly_app/features/orders/presentation/order_detail_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class OrderCard extends ConsumerWidget {
   final Map<String, dynamic> order;
 
   const OrderCard({super.key, required this.order});
 
-  /// 📞 CALL
-  Future<void> _call(BuildContext context, String phone, String name) async {
-    final url = Uri.parse("tel:$phone");
-    await launchUrl(url);
+  double _asDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? "0") ?? 0;
   }
 
-  /// 💬 WHATSAPP
+  int _asInt(dynamic value, {int fallback = 0}) {
+    if (value is int) return value;
+    if (value is num) return value.round();
+    return int.tryParse(value?.toString() ?? "") ?? fallback;
+  }
+
+  int _quantity(Map<String, dynamic> item) {
+    return _asInt(item["quantity"] ?? item["qty"], fallback: 1);
+  }
+
+  double _price(Map<String, dynamic> item) {
+    return _asDouble(item["price"]);
+  }
+
+  double _lineTotal(Map<String, dynamic> item) {
+    final total = _asDouble(item["total"]);
+    if (total > 0) return total;
+    return _quantity(item) * _price(item);
+  }
+
+  double _calculateAmount(List items) {
+    return items.fold<double>(0, (sum, item) {
+      return sum + _lineTotal(Map<String, dynamic>.from(item));
+    });
+  }
+
+  String _productName(Map<String, dynamic> item) {
+    return (item["product_name"] ?? item["product"] ?? item["name"] ?? "Item")
+        .toString();
+  }
+
+  String _currency(double value) {
+    if (value == value.roundToDouble()) {
+      return value.toStringAsFixed(0);
+    }
+    return value.toStringAsFixed(2);
+  }
+
+  Future<void> _call(BuildContext context, String phone, String name) async {
+    final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
+    if (cleanPhone.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Phone number not available")),
+      );
+      return;
+    }
+
+    final url = Uri.parse("tel:$cleanPhone");
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Calling $name")));
+    }
+  }
+
   Future<void> _whatsapp(
     BuildContext context,
     String phone,
     String name,
   ) async {
-    final url = Uri.parse("https://wa.me/$phone");
-    await launchUrl(url, mode: LaunchMode.externalApplication);
+    final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
+    if (cleanPhone.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("WhatsApp number not available")),
+      );
+      return;
+    }
+
+    final url = Uri.parse("https://wa.me/$cleanPhone");
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Opening WhatsApp for $name")));
+    }
   }
 
-  /// 💰 CALCULATE AMOUNT (REAL)
-  int _calculateAmount(List items) {
-    return items.fold<int>(0, (sum, i) {
-      final qty = int.tryParse(i["quantity"]?.toString() ?? "1") ?? 1;
-      final price = int.tryParse(i["price"]?.toString() ?? "0") ?? 0;
-      return sum + (qty * price);
-    });
-  }
-
-  /// 🔥 HOT DETECTION
   bool _isHotLead(Map<String, dynamic> lead) {
     final msg = (lead["msg"] ?? "").toString().toLowerCase();
     final intent = (lead["intent"] ?? "").toString().toLowerCase();
@@ -46,18 +105,30 @@ class OrderCard extends ConsumerWidget {
         msg.contains("cost");
   }
 
-  /// 📅 SAFE DATE PARSER
   DateTime? _parseDate(dynamic value) {
     if (value == null) return null;
     if (value is DateTime) return value;
     return DateTime.tryParse(value.toString());
   }
 
-  /// 🕒 FORMAT DATE (POLISHED)
   String _formatDate(DateTime? d) {
     if (d == null) return "-";
     return "${d.day}/${d.month} "
         "${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}";
+  }
+
+  Future<void> _updateStatus(
+    BuildContext context,
+    LeadsController controller,
+    Map<String, dynamic> order,
+    String nextStatus,
+    String message,
+  ) async {
+    await controller.updateOrderStatus(order, nextStatus);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -65,25 +136,23 @@ class OrderCard extends ConsumerWidget {
     final controller = ref.watch(leadsControllerProvider.notifier);
     final leads = ref.watch(leadsControllerProvider);
 
-    /// 🔥 LIVE DATA SYNC
     final liveOrder = leads.firstWhere(
       (l) => l["id"] == order["id"],
       orElse: () => order,
     );
 
     final items = (liveOrder["items"] ?? []) as List;
-    final phone = liveOrder["phone"] ?? "";
-    final name = liveOrder["name"] ?? "";
-    final status = liveOrder["order_status"] ?? "pending";
+    final phone = (liveOrder["phone"] ?? "").toString();
+    final name = (liveOrder["name"] ?? "Customer").toString();
+    final status = (liveOrder["order_status"] ?? "pending").toString();
 
     final created = _parseDate(liveOrder["created_at"]);
     final completed = _parseDate(liveOrder["completed_at"]);
-
     final amount = _calculateAmount(items);
     final isHot = _isHotLead(liveOrder);
 
     return InkWell(
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(22),
       onTap: () {
         Navigator.push(
           context,
@@ -97,32 +166,53 @@ class OrderCard extends ConsumerWidget {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: isHot ? const Color(0xFFF4D7BF) : const Color(0xFFEDEFF5),
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 14,
-              offset: const Offset(0, 6),
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 18,
+              offset: const Offset(0, 10),
+            ),
+            BoxShadow(
+              color: (isHot ? const Color(0xFFB85C00) : Colors.black)
+                  .withValues(alpha: isHot ? 0.08 : 0.03),
+              blurRadius: 24,
+              offset: const Offset(0, 14),
             ),
           ],
         ),
-
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// 🔥 HEADER
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                          color: Color(0xFF111827),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        "Created ${_formatDate(created)}",
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          color: Color(0xFF6B7280),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-
                 if (isHot)
                   Container(
                     margin: const EdgeInsets.only(right: 6),
@@ -131,139 +221,172 @@ class OrderCard extends ConsumerWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.red.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
+                      color: const Color(0xFFFFF4EA),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: const Color(0xFFF4D7BF)),
                     ),
                     child: const Text(
                       "🔥 Hot",
                       style: TextStyle(
                         fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.red,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFFB85C00),
                       ),
                     ),
                   ),
-
                 _statusBadge(status),
               ],
             ),
-
-            const SizedBox(height: 6),
-
-            /// 🕒 META
-            Row(
-              children: [
-                Text(
-                  "Created: ${_formatDate(created)}",
-                  style: const TextStyle(fontSize: 11, color: Colors.grey),
-                ),
-                const Spacer(),
-                if (status == "completed")
-                  Text(
-                    "Done: ${_formatDate(completed)}",
-                    style: const TextStyle(fontSize: 11, color: Colors.green),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "Order Total",
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: Color(0xFF6B7280),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          "₹${_currency(amount)}",
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF111827),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-              ],
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                    ),
+                    child: Text(
+                      "${items.length} items",
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF374151),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-
-            const SizedBox(height: 10),
-
-            /// 🧾 ITEMS
+            const SizedBox(height: 12),
             if (items.isNotEmpty)
               Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: items.map<Widget>((item) {
+                spacing: 8,
+                runSpacing: 8,
+                children: items.take(3).map<Widget>((item) {
+                  final orderItem = Map<String, dynamic>.from(item);
                   return Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
+                      horizontal: 10,
+                      vertical: 6,
                     ),
                     decoration: BoxDecoration(
                       color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      "${item["quantity"]} x ${item["product_name"] ?? item["product"] ?? ""}",
-                      style: const TextStyle(fontSize: 11),
+                      "${_quantity(orderItem)} x ${_productName(orderItem)}",
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF374151),
+                      ),
                     ),
                   );
                 }).toList(),
               ),
-
-            const SizedBox(height: 10),
-
-            /// 💰 AMOUNT
-            Row(
-              children: [
-                Text(
-                  "₹$amount",
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+            if (status == "completed" && completed != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                "Completed ${_formatDate(completed)}",
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  color: Color(0xFF0F9D58),
+                  fontWeight: FontWeight.w600,
                 ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    "${items.length} items",
-                    style: const TextStyle(fontSize: 11),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 12),
-
-            /// 🔘 ACTIONS (PREMIUM)
+              ),
+            ],
+            const SizedBox(height: 14),
             Row(
               children: [
                 Expanded(
                   child: _btn(
-                    Icons.chat,
+                    Icons.chat_bubble_rounded,
                     "Chat",
-                    Colors.green,
+                    const Color(0xFF25D366),
                     () => _whatsapp(context, phone, name),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: _btn(
-                    Icons.call,
+                    Icons.call_rounded,
                     "Call",
-                    Colors.deepPurple,
+                    const Color(0xFF6C4ED9),
                     () => _call(context, phone, name),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: _btn(
-                    status == "pending" ? Icons.play_arrow : Icons.check,
+                    status == "pending"
+                        ? Icons.play_arrow_rounded
+                        : Icons.check,
                     status == "pending"
                         ? "Start"
                         : status == "processing"
                         ? "Done"
                         : "Done",
                     status == "completed"
-                        ? Colors.grey
+                        ? const Color(0xFF9CA3AF)
                         : status == "pending"
-                        ? Colors.orange
-                        : Colors.green,
-                    () {
-                      if (status == "pending") {
-                        controller.updateOrderStatus(liveOrder, "processing");
-                      } else if (status == "processing") {
-                        controller.updateOrderStatus(liveOrder, "completed");
-                      }
-                    },
+                        ? const Color(0xFFE08B00)
+                        : const Color(0xFF0F9D58),
+                    status == "completed"
+                        ? null
+                        : () {
+                            if (status == "pending") {
+                              _updateStatus(
+                                context,
+                                controller,
+                                liveOrder,
+                                "processing",
+                                "Order started",
+                              );
+                            } else if (status == "processing") {
+                              _updateStatus(
+                                context,
+                                controller,
+                                liveOrder,
+                                "completed",
+                                "Order marked complete",
+                              );
+                            }
+                          },
                   ),
                 ),
               ],
@@ -274,68 +397,74 @@ class OrderCard extends ConsumerWidget {
     );
   }
 
-  /// 🔘 PREMIUM BUTTON
-  Widget _btn(IconData icon, String text, Color color, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        height: 42,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withValues(alpha: 0.25)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 16, color: color),
-            const SizedBox(width: 6),
-            Text(
-              text,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: color,
+  Widget _btn(IconData icon, String text, Color color, VoidCallback? onTap) {
+    final isEnabled = onTap != null;
+
+    return Opacity(
+      opacity: isEnabled ? 1 : 0.5,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          height: 38,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withValues(alpha: 0.22)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 15, color: color),
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text(
+                  text,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  /// 🟢 STATUS BADGE
   Widget _statusBadge(String status) {
     Color color;
     String label;
 
     switch (status) {
       case "processing":
-        color = Colors.blue;
+        color = const Color(0xFF2563EB);
         label = "In Progress";
         break;
       case "completed":
-        color = Colors.green;
+        color = const Color(0xFF0F9D58);
         label = "Completed";
         break;
       default:
-        color = Colors.orange;
+        color = const Color(0xFFE08B00);
         label = "Pending";
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(10),
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         label,
         style: TextStyle(
-          fontSize: 11,
+          fontSize: 10.5,
           color: color,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );

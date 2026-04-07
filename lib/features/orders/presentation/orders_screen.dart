@@ -15,6 +15,39 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
 
   final tabs = ["Pending", "In Progress", "Completed"];
 
+  double _asDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? "0") ?? 0;
+  }
+
+  int _asInt(dynamic value, {int fallback = 0}) {
+    if (value is int) return value;
+    if (value is num) return value.round();
+    return int.tryParse(value?.toString() ?? "") ?? fallback;
+  }
+
+  double _orderTotal(Map<String, dynamic> order) {
+    final items = order["items"];
+    if (items is! List) return 0;
+
+    return items.fold<double>(0, (sum, item) {
+      final map = Map<String, dynamic>.from(item);
+      final total = _asDouble(map["total"]);
+      if (total > 0) return sum + total;
+
+      final qty = _asInt(map["quantity"] ?? map["qty"], fallback: 1);
+      final price = _asDouble(map["price"]);
+      return sum + (qty * price);
+    });
+  }
+
+  String _currency(double value) {
+    if (value == value.roundToDouble()) {
+      return value.toStringAsFixed(0);
+    }
+    return value.toStringAsFixed(2);
+  }
+
   @override
   Widget build(BuildContext context) {
     final orders = ref.watch(ordersControllerProvider);
@@ -31,11 +64,8 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
         .where((o) => o["order_status"] == "completed")
         .toList();
 
-    /// 💰 Revenue
-    final revenue = orders.fold<int>(0, (sum, o) {
-      final items = o["items"];
-      if (items is List) return sum + (items.length * 100);
-      return sum;
+    final revenue = orders.fold<double>(0, (sum, o) {
+      return sum + _orderTotal(o);
     });
 
     final filtered = selectedTab == 0
@@ -68,7 +98,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  "₹$revenue",
+                  "₹${_currency(revenue)}",
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 26,

@@ -19,7 +19,9 @@ class EntryDetailScreen extends ConsumerWidget {
 
   Future<void> _call(String phone) async {
     final url = Uri.parse("tel:$phone");
-    if (await canLaunchUrl(url)) await launchUrl(url);
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url);
+    }
   }
 
   Future<void> _whatsapp(String phone) async {
@@ -30,6 +32,24 @@ class EntryDetailScreen extends ConsumerWidget {
   }
 
   String _formatDate(DateTime d) => "${d.day}/${d.month}/${d.year}";
+
+  String _formatShortDate(DateTime d) {
+    const months = <String>[
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+    return "${d.day} ${months[d.month - 1]}";
+  }
 
   DateTime? _parseDate(dynamic value) {
     if (value == null) return null;
@@ -46,30 +66,56 @@ class EntryDetailScreen extends ConsumerWidget {
     List<Map<String, dynamic>> actions = [];
 
     if (intent == "order") {
-      summary = "Customer ready to place order";
+      summary = "Customer looks ready to place the order.";
       actions = [
-        {"label": "Confirm Order", "type": "done"},
-        {"label": "Send Invoice", "type": "whatsapp"},
+        {"label": "Confirm", "type": "done"},
+        {"label": "WhatsApp", "type": "whatsapp"},
       ];
     } else if (intent == "follow_up") {
-      summary = "Follow-up required soon";
+      summary = "Lead needs a quick follow-up to keep momentum going.";
       actions = [
-        {"label": "Follow-up Now", "type": "follow"},
-        {"label": "Call Customer", "type": "call"},
+        {"label": "Follow-up", "type": "follow"},
+        {"label": "Call", "type": "call"},
       ];
     } else {
-      summary = "New inquiry. Needs engagement";
+      summary = "Fresh inquiry. Best next move is quick engagement.";
       actions = [
-        {"label": "Send Details", "type": "whatsapp"},
-        {"label": "Call Customer", "type": "call"},
+        {"label": "WhatsApp", "type": "whatsapp"},
+        {"label": "Call", "type": "call"},
       ];
     }
 
     if (items.isNotEmpty) {
-      actions.add({"label": "Verify Items", "type": "follow"});
+      actions.add({"label": "Items", "type": "follow"});
     }
 
     return {"summary": summary, "actions": actions};
+  }
+
+  String _statusLabel(Map<String, dynamic> lead) {
+    switch ((lead["status"] ?? "").toString().toLowerCase()) {
+      case "follow":
+        return "Follow-up";
+      case "closed":
+        return "Order";
+      case "new":
+        return "New";
+      default:
+        return "Open";
+    }
+  }
+
+  Color _statusColor(Map<String, dynamic> lead) {
+    switch ((lead["status"] ?? "").toString().toLowerCase()) {
+      case "follow":
+        return const Color(0xFFE08B00);
+      case "closed":
+        return const Color(0xFF0F9D58);
+      case "new":
+        return const Color(0xFF2563EB);
+      default:
+        return const Color(0xFF64748B);
+    }
   }
 
   @override
@@ -94,7 +140,7 @@ class EntryDetailScreen extends ConsumerWidget {
       data: (liveLead) {
         if (liveLead == null) {
           return Scaffold(
-            appBar: AppBar(title: const Text("Details")),
+            appBar: AppBar(title: const Text("Lead Detail")),
             body: const Center(child: Text("Lead not found")),
           );
         }
@@ -102,11 +148,11 @@ class EntryDetailScreen extends ConsumerWidget {
         return _buildScreen(context, controller, liveLead);
       },
       loading: () => Scaffold(
-        appBar: AppBar(title: const Text("Details")),
+        appBar: AppBar(title: const Text("Lead Detail")),
         body: const Center(child: CircularProgressIndicator()),
       ),
       error: (_, _) => Scaffold(
-        appBar: AppBar(title: const Text("Details")),
+        appBar: AppBar(title: const Text("Lead Detail")),
         body: const Center(child: Text("Could not load lead")),
       ),
     );
@@ -130,44 +176,96 @@ class EntryDetailScreen extends ConsumerWidget {
     Map<String, dynamic> liveLead,
   ) {
     final ai = _ai(liveLead);
-    final phone = liveLead["phone"] ?? "";
+    final phone = (liveLead["phone"] ?? "").toString();
+    final name = (liveLead["name"] ?? "Lead").toString();
+    final message = (liveLead["msg"] ?? "-").toString();
     final createdAt = _parseDate(liveLead["created_at"]);
     final activities = liveLead["activities"] ?? [];
     final followDate = _parseDate(liveLead["follow_up_date"]);
+    final items = (liveLead["items"] ?? []) as List;
+    final statusLabel = _statusLabel(liveLead);
+    final statusColor = _statusColor(liveLead);
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
-      appBar: AppBar(title: const Text("Details")),
+      backgroundColor: const Color(0xFFF6F7FB),
+      appBar: AppBar(
+        title: const Text("Lead Detail"),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _card(child: _header(liveLead)),
-
-          const SizedBox(height: 16),
-
-          _card(
-            color: Colors.deepPurple.withValues(alpha: 0.05),
+          _heroCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: const [
-                    Icon(Icons.auto_awesome, color: Colors.deepPurple),
+                _header(liveLead),
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _pill(statusLabel, statusColor),
+                    if (followDate != null)
+                      _pill(
+                        "Follow-up ${_formatShortDate(followDate)}",
+                        const Color(0xFF6C4ED9),
+                      ),
+                    if (phone.trim().isNotEmpty)
+                      _pill("Phone linked", const Color(0xFF0F9D58)),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  ai["summary"],
+                  style: const TextStyle(
+                    fontSize: 14,
+                    height: 1.45,
+                    color: Color(0xFF374151),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          _card(
+            color: const Color(0xFFF8F5FF),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.auto_awesome_rounded, color: Color(0xFF6C4ED9)),
                     SizedBox(width: 8),
                     Text(
                       "Smart Insight",
-                      style: TextStyle(fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                Text(ai["summary"]),
+                const SizedBox(height: 10),
+                Text(
+                  ai["summary"],
+                  style: const TextStyle(
+                    fontSize: 13,
+                    height: 1.45,
+                    color: Color(0xFF374151),
+                  ),
+                ),
                 const SizedBox(height: 12),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: ai["actions"].map<Widget>((a) {
-                    return InkWell(
+                    return _compactButton(
+                      label: a["label"],
+                      icon: _actionIcon(a["type"]),
+                      color: const Color(0xFF6C4ED9),
                       onTap: () => _handleAction(
                         a["type"],
                         controller,
@@ -175,94 +273,113 @@ class EntryDetailScreen extends ConsumerWidget {
                         phone,
                         context,
                       ),
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.grey.shade200),
-                        ),
-                        child: Text(a["label"]),
-                      ),
                     );
                   }).toList(),
                 ),
               ],
             ),
           ),
-
           const SizedBox(height: 16),
-
           _card(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _section("Message", liveLead["msg"] ?? "-"),
+                _section(
+                  "Message Preview",
+                  message,
+                  icon: Icons.chat_bubble_outline_rounded,
+                ),
                 if (followDate != null)
-                  _section("Follow-up", _formatDate(followDate)),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 14),
+                    child: _section(
+                      "Follow-up Date",
+                      _formatDate(followDate),
+                      icon: Icons.schedule_rounded,
+                    ),
+                  ),
+                if (phone.trim().isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 14),
+                    child: _section("Phone", phone, icon: Icons.phone_outlined),
+                  ),
               ],
             ),
           ),
-
           const SizedBox(height: 16),
-
           Row(
             children: [
-              _primaryButton(
+              _smallActionButton(
                 "WhatsApp",
-                Icons.chat,
+                Icons.chat_bubble_rounded,
                 const Color(0xFF25D366),
                 () => _whatsapp(phone),
               ),
               const SizedBox(width: 10),
-              _primaryButton(
+              _smallActionButton(
                 "Call",
-                Icons.phone,
-                Colors.deepPurple,
+                Icons.call_rounded,
+                const Color(0xFF6C4ED9),
                 () => _call(phone),
               ),
-            ],
-          ),
-
-          const SizedBox(height: 12),
-
-          Row(
-            children: [
-              _secondaryButton("Follow-up", Icons.schedule, () {
-                controller.followUp(
-                  liveLead,
-                  "Follow-up",
-                  DateTime.now().add(const Duration(days: 1)),
-                );
-              }),
               const SizedBox(width: 10),
-              _secondaryButton(
+              _smallActionButton(
                 "Done",
-                Icons.check,
+                Icons.check_circle_rounded,
+                const Color(0xFF0F9D58),
                 () => controller.markDone(liveLead),
               ),
             ],
           ),
-
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _compactButton(
+                label: "Schedule follow-up",
+                icon: Icons.schedule_rounded,
+                color: const Color(0xFFE08B00),
+                onTap: () {
+                  controller.followUp(
+                    liveLead,
+                    "Follow-up",
+                    DateTime.now().add(const Duration(days: 1)),
+                  );
+                },
+              ),
+              if (items.isNotEmpty)
+                _compactButton(
+                  label: "${items.length} items",
+                  icon: Icons.inventory_2_outlined,
+                  color: const Color(0xFF0F9D58),
+                  onTap: () {},
+                ),
+            ],
+          ),
           const SizedBox(height: 20),
-
           _card(
-            child: _section(
-              "Created",
-              createdAt != null ? _formatDate(createdAt) : "-",
+            child: Row(
+              children: [
+                Expanded(
+                  child: _statTile(
+                    "Created",
+                    createdAt != null ? _formatShortDate(createdAt) : "-",
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _statTile("Status", statusLabel, color: statusColor),
+                ),
+              ],
             ),
           ),
-
           const SizedBox(height: 20),
-
-          const Text("Activity", style: TextStyle(fontWeight: FontWeight.w600)),
-
+          const Text(
+            "Activity",
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+          ),
           const SizedBox(height: 10),
-
           ActivityTimeline(activities: activities),
         ],
       ),
@@ -295,17 +412,40 @@ class EntryDetailScreen extends ConsumerWidget {
     ).showSnackBar(SnackBar(content: Text(type.toUpperCase())));
   }
 
+  Widget _heroCard({required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFFFFFF), Color(0xFFF6F2FF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFE7DDFE)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF6C4ED9).withValues(alpha: 0.10),
+            blurRadius: 24,
+            offset: const Offset(0, 14),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
   Widget _card({required Widget child, Color? color}) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: color ?? Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -314,35 +454,128 @@ class EntryDetailScreen extends ConsumerWidget {
   }
 
   Widget _header(Map<String, dynamic> lead) {
-    final name = lead["name"] ?? "C";
+    final name = (lead["name"] ?? "C").toString();
+    final phone = (lead["phone"] ?? "").toString();
+
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        CircleAvatar(
-          radius: 26,
-          backgroundColor: Colors.deepPurple.shade50,
-          child: Text(name[0].toUpperCase()),
+        Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            color: const Color(0xFFEEE7FF),
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Center(
+            child: Text(
+              name[0].toUpperCase(),
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF6C4ED9),
+              ),
+            ),
+          ),
         ),
-        const SizedBox(width: 10),
-        Text(
-          name,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                name,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF111827),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                phone.isEmpty ? "No phone added" : phone,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF6B7280),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
   }
 
-  Widget _section(String title, String value) {
+  Widget _section(String title, String value, {required IconData icon}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(color: Colors.grey)),
-        const SizedBox(height: 4),
-        Text(value),
+        Row(
+          children: [
+            Icon(icon, size: 15, color: const Color(0xFF6B7280)),
+            const SizedBox(width: 6),
+            Text(
+              title,
+              style: const TextStyle(
+                color: Color(0xFF6B7280),
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 14,
+            height: 1.45,
+            color: Color(0xFF111827),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
       ],
     );
   }
 
-  Widget _primaryButton(
+  Widget _pill(String label, Color color, {bool filled = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: filled ? color : color.withValues(alpha: 0.09),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: filled ? color : color.withValues(alpha: 0.18),
+        ),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10.5,
+          fontWeight: FontWeight.w700,
+          color: filled ? Colors.white : color,
+        ),
+      ),
+    );
+  }
+
+  IconData _actionIcon(String type) {
+    switch (type) {
+      case "call":
+        return Icons.call_rounded;
+      case "whatsapp":
+        return Icons.chat_bubble_rounded;
+      case "done":
+        return Icons.check_circle_rounded;
+      case "follow":
+        return Icons.schedule_rounded;
+      default:
+        return Icons.bolt_rounded;
+    }
+  }
+
+  Widget _smallActionButton(
     String label,
     IconData icon,
     Color color,
@@ -351,19 +584,30 @@ class EntryDetailScreen extends ConsumerWidget {
     return Expanded(
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14),
+          height: 42,
           decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(12),
+            color: color.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: color.withValues(alpha: 0.20)),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: Colors.white),
+              Icon(icon, color: color, size: 16),
               const SizedBox(width: 6),
-              Text(label, style: const TextStyle(color: Colors.white)),
+              Flexible(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -371,21 +615,72 @@ class EntryDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _secondaryButton(String label, IconData icon, VoidCallback onTap) {
-    return Expanded(
+  Widget _compactButton({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(999),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(12),
+            color: color.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: color.withValues(alpha: 0.18)),
           ),
-          child: Column(
-            children: [Icon(icon), const SizedBox(height: 4), Text(label)],
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 15, color: color),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
+              ),
+            ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _statTile(String label, String value, {Color? color}) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11.5,
+              color: Color(0xFF6B7280),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 13.5,
+              color: color ?? const Color(0xFF111827),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -78,6 +78,7 @@ class LeadCard extends StatelessWidget {
           decoration: const InputDecoration(
             hintText: "Add a quick note",
             border: OutlineInputBorder(),
+            isDense: true,
           ),
           maxLines: 2,
         ),
@@ -88,6 +89,7 @@ class LeadCard extends StatelessWidget {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext),
+            style: FilledButton.styleFrom(visualDensity: VisualDensity.compact),
             child: const Text("Save"),
           ),
         ],
@@ -123,6 +125,7 @@ class LeadCard extends StatelessWidget {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
+            style: FilledButton.styleFrom(visualDensity: VisualDensity.compact),
             child: const Text("Convert"),
           ),
         ],
@@ -222,9 +225,9 @@ class LeadCard extends StatelessWidget {
   }
 
   String _priorityLabel(int score) {
-    if (score > 70) return "🔥 High intent";
-    if (score > 40) return "⚡ Warm intent";
-    return "🧊 Low intent";
+    if (score > 70) return "🔥 High";
+    if (score > 40) return "⚡ Warm";
+    return "🧊 Cold";
   }
 
   Color _priorityColor(int score) {
@@ -254,18 +257,18 @@ class LeadCard extends StatelessWidget {
 
   Widget _badge(String text, Color color, {bool filled = false}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: filled ? color : color.withValues(alpha: 0.1),
+        color: filled ? color : color.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(
-          color: filled ? color : color.withValues(alpha: 0.22),
+          color: filled ? color : color.withValues(alpha: 0.20),
         ),
       ),
       child: Text(
         text,
         style: TextStyle(
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.1,
           color: filled ? Colors.white : color,
@@ -290,21 +293,21 @@ class LeadCard extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             onTap: onTap,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
             child: Ink(
-              height: 46,
+              height: 40,
               decoration: BoxDecoration(
                 color: filled ? color : color.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: filled ? color : color.withValues(alpha: 0.22),
+                  color: filled ? color : color.withValues(alpha: 0.20),
                 ),
                 boxShadow: filled
                     ? [
                         BoxShadow(
-                          color: color.withValues(alpha: 0.25),
-                          blurRadius: 14,
-                          offset: const Offset(0, 6),
+                          color: color.withValues(alpha: 0.18),
+                          blurRadius: 10,
+                          offset: const Offset(0, 5),
                         ),
                       ]
                     : null,
@@ -312,14 +315,14 @@ class LeadCard extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(icon, size: 16, color: filled ? Colors.white : color),
-                  const SizedBox(width: 8),
+                  Icon(icon, size: 15, color: filled ? Colors.white : color),
+                  const SizedBox(width: 6),
                   Flexible(
                     child: Text(
                       label,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: FontWeight.w700,
                         color: filled ? Colors.white : color,
                       ),
@@ -359,10 +362,6 @@ class LeadCard extends StatelessWidget {
         ? const Color(0xFFFFFAF2)
         : Colors.white;
 
-    final shadowColor = isOverdue
-        ? Colors.red.withValues(alpha: 0.12)
-        : priorityColor.withValues(alpha: score > 40 ? 0.10 : 0.06);
-
     final displayName = name.trim().isEmpty ? "Unknown Lead" : name.trim();
     final trimmedMessage = message.trim().isEmpty
         ? "No message available"
@@ -400,9 +399,21 @@ class LeadCard extends StatelessWidget {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: shadowColor,
-                  blurRadius: 22,
-                  offset: const Offset(0, 12),
+                  color: priorityColor.withValues(
+                    alpha: isOverdue
+                        ? 0.10
+                        : score > 40
+                        ? 0.08
+                        : 0.04,
+                  ),
+                  blurRadius: 24,
+                  spreadRadius: 1,
+                  offset: const Offset(0, 14),
+                ),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.07),
+                  blurRadius: 14,
+                  offset: const Offset(0, 6),
                 ),
               ],
             ),
@@ -420,8 +431,8 @@ class LeadCard extends StatelessWidget {
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              priorityColor.withValues(alpha: 0.18),
-                              priorityColor.withValues(alpha: 0.06),
+                              priorityColor.withValues(alpha: 0.16),
+                              priorityColor.withValues(alpha: 0.05),
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
@@ -455,10 +466,10 @@ class LeadCard extends StatelessWidget {
                                 letterSpacing: -0.2,
                               ),
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 7),
                             Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
+                              spacing: 7,
+                              runSpacing: 7,
                               children: [
                                 _badge(_statusLabel(), statusColor),
                                 _badge(
@@ -489,15 +500,16 @@ class LeadCard extends StatelessWidget {
                         icon: const Icon(Icons.more_horiz_rounded),
                         splashRadius: 20,
                         color: const Color(0xFF6B7280),
+                        visualDensity: VisualDensity.compact,
                       ),
                     ],
                   ),
                   const SizedBox(height: 14),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(14),
+                    padding: const EdgeInsets.all(13),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.72),
+                      color: Colors.white.withValues(alpha: 0.76),
                       borderRadius: BorderRadius.circular(18),
                     ),
                     child: Text(
@@ -505,7 +517,7 @@ class LeadCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 13.5,
+                        fontSize: 13,
                         height: 1.45,
                         color: Color(0xFF374151),
                         fontWeight: FontWeight.w500,
@@ -517,7 +529,7 @@ class LeadCard extends StatelessWidget {
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
-                      vertical: 10,
+                      vertical: 9,
                     ),
                     decoration: BoxDecoration(
                       color: priorityColor.withValues(alpha: 0.08),
@@ -529,7 +541,7 @@ class LeadCard extends StatelessWidget {
                           isOverdue
                               ? Icons.priority_high_rounded
                               : Icons.auto_awesome_rounded,
-                          size: 16,
+                          size: 15,
                           color: isOverdue
                               ? Colors.red.shade600
                               : priorityColor,
@@ -541,7 +553,7 @@ class LeadCard extends StatelessWidget {
                                 ? "Needs attention now"
                                 : "AI suggests: $suggestion",
                             style: TextStyle(
-                              fontSize: 12.5,
+                              fontSize: 11.5,
                               fontWeight: FontWeight.w700,
                               color: isOverdue
                                   ? Colors.red.shade700
@@ -552,7 +564,7 @@ class LeadCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 12),
                   Row(
                     children: [
                       _actionButton(
@@ -585,7 +597,7 @@ class LeadCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 10),
                       _actionButton(
-                        label: "Convert to order",
+                        label: "Convert",
                         icon: Icons.check_circle_rounded,
                         color: const Color(0xFF0F9D58),
                         onTap: onDone == null
