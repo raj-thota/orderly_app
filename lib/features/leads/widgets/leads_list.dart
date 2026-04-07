@@ -75,6 +75,7 @@ class LeadsList extends StatelessWidget {
             duration: const Duration(milliseconds: 250),
             curve: Curves.easeInOut,
             child: LeadCard(
+              id: lead["id"]?.toString() ?? "",
               name: lead["name"] ?? "",
               message: lead["msg"] ?? "",
               phone: lead["phone"] ?? "",

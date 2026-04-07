@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:orderly_app/core/services/lead_navigation_service.dart';
+import 'package:orderly_app/core/services/notification_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:orderly_app/features/leads/controller/leads_controller.dart';
 
@@ -9,30 +11,14 @@ class NotificationsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final leads = ref.watch(leadsControllerProvider);
-    final now = DateTime.now();
 
-    final today = leads.where((lead) {
-      if (lead["status"] != "follow" || lead["follow_up_date"] == null) {
-        return false;
-      }
+    final today = leads
+        .where((lead) => NotificationService.isFollowUpToday(lead))
+        .toList();
 
-      final date = DateTime.parse(lead["follow_up_date"]);
-      return date.year == now.year &&
-          date.month == now.month &&
-          date.day == now.day;
-    }).toList();
-
-    final overdue = leads.where((lead) {
-      if (lead["status"] != "follow" || lead["follow_up_date"] == null) {
-        return false;
-      }
-
-      final date = DateTime.parse(lead["follow_up_date"]);
-      return date.isBefore(now) &&
-          !(date.year == now.year &&
-              date.month == now.month &&
-              date.day == now.day);
-    }).toList();
+    final overdue = leads
+        .where((lead) => NotificationService.isOverdueFollowUp(lead))
+        .toList();
 
     final hasData = today.isNotEmpty || overdue.isNotEmpty;
 
@@ -144,73 +130,93 @@ class NotificationsScreen extends ConsumerWidget {
     final phone = lead["phone"] ?? "";
     final name = lead["name"] ?? "";
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          /// ICON
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.notifications, color: color, size: 18),
-          ),
-
-          const SizedBox(width: 12),
-
-          /// TEXT
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 4),
-                Text(
-                  label,
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-
-          /// ACTIONS
-          Row(
-            children: [
-              _actionBtn(color, action, () async {
-                try {
-                  final url = action == "Call"
-                      ? Uri.parse("tel:$phone")
-                      : Uri.parse("https://wa.me/$phone");
-
-                  await launchUrl(url, mode: LaunchMode.externalApplication);
-                } catch (_) {}
-              }),
-
-              const SizedBox(width: 6),
-
-              _actionBtn(Colors.green, "Done", () {
-                ref.read(leadsControllerProvider.notifier).markDone(lead);
-
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text("$name marked done ✅")));
-              }),
+        onTap: () {
+          Navigator.of(
+            context,
+          ).push(LeadNavigationService.leadDetailRoute(lead));
+        },
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 10,
+              ),
             ],
           ),
-        ],
+          child: Row(
+            children: [
+              /// ICON
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.notifications, color: color, size: 18),
+              ),
+
+              const SizedBox(width: 12),
+
+              /// TEXT
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              /// ACTIONS
+              Row(
+                children: [
+                  _actionBtn(color, action, () async {
+                    try {
+                      final url = action == "Call"
+                          ? Uri.parse("tel:$phone")
+                          : Uri.parse("https://wa.me/$phone");
+
+                      await launchUrl(
+                        url,
+                        mode: LaunchMode.externalApplication,
+                      );
+                    } catch (_) {}
+                  }),
+
+                  const SizedBox(width: 6),
+
+                  _actionBtn(Colors.green, "Done", () {
+                    ref.read(leadsControllerProvider.notifier).markDone(lead);
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("$name marked done ✅")),
+                    );
+                  }),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

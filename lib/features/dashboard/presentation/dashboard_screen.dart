@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:orderly_app/core/services/lead_navigation_service.dart';
+import 'package:orderly_app/core/services/notification_service.dart';
 import 'package:orderly_app/features/leads/controller/leads_controller.dart';
 import 'package:orderly_app/features/notifications/presentation/notifications_screen.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -72,29 +74,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   int getTodayFollowUps() {
-    final today = DateTime.now();
-
-    return leads.where((lead) {
-      if (lead["status"] != "follow") return false;
-      final date = parseDate(lead["follow_up_date"]);
-      if (date == null) return false;
-
-      return date.day == today.day &&
-          date.month == today.month &&
-          date.year == today.year;
-    }).length;
+    return leads
+        .where((lead) => NotificationService.isFollowUpToday(lead))
+        .length;
   }
 
   int getOverdueFollowUps() {
-    final now = DateTime.now();
-
-    return leads.where((lead) {
-      if (lead["status"] != "follow") return false;
-      final date = parseDate(lead["follow_up_date"]);
-      if (date == null) return false;
-
-      return date.isBefore(now);
-    }).length;
+    return leads
+        .where((lead) => NotificationService.isOverdueFollowUp(lead))
+        .length;
   }
 
   int getTotalLeads() => leads.length;
@@ -121,10 +109,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final overdue = getOverdueFollowUps();
 
     final actionLeads = leads.where((lead) {
-      if (lead["status"] != "follow") return false;
-      final date = parseDate(lead["follow_up_date"]);
-      if (date == null) return false;
-      return date.isBefore(DateTime.now());
+      return NotificationService.needsFollowUpAttention(lead);
     }).toList();
 
     final sortedLeads = [...leads];
@@ -336,82 +321,102 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ...actionLeads.map((lead) {
                       final score = getLeadScore(lead);
 
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.red.shade200),
+                      return Material(
+                        color: Colors.transparent,
+                        child: InkWell(
                           borderRadius: BorderRadius.circular(18),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.04),
-                              blurRadius: 8,
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    lead["name"] ?? "",
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    "💡 ${getSuggestion(lead)}",
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    getPriorityLabel(score),
-                                    style: const TextStyle(fontSize: 11),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            Row(
-                              children: [
-                                _circleBtn(Icons.check, Colors.green, () async {
-                                  await ref
-                                      .read(leadsControllerProvider.notifier)
-                                      .markDone(lead);
-                                }),
-                                const SizedBox(width: 8),
-                                _circleBtn(
-                                  FontAwesomeIcons.whatsapp,
-                                  const Color(0xFF25D366),
-                                  () async {
-                                    final phone = lead["phone"] ?? "";
-                                    final url = Uri.parse(
-                                      "https://wa.me/$phone",
-                                    );
-                                    await launchUrl(
-                                      url,
-                                      mode: LaunchMode.externalApplication,
-                                    );
-                                  },
-                                ),
-                                const SizedBox(width: 8),
-                                _circleBtn(
-                                  FontAwesomeIcons.phone,
-                                  Colors.deepPurple,
-                                  () async {
-                                    final phone = lead["phone"] ?? "";
-                                    await launchUrl(Uri.parse("tel:$phone"));
-                                  },
+                          onTap: () {
+                            Navigator.of(
+                              context,
+                            ).push(LeadNavigationService.leadDetailRoute(lead));
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.red.shade200),
+                              borderRadius: BorderRadius.circular(18),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.04),
+                                  blurRadius: 8,
                                 ),
                               ],
                             ),
-                          ],
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        lead["name"] ?? "",
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        "💡 ${getSuggestion(lead)}",
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        getPriorityLabel(score),
+                                        style: const TextStyle(fontSize: 11),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                Row(
+                                  children: [
+                                    _circleBtn(
+                                      Icons.check,
+                                      Colors.green,
+                                      () async {
+                                        await ref
+                                            .read(
+                                              leadsControllerProvider.notifier,
+                                            )
+                                            .markDone(lead);
+                                      },
+                                    ),
+                                    const SizedBox(width: 8),
+                                    _circleBtn(
+                                      FontAwesomeIcons.whatsapp,
+                                      const Color(0xFF25D366),
+                                      () async {
+                                        final phone = lead["phone"] ?? "";
+                                        final url = Uri.parse(
+                                          "https://wa.me/$phone",
+                                        );
+                                        await launchUrl(
+                                          url,
+                                          mode: LaunchMode.externalApplication,
+                                        );
+                                      },
+                                    ),
+                                    const SizedBox(width: 8),
+                                    _circleBtn(
+                                      FontAwesomeIcons.phone,
+                                      Colors.deepPurple,
+                                      () async {
+                                        final phone = lead["phone"] ?? "";
+                                        await launchUrl(
+                                          Uri.parse("tel:$phone"),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       );
                     }),

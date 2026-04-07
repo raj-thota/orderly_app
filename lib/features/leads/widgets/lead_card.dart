@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:orderly_app/core/services/lead_navigation_service.dart';
 import 'package:orderly_app/core/utils/lead_ai.dart';
-import 'package:orderly_app/shared/components/entry_detail_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class LeadCard extends StatelessWidget {
+  final String id;
   final String name;
   final String message;
   final String phone;
@@ -21,6 +22,7 @@ class LeadCard extends StatelessWidget {
 
   const LeadCard({
     super.key,
+    required this.id,
     required this.name,
     required this.message,
     required this.phone,
@@ -35,13 +37,9 @@ class LeadCard extends StatelessWidget {
     this.onDelete,
   });
 
-  /// 📞 CALL
   Future<void> _makeCall(BuildContext context) async {
     final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
-
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Calling...")));
+    if (cleanPhone.isEmpty) return;
 
     final url = Uri.parse("tel:$cleanPhone");
     if (await canLaunchUrl(url)) {
@@ -49,16 +47,16 @@ class LeadCard extends StatelessWidget {
     }
   }
 
-  /// 💬 WHATSAPP
   Future<void> _openWhatsApp() async {
     final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
+    if (cleanPhone.isEmpty) return;
+
     final url = Uri.parse("https://wa.me/$cleanPhone");
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     }
   }
 
-  /// 📅 FOLLOW-UP FLOW (date + note)
   Future<void> _handleFollowUp(BuildContext context) async {
     final selectedDate = await showDatePicker(
       context: context,
@@ -67,27 +65,28 @@ class LeadCard extends StatelessWidget {
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
 
-    if (selectedDate == null) return;
-    if (!context.mounted) return;
+    if (selectedDate == null || !context.mounted) return;
 
     final controller = TextEditingController();
 
-    await showDialog(
+    await showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text("Add follow-up note"),
+        title: const Text("Schedule follow-up"),
         content: TextField(
           controller: controller,
           decoration: const InputDecoration(
-            hintText: "Eg: Call again, send price...",
+            hintText: "Add a quick note",
+            border: OutlineInputBorder(),
           ),
+          maxLines: 2,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text("Skip"),
+            child: const Text("Cancel"),
           ),
-          ElevatedButton(
+          FilledButton(
             onPressed: () => Navigator.pop(dialogContext),
             child: const Text("Save"),
           ),
@@ -104,111 +103,232 @@ class LeadCard extends StatelessWidget {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          "Follow-up set for ${selectedDate.day}/${selectedDate.month}",
+        content: Text("Follow-up set for ${_formatShortDate(selectedDate)}"),
+      ),
+    );
+  }
+
+  Future<void> _confirmConvert(BuildContext context) async {
+    if (onDone == null) return;
+
+    final shouldConvert = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text("Convert to order?"),
+        content: Text("$name will be marked as converted to an order."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text("Cancel"),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text("Convert"),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldConvert != true || !context.mounted) return;
+
+    onDone?.call();
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text("$name converted to order")));
+  }
+
+  void _showActions(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Wrap(
+          children: [
+            if (onEdit != null)
+              ListTile(
+                leading: const Icon(Icons.edit_outlined),
+                title: const Text("Edit lead"),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  onEdit?.call();
+                },
+              ),
+            if (onDelete != null)
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text("Delete lead"),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  onDelete?.call();
+                },
+              ),
+          ],
         ),
       ),
     );
   }
 
-  String _intentLabel(String intent) {
-    switch (intent) {
+  String _intentLabel(String value) {
+    switch (value) {
       case "order":
         return "Order";
       case "follow_up":
         return "Follow-up";
+      case "high":
+        return "High intent";
       default:
         return "Inquiry";
     }
   }
 
-  Color _intentColor(String intent) {
-    switch (intent) {
+  Color _intentColor(String value) {
+    switch (value) {
       case "order":
-        return Colors.green;
+        return const Color(0xFF0F9D58);
       case "follow_up":
-        return Colors.orange;
+        return const Color(0xFFE08B00);
+      case "high":
+        return const Color(0xFFB85C00);
       default:
-        return Colors.grey;
+        return const Color(0xFF64748B);
     }
   }
 
-  Widget _badge(String text, Color color) {
+  String _statusLabel() {
+    switch ((status ?? "").toLowerCase()) {
+      case "follow":
+        return "Follow-up";
+      case "closed":
+        return "Order";
+      case "new":
+        return "New";
+      default:
+        return status == null || status!.trim().isEmpty ? "Open" : status!;
+    }
+  }
+
+  Color _statusColor() {
+    switch ((status ?? "").toLowerCase()) {
+      case "follow":
+        return const Color(0xFFCC7A00);
+      case "closed":
+        return const Color(0xFF0F9D58);
+      case "new":
+        return const Color(0xFF2563EB);
+      default:
+        return const Color(0xFF64748B);
+    }
+  }
+
+  String _priorityLabel(int score) {
+    if (score > 70) return "🔥 High intent";
+    if (score > 40) return "⚡ Warm intent";
+    return "🧊 Low intent";
+  }
+
+  Color _priorityColor(int score) {
+    if (score > 70) return const Color(0xFFB85C00);
+    if (score > 40) return const Color(0xFF6C4ED9);
+    return const Color(0xFF64748B);
+  }
+
+  String _formatShortDate(DateTime value) {
+    const months = <String>[
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+
+    return "${value.day} ${months[value.month - 1]}";
+  }
+
+  Widget _badge(String text, Color color, {bool filled = false}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(8),
+        color: filled ? color : color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: filled ? color : color.withValues(alpha: 0.22),
+        ),
       ),
       child: Text(
         text,
         style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.1,
+          color: filled ? Colors.white : color,
         ),
       ),
     );
   }
 
-  /// ✨ PREMIUM BUTTON
-  // ONLY CHANGES SHOWN — rest same imports
+  Widget _actionButton({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback? onTap,
+    bool filled = false,
+  }) {
+    final isEnabled = onTap != null;
 
-  Widget _button(String label, IconData icon, Color color, VoidCallback onTap) {
     return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          height: 42,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: color.withValues(alpha: 0.25)),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 16, color: color),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: color,
+      child: Opacity(
+        opacity: isEnabled ? 1 : 0.45,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(14),
+            child: Ink(
+              height: 46,
+              decoration: BoxDecoration(
+                color: filled ? color : color.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: filled ? color : color.withValues(alpha: 0.22),
                 ),
+                boxShadow: filled
+                    ? [
+                        BoxShadow(
+                          color: color.withValues(alpha: 0.25),
+                          blurRadius: 14,
+                          offset: const Offset(0, 6),
+                        ),
+                      ]
+                    : null,
               ),
-            ],
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, size: 16, color: filled ? Colors.white : color),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      label,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: filled ? Colors.white : color,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
-    );
-  }
-
-  void _showActions(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      builder: (_) => SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.edit),
-              title: const Text("Edit"),
-              onTap: () {
-                Navigator.pop(context);
-                onEdit?.call();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete, color: Colors.red),
-              title: const Text("Delete"),
-              onTap: () {
-                Navigator.pop(context);
-                onDelete?.call();
-              },
-            ),
-          ],
         ),
       ),
     );
@@ -220,163 +340,263 @@ class LeadCard extends StatelessWidget {
       "msg": message,
       "intent": intent,
       "status": status,
-      "date": date,
+      "follow_up_date": date,
       "created_at": createdAt,
     });
 
-    final priority = getPriorityLabel(score);
     final suggestion = getSuggestion({"msg": message});
+    final priorityColor = _priorityColor(score);
+    final statusColor = _statusColor();
+    final cardAccent = isOverdue
+        ? Colors.red.shade600
+        : score > 70
+        ? priorityColor
+        : const Color(0xFFE5E7EB);
+
+    final backgroundColor = isOverdue
+        ? const Color(0xFFFFF7F7)
+        : score > 70
+        ? const Color(0xFFFFFAF2)
+        : Colors.white;
+
+    final shadowColor = isOverdue
+        ? Colors.red.withValues(alpha: 0.12)
+        : priorityColor.withValues(alpha: score > 40 ? 0.10 : 0.06);
+
+    final displayName = name.trim().isEmpty ? "Unknown Lead" : name.trim();
+    final trimmedMessage = message.trim().isEmpty
+        ? "No message available"
+        : message.trim();
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 14),
       child: Material(
-        elevation: 2,
-        borderRadius: BorderRadius.circular(18),
+        color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(24),
           onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => EntryDetailScreen(
-                  entry: {
-                    "name": name,
-                    "msg": message,
-                    "phone": phone,
-                    "intent": intent,
-                    "date": date,
-                    "status": status,
-                    "created_at": createdAt,
-                  },
-                ),
-              ),
+            Navigator.of(context).push(
+              LeadNavigationService.leadDetailRoute({
+                "id": id,
+                "name": name,
+                "msg": message,
+                "phone": phone,
+                "intent": intent,
+                "status": status,
+                "follow_up_date": date?.toIso8601String(),
+                "created_at": createdAt?.toIso8601String(),
+              }),
             );
           },
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                /// HEADER
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 16,
-                      backgroundColor: Colors.deepPurple.shade50,
-                      child: Text(
-                        name.isNotEmpty ? name[0].toUpperCase() : "C",
-                        style: const TextStyle(
-                          color: Colors.deepPurple,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            name,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-
-                          const SizedBox(height: 4),
-
-                          Wrap(
-                            spacing: 6,
-                            children: [
-                              if (intent != null)
-                                _badge(
-                                  _intentLabel(intent!),
-                                  _intentColor(intent!),
-                                ),
-                              _badge(priority, Colors.grey),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    IconButton(
-                      icon: const Icon(Icons.more_vert, size: 20),
-                      onPressed: () => _showActions(context),
-                    ),
-                  ],
+          child: Ink(
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: isOverdue
+                    ? Colors.red.shade200
+                    : cardAccent.withValues(alpha: score > 70 ? 0.35 : 0.12),
+                width: isOverdue || score > 70 ? 1.4 : 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: shadowColor,
+                  blurRadius: 22,
+                  offset: const Offset(0, 12),
                 ),
-
-                const SizedBox(height: 10),
-
-                /// MESSAGE
-                Text(message, style: const TextStyle(color: Colors.grey)),
-
-                const SizedBox(height: 8),
-
-                /// SUGGESTION (highlighted)
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(
-                        Icons.lightbulb,
-                        size: 16,
-                        color: Colors.orange,
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          suggestion,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
+                      Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              priorityColor.withValues(alpha: 0.18),
+                              priorityColor.withValues(alpha: 0.06),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Center(
+                          child: Text(
+                            displayName[0].toUpperCase(),
+                            style: TextStyle(
+                              color: priorityColor,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 17,
+                            ),
                           ),
                         ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              displayName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF111827),
+                                letterSpacing: -0.2,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                _badge(_statusLabel(), statusColor),
+                                _badge(
+                                  _priorityLabel(score),
+                                  priorityColor,
+                                  filled: score > 70 && !isOverdue,
+                                ),
+                                if (intent != null && intent!.trim().isNotEmpty)
+                                  _badge(
+                                    _intentLabel(intent!),
+                                    _intentColor(intent!),
+                                  ),
+                                if (isOverdue)
+                                  _badge(
+                                    date != null
+                                        ? "Overdue · ${_formatShortDate(date!)}"
+                                        : "Overdue",
+                                    Colors.red.shade600,
+                                    filled: true,
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => _showActions(context),
+                        icon: const Icon(Icons.more_horiz_rounded),
+                        splashRadius: 20,
+                        color: const Color(0xFF6B7280),
                       ),
                     ],
                   ),
-                ),
-
-                const SizedBox(height: 12),
-
-                /// BUTTONS
-                Row(
-                  children: [
-                    _button("Chat", Icons.chat, Colors.green, _openWhatsApp),
-                    const SizedBox(width: 8),
-                    _button(
-                      "Call",
-                      Icons.phone,
-                      Colors.deepPurple,
-                      () => _makeCall(context),
+                  const SizedBox(height: 14),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.72),
+                      borderRadius: BorderRadius.circular(18),
                     ),
-                  ],
-                ),
-
-                const SizedBox(height: 8),
-
-                Row(
-                  children: [
-                    _button(
-                      "Follow",
-                      Icons.schedule,
-                      Colors.orange,
-                      () => _handleFollowUp(context),
+                    child: Text(
+                      trimmedMessage,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        height: 1.45,
+                        color: Color(0xFF374151),
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                    const SizedBox(width: 8),
-                    _button(
-                      "Convert",
-                      Icons.check_circle,
-                      Colors.green,
-                      onDone ?? () {},
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
                     ),
-                  ],
-                ),
-              ],
+                    decoration: BoxDecoration(
+                      color: priorityColor.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          isOverdue
+                              ? Icons.priority_high_rounded
+                              : Icons.auto_awesome_rounded,
+                          size: 16,
+                          color: isOverdue
+                              ? Colors.red.shade600
+                              : priorityColor,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            isOverdue
+                                ? "Needs attention now"
+                                : "AI suggests: $suggestion",
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                              color: isOverdue
+                                  ? Colors.red.shade700
+                                  : const Color(0xFF1F2937),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      _actionButton(
+                        label: "Follow-up",
+                        icon: Icons.schedule_rounded,
+                        color: const Color(0xFFE08B00),
+                        onTap: onFollowUp == null
+                            ? null
+                            : () => _handleFollowUp(context),
+                      ),
+                      const SizedBox(width: 10),
+                      _actionButton(
+                        label: "Call",
+                        icon: Icons.call_rounded,
+                        color: const Color(0xFF6C4ED9),
+                        onTap: phone.trim().isEmpty
+                            ? null
+                            : () => _makeCall(context),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      _actionButton(
+                        label: "WhatsApp",
+                        icon: Icons.chat_bubble_rounded,
+                        color: const Color(0xFF0F9D58),
+                        onTap: phone.trim().isEmpty ? null : _openWhatsApp,
+                      ),
+                      const SizedBox(width: 10),
+                      _actionButton(
+                        label: "Convert to order",
+                        icon: Icons.check_circle_rounded,
+                        color: const Color(0xFF0F9D58),
+                        onTap: onDone == null
+                            ? null
+                            : () => _confirmConvert(context),
+                        filled: true,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),

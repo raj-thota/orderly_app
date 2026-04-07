@@ -21,6 +21,23 @@ class LeadsService {
     }).toList();
   }
 
+  Future<Map<String, dynamic>?> fetchLeadById(String id) async {
+    final user = supabase.auth.currentUser;
+
+    if (user == null) return null;
+
+    final response = await supabase
+        .from('leads')
+        .select('*, order_items(*)')
+        .eq('user_id', user.id)
+        .eq('id', id)
+        .maybeSingle();
+
+    if (response == null) return null;
+
+    return {...response, "items": response["order_items"] ?? []};
+  }
+
   /// ➕ ADD
   Future<String> addLead(Map<String, dynamic> lead) async {
     final user = supabase.auth.currentUser;

@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:orderly_app/core/services/leads_service.dart';
 import 'package:orderly_app/core/utils/message_parser.dart';
 import 'package:orderly_app/features/leads/controller/leads_controller.dart';
 import 'package:orderly_app/shared/widgets/activity_timeline.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+final leadDetailProvider = FutureProvider.family<Map<String, dynamic>?, String>(
+  (ref, leadId) async {
+    return LeadsService().fetchLeadById(leadId);
+  },
+);
 
 class EntryDetailScreen extends ConsumerWidget {
   final Map<String, dynamic> entry;
@@ -69,14 +76,60 @@ class EntryDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final leads = ref.watch(leadsControllerProvider);
     final controller = ref.read(leadsControllerProvider.notifier);
+    final leadId = entry["id"]?.toString();
 
-    final liveLead = leads.firstWhere(
-      (l) => l["id"].toString() == entry["id"].toString(),
-      orElse: () => entry,
+    final cachedLead = leadId == null ? null : _findLeadById(leads, leadId);
+
+    if (cachedLead != null) {
+      return _buildScreen(context, controller, cachedLead);
+    }
+
+    if (leadId == null) {
+      return _buildScreen(context, controller, entry);
+    }
+
+    final liveLeadAsync = ref.watch(leadDetailProvider(leadId));
+
+    return liveLeadAsync.when(
+      data: (liveLead) {
+        if (liveLead == null) {
+          return Scaffold(
+            appBar: AppBar(title: const Text("Details")),
+            body: const Center(child: Text("Lead not found")),
+          );
+        }
+
+        return _buildScreen(context, controller, liveLead);
+      },
+      loading: () => Scaffold(
+        appBar: AppBar(title: const Text("Details")),
+        body: const Center(child: CircularProgressIndicator()),
+      ),
+      error: (_, _) => Scaffold(
+        appBar: AppBar(title: const Text("Details")),
+        body: const Center(child: Text("Could not load lead")),
+      ),
     );
+  }
 
+  Map<String, dynamic>? _findLeadById(
+    List<Map<String, dynamic>> leads,
+    String leadId,
+  ) {
+    for (final lead in leads) {
+      if (lead["id"]?.toString() == leadId) {
+        return lead;
+      }
+    }
+    return null;
+  }
+
+  Widget _buildScreen(
+    BuildContext context,
+    dynamic controller,
+    Map<String, dynamic> liveLead,
+  ) {
     final ai = _ai(liveLead);
-
     final phone = liveLead["phone"] ?? "";
     final createdAt = _parseDate(liveLead["created_at"]);
     final activities = liveLead["activities"] ?? [];

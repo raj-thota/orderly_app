@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:orderly_app/core/services/notification_service.dart';
 import 'package:orderly_app/core/services/leads_service.dart';
 
 final leadsControllerProvider =
@@ -15,6 +16,7 @@ class LeadsController extends StateNotifier<List<Map<String, dynamic>>> {
     try {
       final data = await _service.fetchLeads();
       state = List<Map<String, dynamic>>.from(data);
+      await NotificationService.syncLeadNotifications(leads: state);
     } catch (e) {
       // Error loading leads
     }
