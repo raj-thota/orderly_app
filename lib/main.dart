@@ -18,6 +18,8 @@ import 'features/orders/presentation/orders_screen.dart';
 import 'shared/widgets/app_bottom_nav.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
+    GlobalKey<ScaffoldMessengerState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,6 +40,7 @@ class OrderlyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: navigatorKey,
+      scaffoldMessengerKey: scaffoldMessengerKey,
       debugShowCheckedModeBanner: false,
       title: "Closr",
       theme: ThemeData(
@@ -62,6 +65,7 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int currentIndex = 0;
+  late final List<Widget> _screens;
 
   void changeTab(int index) {
     setState(() {
@@ -73,6 +77,12 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
 
+    _screens = [
+      DashboardScreen(onNavigate: changeTab),
+      const LeadsScreen(),
+      OrdersScreen(),
+    ];
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       NotificationService.checkAndTriggerSmartReminders();
     });
@@ -80,14 +90,8 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screens = [
-      DashboardScreen(onNavigate: changeTab),
-      const LeadsScreen(),
-      OrdersScreen(),
-    ];
-
     return Scaffold(
-      body: screens[currentIndex],
+      body: IndexedStack(index: currentIndex, children: _screens),
 
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.deepPurple,

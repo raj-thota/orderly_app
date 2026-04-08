@@ -58,6 +58,51 @@ class EntryDetailScreen extends ConsumerWidget {
     return DateTime.tryParse(value.toString());
   }
 
+  List<Map<String, dynamic>> _activitiesForLead(Map<String, dynamic> lead) {
+    final rawActivities = lead["activities"];
+    if (rawActivities is List && rawActivities.isNotEmpty) {
+      return rawActivities.whereType<Map>().map((activity) {
+        final map = Map<String, dynamic>.from(activity);
+        return {
+          "type": (map["type"] ?? "activity").toString(),
+          "note": map["note"]?.toString(),
+          "time": (_parseDate(map["time"]) ?? DateTime.now()).toIso8601String(),
+        };
+      }).toList();
+    }
+
+    final fallback = <Map<String, dynamic>>[];
+    final createdAt = _parseDate(lead["created_at"]);
+    final followUpAt = _parseDate(lead["follow_up_date"]);
+    final completedAt = _parseDate(lead["completed_at"]);
+
+    if (createdAt != null) {
+      fallback.add({
+        "type": "created",
+        "note": "Lead added",
+        "time": createdAt.toIso8601String(),
+      });
+    }
+
+    if (followUpAt != null) {
+      fallback.add({
+        "type": "follow_up",
+        "note": lead["follow_up_note"] ?? "Follow-up scheduled",
+        "time": followUpAt.toIso8601String(),
+      });
+    }
+
+    if (completedAt != null) {
+      fallback.add({
+        "type": "done",
+        "note": "Converted to order",
+        "time": completedAt.toIso8601String(),
+      });
+    }
+
+    return fallback;
+  }
+
   Map<String, dynamic> _ai(Map<String, dynamic> lead) {
     final parsed = MessageParser.parse(lead["msg"] ?? "");
     final intent = parsed["intent"];
@@ -178,10 +223,9 @@ class EntryDetailScreen extends ConsumerWidget {
   ) {
     final ai = _ai(liveLead);
     final phone = (liveLead["phone"] ?? "").toString();
-    final name = (liveLead["name"] ?? "Lead").toString();
     final message = (liveLead["msg"] ?? "-").toString();
     final createdAt = _parseDate(liveLead["created_at"]);
-    final activities = liveLead["activities"] ?? [];
+    final activities = _activitiesForLead(liveLead);
     final followDate = _parseDate(liveLead["follow_up_date"]);
     final items = (liveLead["items"] ?? []) as List;
     final statusLabel = _statusLabel(liveLead);
@@ -387,32 +431,6 @@ class EntryDetailScreen extends ConsumerWidget {
     );
   }
 
-  void _handleAction(
-    String type,
-    dynamic controller,
-    Map<String, dynamic> lead,
-    String phone,
-    BuildContext context,
-  ) {
-    if (type == "call") {
-      _call(phone);
-    } else if (type == "whatsapp") {
-      _whatsapp(phone);
-    } else if (type == "done") {
-      controller.markDone(lead);
-    } else if (type == "follow") {
-      controller.followUp(
-        lead,
-        "Follow-up",
-        DateTime.now().add(const Duration(days: 1)),
-      );
-    }
-
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(type.toUpperCase())));
-  }
-
   Widget _heroCard({required Widget child}) {
     return Container(
       padding: const EdgeInsets.all(18),
@@ -559,21 +577,6 @@ class EntryDetailScreen extends ConsumerWidget {
         ),
       ),
     );
-  }
-
-  IconData _actionIcon(String type) {
-    switch (type) {
-      case "call":
-        return Icons.call_rounded;
-      case "whatsapp":
-        return Icons.chat_bubble_rounded;
-      case "done":
-        return Icons.check_circle_rounded;
-      case "follow":
-        return Icons.schedule_rounded;
-      default:
-        return Icons.bolt_rounded;
-    }
   }
 
   Widget _smallActionButton(

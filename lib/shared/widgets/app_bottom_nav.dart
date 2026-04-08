@@ -12,19 +12,31 @@ class AppBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 70,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.black12)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          navItem(Icons.home, "Home", 0),
-          navItem(Icons.people, "Leads", 1),
-          navItem(Icons.shopping_bag, "Orders", 2),
-        ],
+    return SafeArea(
+      top: false,
+      child: Container(
+        height: 58,
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.98),
+          border: const Border(top: BorderSide(color: Color(0xFFE5E7EB))),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 16,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(child: navItem(Icons.home_rounded, "Home", 0)),
+            const SizedBox(width: 8),
+            Expanded(child: navItem(Icons.people_alt_rounded, "Leads", 1)),
+            const SizedBox(width: 8),
+            Expanded(child: navItem(Icons.shopping_bag_rounded, "Orders", 2)),
+          ],
+        ),
       ),
     );
   }
@@ -32,22 +44,51 @@ class AppBottomNav extends StatelessWidget {
   Widget navItem(IconData icon, String label, int index) {
     final isSelected = index == currentIndex;
 
-    return GestureDetector(
-      onTap: () => onTap(index),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: isSelected ? Colors.deepPurple : Colors.grey),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? Colors.deepPurple : Colors.grey,
-              fontSize: 12,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: isSelected ? null : () => onTap(index),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? const Color(0xFF6C4ED9).withValues(alpha: 0.10)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(18),
           ),
-        ],
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                color: isSelected ? const Color(0xFF6C4ED9) : Colors.grey,
+                size: 20,
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                child: isSelected
+                    ? Row(
+                        children: [
+                          const SizedBox(width: 8),
+                          Text(
+                            label,
+                            style: const TextStyle(
+                              color: Color(0xFF6C4ED9),
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

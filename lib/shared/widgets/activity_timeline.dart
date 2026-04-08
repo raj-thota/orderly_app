@@ -8,11 +8,29 @@ class ActivityTimeline extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (activities == null || activities!.isEmpty) {
-      return const Text("No activity yet");
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Text(
+          "No activity yet",
+          style: TextStyle(
+            color: Color(0xFF6B7280),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      );
     }
 
-    final sorted = [...activities!]
-      ..sort((a, b) => (b["time"] as DateTime).compareTo(a["time"]));
+    final normalized = activities!
+        .whereType<Map>()
+        .map((activity) => Map<String, dynamic>.from(activity))
+        .toList();
+
+    final sorted = [...normalized]
+      ..sort((a, b) => _parseTime(b["time"]).compareTo(_parseTime(a["time"])));
 
     return Column(
       children: sorted.map((activity) {
@@ -22,8 +40,8 @@ class ActivityTimeline extends StatelessWidget {
   }
 
   Widget _timelineItem(Map activity) {
-    final type = activity["type"];
-    final time = activity["time"] as DateTime;
+    final type = (activity["type"] ?? "").toString();
+    final time = _parseTime(activity["time"]);
 
     IconData icon;
     Color color;
@@ -46,6 +64,21 @@ class ActivityTimeline extends StatelessWidget {
         icon = Icons.check;
         color = Colors.green;
         title = "Marked as done";
+        break;
+      case "updated":
+        icon = Icons.edit_rounded;
+        color = Colors.blueGrey;
+        title = "Lead updated";
+        break;
+      case "order_status":
+        icon = Icons.local_shipping_outlined;
+        color = Colors.blue;
+        title = "Order status updated";
+        break;
+      case "order_update":
+        icon = Icons.inventory_2_outlined;
+        color = Colors.deepPurple;
+        title = "Order items updated";
         break;
 
       default:
@@ -102,6 +135,13 @@ class ActivityTimeline extends StatelessWidget {
   }
 
   String _formatTime(DateTime d) {
-    return "${d.day}/${d.month} ${d.hour}:${d.minute}";
+    return "${d.day}/${d.month} "
+        "${d.hour.toString().padLeft(2, '0')}:"
+        "${d.minute.toString().padLeft(2, '0')}";
+  }
+
+  DateTime _parseTime(dynamic value) {
+    if (value is DateTime) return value;
+    return DateTime.tryParse(value?.toString() ?? "") ?? DateTime.now();
   }
 }

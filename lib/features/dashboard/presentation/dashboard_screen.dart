@@ -19,6 +19,8 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  String _lastNotificationSyncSignature = '';
+
   @override
   void initState() {
     super.initState();
@@ -103,14 +105,36 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }).length;
   }
 
+  void _syncNotificationsIfNeeded(List<Map<String, dynamic>> leads) {
+    final signatureParts =
+        leads
+            .map(
+              (lead) =>
+                  '${lead["id"]}|${lead["status"]}|${lead["follow_up_date"]}',
+            )
+            .toList()
+          ..sort();
+    final signature = signatureParts.join(',');
+
+    if (signature.isEmpty || signature == _lastNotificationSyncSignature) {
+      return;
+    }
+
+    _lastNotificationSyncSignature = signature;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      NotificationService.syncLeadNotifications(leads: leads);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final followUpsToday = getTodayFollowUps();
-    final overdue = getOverdueFollowUps();
+    final notificationBuckets = NotificationService.buildBuckets(leads);
+    final followUpsToday = notificationBuckets.today.length;
+    final overdue = notificationBuckets.overdue.length;
+    final actionLeads = notificationBuckets.attention;
+    final attentionCount = notificationBuckets.totalCount;
 
-    final actionLeads = leads.where((lead) {
-      return NotificationService.needsFollowUpAttention(lead);
-    }).toList();
+    _syncNotificationsIfNeeded(leads);
 
     final sortedLeads = [...leads];
     sortedLeads.sort((a, b) => getLeadScore(b).compareTo(getLeadScore(a)));
@@ -272,8 +296,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: overdue > 0
-                            ? Colors.red.shade50
+                        color: attentionCount > 0
+                            ? (overdue > 0
+                                  ? Colors.red.shade50
+                                  : Colors.orange.shade50)
                             : Colors.grey.shade100,
                         borderRadius: BorderRadius.circular(16),
                       ),
@@ -281,32 +307,56 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         children: [
                           Icon(
                             Icons.notifications,
-                            color: overdue > 0 ? Colors.red : Colors.orange,
+                            color: overdue > 0
+                                ? Colors.red
+                                : (attentionCount > 0
+                                      ? Colors.orange
+                                      : Colors.green),
                           ),
                           const SizedBox(width: 10),
                           Expanded(
-                            child: Text(
-                              overdue > 0
-                                  ? "$overdue leads need attention 🚨"
-                                  : (followUpsToday == 0
-                                        ? "You're all clear today 🎉"
-                                        : "$followUpsToday follow-ups today"),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                              ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  attentionCount > 0
+                                      ? "$attentionCount leads need attention"
+                                      : "You're all clear today",
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                if (attentionCount > 0) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    overdue > 0 && followUpsToday > 0
+                                        ? "$overdue overdue • $followUpsToday due today"
+                                        : (overdue > 0
+                                              ? "$overdue overdue follow-ups"
+                                              : "$followUpsToday follow-ups due today"),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade700,
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
                           GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const NotificationsScreen(),
-                                ),
-                              );
-                            },
+                            onTap: attentionCount == 0
+                                ? null
+                                : () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            const NotificationsScreen(),
+                                      ),
+                                    );
+                                  },
                             child: Text(
-                              followUpsToday == 0 ? '' : 'View',
+                              attentionCount == 0 ? '' : 'View',
                               style: const TextStyle(color: Colors.deepPurple),
                             ),
                           ),

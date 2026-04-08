@@ -139,7 +139,7 @@ class AppHeader extends ConsumerWidget {
           const SizedBox(height: 22),
 
           const Text(
-            "Welcome back",
+            "Welcome back,",
             style: TextStyle(color: Colors.white70, fontSize: 13),
           ),
 

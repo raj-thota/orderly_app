@@ -11,35 +11,34 @@ class NotificationsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final leads = ref.watch(leadsControllerProvider);
-
-    final today = leads
-        .where((lead) => NotificationService.isFollowUpToday(lead))
-        .toList();
-
-    final overdue = leads
-        .where((lead) => NotificationService.isOverdueFollowUp(lead))
-        .toList();
-
-    final hasData = today.isNotEmpty || overdue.isNotEmpty;
+    final buckets = NotificationService.buildBuckets(leads);
+    final today = buckets.today;
+    final overdue = buckets.overdue;
+    final suggestions = NotificationService.buildSuggestions(leads);
+    final hasData = buckets.hasItems;
 
     return Scaffold(
       appBar: AppBar(title: const Text("Notifications")),
       backgroundColor: Colors.grey.shade50,
       body: Column(
         children: [
-          /// 🔥 CLEAR ALL (UI only for now)
+          /// 🔄 SYNC
           if (hasData)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
-                  onPressed: () {
+                  onPressed: () async {
+                    await NotificationService.syncLeadNotifications(
+                      leads: leads,
+                    );
+                    if (!context.mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Cleared (UI only)")),
+                      const SnackBar(content: Text("Notifications synced")),
                     );
                   },
-                  child: const Text("Clear all"),
+                  child: const Text("Sync now"),
                 ),
               ),
             ),
@@ -94,18 +93,9 @@ class NotificationsScreen extends ConsumerWidget {
                   _title("AI Suggestions"),
                   const SizedBox(height: 10),
 
-                  _aiCard(
-                    context,
-                    ref,
-                    title: "🔥 Hot lead detected",
-                    subtitle: "Customer asked price → send quote",
-                  ),
-
-                  _aiCard(
-                    context,
-                    ref,
-                    title: "⏳ No response in 2h",
-                    subtitle: "Send follow-up message",
+                  ...suggestions.map(
+                    (suggestion) =>
+                        _aiCard(context, ref, suggestion: suggestion),
                   ),
 
                   if (!hasData) _emptyState(),
@@ -225,19 +215,22 @@ class NotificationsScreen extends ConsumerWidget {
   Widget _aiCard(
     BuildContext context,
     WidgetRef ref, {
-    required String title,
-    required String subtitle,
+    required NotificationSuggestion suggestion,
   }) {
+    final color = _suggestionColor(suggestion.kind);
+    final lead = suggestion.lead;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.deepPurple.withValues(alpha: 0.06),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.auto_awesome, color: Colors.deepPurple),
+          Icon(Icons.auto_awesome, color: color),
           const SizedBox(width: 10),
 
           Expanded(
@@ -245,26 +238,51 @@ class NotificationsScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
+                  suggestion.title,
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  subtitle,
+                  suggestion.subtitle,
                   style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                 ),
               ],
             ),
           ),
 
-          _actionBtn(Colors.deepPurple, "Act", () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("AI action coming soon 🤖")),
-            );
-          }),
+          _actionBtn(
+            color,
+            suggestion.actionLabel,
+            lead == null
+                ? () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("No action needed right now"),
+                      ),
+                    );
+                  }
+                : () {
+                    Navigator.of(
+                      context,
+                    ).push(LeadNavigationService.leadDetailRoute(lead));
+                  },
+          ),
         ],
       ),
     );
+  }
+
+  Color _suggestionColor(String kind) {
+    switch (kind) {
+      case 'overdue':
+        return Colors.red;
+      case 'hot':
+        return Colors.deepPurple;
+      case 'today':
+        return Colors.orange;
+      default:
+        return Colors.green;
+    }
   }
 
   /// 🔘 PREMIUM BUTTON

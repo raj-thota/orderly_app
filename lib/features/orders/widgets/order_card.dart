@@ -41,6 +41,15 @@ class OrderCard extends ConsumerWidget {
     });
   }
 
+  double _fallbackOrderAmount(Map<String, dynamic> order) {
+    return _asDouble(
+      order["total_amount"] ??
+          order["amount"] ??
+          order["total"] ??
+          order["price"],
+    );
+  }
+
   String _productName(Map<String, dynamic> item) {
     return (item["product_name"] ?? item["product"] ?? item["name"] ?? "Item")
         .toString();
@@ -149,7 +158,10 @@ class OrderCard extends ConsumerWidget {
 
     final created = _parseDate(liveOrder["created_at"]);
     final completed = _parseDate(liveOrder["completed_at"]);
-    final amount = _calculateAmount(items);
+    final computedAmount = _calculateAmount(items);
+    final amount = computedAmount > 0
+        ? computedAmount
+        : _fallbackOrderAmount(liveOrder);
     final isHot = _isHotLead(liveOrder);
 
     return InkWell(

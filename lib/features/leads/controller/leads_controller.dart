@@ -46,6 +46,10 @@ class LeadsController extends StateNotifier<List<Map<String, dynamic>>> {
   ) async {
     try {
       await _service.updateLead(lead["id"], updatedData);
+      await _service.appendLeadActivity(lead["id"].toString(), {
+        "type": "updated",
+        "note": "Lead details updated",
+      });
       await loadLeads();
     } catch (e) {
       rethrow;
@@ -67,6 +71,10 @@ class LeadsController extends StateNotifier<List<Map<String, dynamic>>> {
         "status": "closed",
         "order_status": "pending",
         "completed_at": DateTime.now().toIso8601String(),
+      });
+      await _service.appendLeadActivity(lead["id"].toString(), {
+        "type": "done",
+        "note": "Converted to order",
       });
       await loadLeads();
     } catch (e) {
@@ -93,6 +101,14 @@ class LeadsController extends StateNotifier<List<Map<String, dynamic>>> {
         if (status == "completed")
           "completed_at": DateTime.now().toIso8601String(),
       });
+      await _service.appendLeadActivity(lead["id"].toString(), {
+        "type": "order_status",
+        "note": status == "completed"
+            ? "Order completed"
+            : status == "processing"
+            ? "Order moved to processing"
+            : "Order status updated",
+      });
       await loadLeads();
     } catch (e) {
       // Error updating order status
@@ -110,9 +126,32 @@ class LeadsController extends StateNotifier<List<Map<String, dynamic>>> {
         "follow_up_note": note,
         "follow_up_date": date.toIso8601String(),
       });
+      await _service.appendLeadActivity(lead["id"].toString(), {
+        "type": "follow_up",
+        "note": note,
+        "time": date.toIso8601String(),
+      });
       await loadLeads();
     } catch (e) {
       // Error setting follow up
+    }
+  }
+
+  Future<void> updateOrderItems(
+    Map<String, dynamic> lead,
+    List<Map<String, dynamic>> items,
+  ) async {
+    try {
+      await _service.replaceOrderItems(lead["id"].toString(), items);
+      await _service.appendLeadActivity(lead["id"].toString(), {
+        "type": "order_update",
+        "note": items.isEmpty
+            ? "Order items cleared"
+            : "${items.length} item${items.length == 1 ? '' : 's'} saved",
+      });
+      await loadLeads();
+    } catch (e) {
+      rethrow;
     }
   }
 }
