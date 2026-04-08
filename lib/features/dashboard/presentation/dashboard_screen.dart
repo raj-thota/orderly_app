@@ -85,7 +85,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         .length;
   }
 
-  int getTotalLeads() => leads.length;
+  int getTotalLeads() => leads.where((l) => l["status"] == "new").length;
   int getFollowUps() => leads.where((l) => l["status"] == "follow").length;
   int getOrders() => leads.where((l) => l["status"] == "closed").length;
 
@@ -126,7 +126,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           AppHeader(),
 
           Positioned.fill(
-            top: MediaQuery.of(context).size.height * 0.22,
+            top: MediaQuery.of(context).size.height * 0.20,
             child: RefreshIndicator(
               onRefresh: () async {
                 ref.invalidate(leadsControllerProvider);
@@ -261,6 +261,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ],
 
                     /// FOLLOW-UP BANNER
+                    const Text(
+                      "Require Attention",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -297,9 +305,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 ),
                               );
                             },
-                            child: const Text(
-                              "View",
-                              style: TextStyle(color: Colors.deepPurple),
+                            child: Text(
+                              followUpsToday == 0 ? '' : 'View',
+                              style: const TextStyle(color: Colors.deepPurple),
                             ),
                           ),
                         ],
@@ -375,18 +383,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
                                 Row(
                                   children: [
-                                    _circleBtn(
-                                      Icons.check,
-                                      Colors.green,
-                                      () async {
-                                        await ref
-                                            .read(
-                                              leadsControllerProvider.notifier,
-                                            )
-                                            .markDone(lead);
-                                      },
-                                    ),
-                                    const SizedBox(width: 8),
                                     _circleBtn(
                                       FontAwesomeIcons.whatsapp,
                                       const Color(0xFF25D366),

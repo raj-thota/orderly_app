@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:orderly_app/features/leads/controller/leads_controller.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -236,23 +237,23 @@ class OrderDetailScreen extends ConsumerWidget {
             children: [
               _smallActionButton(
                 "WhatsApp",
-                Icons.chat_bubble_rounded,
+                FontAwesomeIcons.whatsapp,
                 const Color(0xFF25D366),
                 () => _whatsapp(context, phone, name),
               ),
               const SizedBox(width: 10),
               _smallActionButton(
                 "Call",
-                Icons.call_rounded,
+                FontAwesomeIcons.phone,
                 const Color(0xFF6C4ED9),
                 () => _call(context, phone, name),
               ),
               const SizedBox(width: 10),
               _smallActionButton(
-                status == "completed" ? "Done" : "Update",
+                status == "completed" ? "Done" : "Done",
                 status == "pending"
-                    ? Icons.play_arrow_rounded
-                    : Icons.check_circle_rounded,
+                    ? FontAwesomeIcons.play
+                    : FontAwesomeIcons.check,
                 status == "completed"
                     ? const Color(0xFF9CA3AF)
                     : status == "pending"
@@ -517,10 +518,10 @@ class OrderDetailScreen extends ConsumerWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(14),
           child: Container(
-            height: 40,
+            height: 35,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(color: color.withValues(alpha: 0.20)),
             ),
             child: Row(

@@ -25,7 +25,7 @@ dependencies:
 
   # 🔥 SPLASH
   flutter_native_splash: ^2.4.7
-  speech_to_text: ^7.3.0
+  speech_to_text: ^6.6.0
   app_links: ^3.4.1
 
 dev_dependencies:

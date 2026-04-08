@@ -188,7 +188,7 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => AddEntryScreen(initialData: lead),
+                    builder: (_) => AddEntryScreen(),
                   ),
                 );
               },

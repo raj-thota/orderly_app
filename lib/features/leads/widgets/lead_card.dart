@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:orderly_app/core/services/lead_navigation_service.dart';
 import 'package:orderly_app/core/utils/lead_ai.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -293,9 +294,9 @@ class LeadCard extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             onTap: onTap,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
             child: Ink(
-              height: 40,
+              height: 35,
               decoration: BoxDecoration(
                 color: filled ? color : color.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(12),
@@ -315,7 +316,7 @@ class LeadCard extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(icon, size: 15, color: filled ? Colors.white : color),
+                  Icon(icon, size: 14, color: filled ? Colors.white : color),
                   const SizedBox(width: 6),
                   Flexible(
                     child: Text(
@@ -369,245 +370,259 @@ class LeadCard extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(24),
-          onTap: () {
-            Navigator.of(context).push(
-              LeadNavigationService.leadDetailRoute({
-                "id": id,
-                "name": name,
-                "msg": message,
-                "phone": phone,
-                "intent": intent,
-                "status": status,
-                "follow_up_date": date?.toIso8601String(),
-                "created_at": createdAt?.toIso8601String(),
-              }),
-            );
-          },
-          child: Ink(
-            decoration: BoxDecoration(
-              color: backgroundColor,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: isOverdue
-                    ? Colors.red.shade200
-                    : cardAccent.withValues(alpha: score > 70 ? 0.35 : 0.12),
-                width: isOverdue || score > 70 ? 1.4 : 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: priorityColor.withValues(
-                    alpha: isOverdue
-                        ? 0.10
-                        : score > 40
-                        ? 0.08
-                        : 0.04,
-                  ),
-                  blurRadius: 24,
-                  spreadRadius: 1,
-                  offset: const Offset(0, 14),
-                ),
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.07),
-                  blurRadius: 14,
-                  offset: const Offset(0, 6),
-                ),
-              ],
+
+      /// 🔥 SHADOW LAYER (OUTSIDE)
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+          if (score > 70 || isOverdue)
+            BoxShadow(
+              color: (isOverdue ? Colors.red : priorityColor).withOpacity(0.12),
+              blurRadius: 18,
+              offset: const Offset(0, 10),
             ),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 46,
-                        height: 46,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              priorityColor.withValues(alpha: 0.16),
-                              priorityColor.withValues(alpha: 0.05),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Center(
-                          child: Text(
-                            displayName[0].toUpperCase(),
-                            style: TextStyle(
-                              color: priorityColor,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 17,
+        ],
+      ),
+
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+
+        child: Material(
+          color: Colors.transparent,
+
+          child: InkWell(
+            onTap: () {
+              Navigator.of(context).push(
+                LeadNavigationService.leadDetailRoute({
+                  "id": id,
+                  "name": name,
+                  "msg": message,
+                  "phone": phone,
+                  "intent": intent,
+                  "status": status,
+                  "follow_up_date": date?.toIso8601String(),
+                  "created_at": createdAt?.toIso8601String(),
+                }),
+              );
+            },
+
+            child: Ink(
+              decoration: BoxDecoration(
+                color: backgroundColor,
+                borderRadius: BorderRadius.circular(20),
+
+                /// 🔥 CLEAN BORDER (VISIBLE)
+                border: Border.all(
+                  color: isOverdue
+                      ? Colors.red.shade300
+                      : const Color(0xFFE5E7EB),
+                  width: 1,
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    /// 👇 KEEP YOUR EXISTING CONTENT FROM HERE
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 46,
+                          height: 46,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                priorityColor.withValues(alpha: 0.16),
+                                priorityColor.withValues(alpha: 0.05),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
                             ),
+                            borderRadius: BorderRadius.circular(16),
                           ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              displayName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 16,
+                          child: Center(
+                            child: Text(
+                              displayName[0].toUpperCase(),
+                              style: TextStyle(
+                                color: priorityColor,
                                 fontWeight: FontWeight.w800,
-                                color: Color(0xFF111827),
-                                letterSpacing: -0.2,
+                                fontSize: 17,
                               ),
                             ),
-                            const SizedBox(height: 7),
-                            Wrap(
-                              spacing: 7,
-                              runSpacing: 7,
-                              children: [
-                                _badge(_statusLabel(), statusColor),
-                                _badge(
-                                  _priorityLabel(score),
-                                  priorityColor,
-                                  filled: score > 70 && !isOverdue,
-                                ),
-                                if (intent != null && intent!.trim().isNotEmpty)
-                                  _badge(
-                                    _intentLabel(intent!),
-                                    _intentColor(intent!),
-                                  ),
-                                if (isOverdue)
-                                  _badge(
-                                    date != null
-                                        ? "Overdue · ${_formatShortDate(date!)}"
-                                        : "Overdue",
-                                    Colors.red.shade600,
-                                    filled: true,
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () => _showActions(context),
-                        icon: const Icon(Icons.more_horiz_rounded),
-                        splashRadius: 20,
-                        color: const Color(0xFF6B7280),
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(13),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.76),
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: Text(
-                      trimmedMessage,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        height: 1.45,
-                        color: Color(0xFF374151),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 9,
-                    ),
-                    decoration: BoxDecoration(
-                      color: priorityColor.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          isOverdue
-                              ? Icons.priority_high_rounded
-                              : Icons.auto_awesome_rounded,
-                          size: 15,
-                          color: isOverdue
-                              ? Colors.red.shade600
-                              : priorityColor,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            isOverdue
-                                ? "Needs attention now"
-                                : "AI suggests: $suggestion",
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w700,
-                              color: isOverdue
-                                  ? Colors.red.shade700
-                                  : const Color(0xFF1F2937),
-                            ),
                           ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                displayName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF111827),
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                              const SizedBox(height: 7),
+                              Wrap(
+                                spacing: 7,
+                                runSpacing: 7,
+                                children: [
+                                  _badge(_statusLabel(), statusColor),
+                                  _badge(
+                                    _priorityLabel(score),
+                                    priorityColor,
+                                    filled: score > 70 && !isOverdue,
+                                  ),
+                                  if (intent != null &&
+                                      intent!.trim().isNotEmpty)
+                                    _badge(
+                                      _intentLabel(intent!),
+                                      _intentColor(intent!),
+                                    ),
+                                  if (isOverdue)
+                                    _badge(
+                                      date != null
+                                          ? "Overdue · ${_formatShortDate(date!)}"
+                                          : "Overdue",
+                                      Colors.red.shade600,
+                                      filled: true,
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => _showActions(context),
+                          icon: const Icon(Icons.more_horiz_rounded),
+                          splashRadius: 20,
+                          color: const Color(0xFF6B7280),
+                          visualDensity: VisualDensity.compact,
                         ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      _actionButton(
-                        label: "Follow-up",
-                        icon: Icons.schedule_rounded,
-                        color: const Color(0xFFE08B00),
-                        onTap: onFollowUp == null
-                            ? null
-                            : () => _handleFollowUp(context),
+                    const SizedBox(height: 14),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(13),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.76),
+                        borderRadius: BorderRadius.circular(18),
                       ),
-                      const SizedBox(width: 10),
-                      _actionButton(
-                        label: "Call",
-                        icon: Icons.call_rounded,
-                        color: const Color(0xFF6C4ED9),
-                        onTap: phone.trim().isEmpty
-                            ? null
-                            : () => _makeCall(context),
+                      child: Text(
+                        trimmedMessage,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          height: 1.45,
+                          color: Color(0xFF374151),
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      _actionButton(
-                        label: "WhatsApp",
-                        icon: Icons.chat_bubble_rounded,
-                        color: const Color(0xFF0F9D58),
-                        onTap: phone.trim().isEmpty ? null : _openWhatsApp,
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 9,
                       ),
-                      const SizedBox(width: 10),
-                      _actionButton(
-                        label: "Convert",
-                        icon: Icons.check_circle_rounded,
-                        color: const Color(0xFF0F9D58),
-                        onTap: onDone == null
-                            ? null
-                            : () => _confirmConvert(context),
-                        filled: true,
+                      decoration: BoxDecoration(
+                        color: priorityColor.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                    ],
-                  ),
-                ],
+                      child: Row(
+                        children: [
+                          Icon(
+                            isOverdue
+                                ? Icons.priority_high_rounded
+                                : Icons.auto_awesome_rounded,
+                            size: 15,
+                            color: isOverdue
+                                ? Colors.red.shade600
+                                : priorityColor,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              isOverdue
+                                  ? "Needs attention now"
+                                  : "AI suggests: $suggestion",
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                                color: isOverdue
+                                    ? Colors.red.shade700
+                                    : const Color(0xFF1F2937),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        _actionButton(
+                          label: "WhatsApp",
+                          icon: FontAwesomeIcons.whatsapp,
+                          color: const Color(0xFF25D366),
+                          onTap: phone.trim().isEmpty ? null : _openWhatsApp,
+                        ),
+                        const SizedBox(width: 10),
+                        _actionButton(
+                          label: "Call",
+                          icon: FontAwesomeIcons.phone,
+                          color: const Color(0xFF6C4ED9),
+                          onTap: phone.trim().isEmpty
+                              ? null
+                              : () => _makeCall(context),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        _actionButton(
+                          label: "Set follow-up",
+                          icon: FontAwesomeIcons.clockRotateLeft,
+                          color: const Color(0xFFE08B00),
+                          onTap: onFollowUp == null
+                              ? null
+                              : () => _handleFollowUp(context),
+                        ),
+                        const SizedBox(width: 10),
+                        _actionButton(
+                          label: "Convert to order",
+                          icon: FontAwesomeIcons.cartShopping,
+                          color: const Color(0xFF0F9D58),
+                          onTap: onDone == null
+                              ? null
+                              : () => _confirmConvert(context),
+                          filled: true,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

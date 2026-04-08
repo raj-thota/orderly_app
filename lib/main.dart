@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orderly_app/app/app_bootstrap.dart';
 import 'package:orderly_app/app/app_setup_screen.dart';
 import 'package:orderly_app/app/splash_screen.dart';
-import 'package:orderly_app/shared/components/add_entry_selector.dart';
+import 'package:orderly_app/shared/components/add_entry_screen.dart';
 
 // Core
 import 'core/services/notification_service.dart';
@@ -95,7 +95,7 @@ class _MainScreenState extends State<MainScreen> {
           showModalBottomSheet(
             context: context,
             isScrollControlled: true,
-            builder: (_) => const AddEntrySelector(),
+            builder: (_) => const AddEntryScreen(),
           );
         },
         child: const Icon(Icons.add, color: Colors.white),

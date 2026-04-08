@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:orderly_app/features/leads/widgets/lead_card.dart';
 import 'package:orderly_app/features/leads/widgets/leads_empty_state.dart';
-import 'package:orderly_app/shared/components/add_entry_selector.dart';
+import 'package:orderly_app/shared/components/add_entry_screen.dart';
 
 class LeadsList extends StatelessWidget {
   final List<Map<String, dynamic>> leads;
@@ -33,7 +33,7 @@ class LeadsList extends StatelessWidget {
           showModalBottomSheet(
             context: context,
             isScrollControlled: true,
-            builder: (_) => const AddEntrySelector(),
+            builder: (_) => const AddEntryScreen(),
           );
         },
       );

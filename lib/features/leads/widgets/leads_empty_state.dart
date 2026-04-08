@@ -40,7 +40,7 @@ class LeadsEmptyState extends StatelessWidget {
 
             /// SUBTITLE
             Text(
-              "Start adding leads from WhatsApp or manually",
+              "Start adding your leads to see them here. You can track their progress and manage them effectively.",
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
             ),

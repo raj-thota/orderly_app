@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:orderly_app/features/leads/controller/leads_controller.dart';
 import 'package:orderly_app/features/orders/presentation/order_detail_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -335,7 +336,7 @@ class OrderCard extends ConsumerWidget {
               children: [
                 Expanded(
                   child: _btn(
-                    Icons.chat_bubble_rounded,
+                    FontAwesomeIcons.whatsapp,
                     "Chat",
                     const Color(0xFF25D366),
                     () => _whatsapp(context, phone, name),
@@ -344,7 +345,7 @@ class OrderCard extends ConsumerWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: _btn(
-                    Icons.call_rounded,
+                    FontAwesomeIcons.phone,
                     "Call",
                     const Color(0xFF6C4ED9),
                     () => _call(context, phone, name),
@@ -354,10 +355,10 @@ class OrderCard extends ConsumerWidget {
                 Expanded(
                   child: _btn(
                     status == "pending"
-                        ? Icons.play_arrow_rounded
-                        : Icons.check,
+                        ? FontAwesomeIcons.play
+                        : FontAwesomeIcons.check,
                     status == "pending"
-                        ? "Start"
+                        ? "Start Order"
                         : status == "processing"
                         ? "Done"
                         : "Done",
@@ -406,10 +407,10 @@ class OrderCard extends ConsumerWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          height: 38,
+          height: 35,
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
             border: Border.all(color: color.withValues(alpha: 0.22)),
           ),
           child: Row(

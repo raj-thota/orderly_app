@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:orderly_app/core/services/leads_service.dart';
 import 'package:orderly_app/core/utils/message_parser.dart';
 import 'package:orderly_app/features/leads/controller/leads_controller.dart';
@@ -257,25 +258,25 @@ class EntryDetailScreen extends ConsumerWidget {
                     color: Color(0xFF374151),
                   ),
                 ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: ai["actions"].map<Widget>((a) {
-                    return _compactButton(
-                      label: a["label"],
-                      icon: _actionIcon(a["type"]),
-                      color: const Color(0xFF6C4ED9),
-                      onTap: () => _handleAction(
-                        a["type"],
-                        controller,
-                        liveLead,
-                        phone,
-                        context,
-                      ),
-                    );
-                  }).toList(),
-                ),
+                // const SizedBox(height: 12),
+                // Wrap(
+                //   spacing: 8,
+                //   runSpacing: 8,
+                //   children: ai["actions"].map<Widget>((a) {
+                //     return _compactButton(
+                //       label: a["label"],
+                //       icon: _actionIcon(a["type"]),
+                //       color: const Color(0xFF6C4ED9),
+                //       onTap: () => _handleAction(
+                //         a["type"],
+                //         controller,
+                //         liveLead,
+                //         phone,
+                //         context,
+                //       ),
+                //     );
+                //   }).toList(),
+                // ),
               ],
             ),
           ),
@@ -311,21 +312,21 @@ class EntryDetailScreen extends ConsumerWidget {
             children: [
               _smallActionButton(
                 "WhatsApp",
-                Icons.chat_bubble_rounded,
+                FontAwesomeIcons.whatsapp,
                 const Color(0xFF25D366),
                 () => _whatsapp(phone),
               ),
               const SizedBox(width: 10),
               _smallActionButton(
                 "Call",
-                Icons.call_rounded,
+                FontAwesomeIcons.phone,
                 const Color(0xFF6C4ED9),
                 () => _call(phone),
               ),
               const SizedBox(width: 10),
               _smallActionButton(
-                "Done",
-                Icons.check_circle_rounded,
+                "Convert to order",
+                FontAwesomeIcons.cartShopping,
                 const Color(0xFF0F9D58),
                 () => controller.markDone(liveLead),
               ),
@@ -338,7 +339,7 @@ class EntryDetailScreen extends ConsumerWidget {
             children: [
               _compactButton(
                 label: "Schedule follow-up",
-                icon: Icons.schedule_rounded,
+                icon: FontAwesomeIcons.clockRotateLeft,
                 color: const Color(0xFFE08B00),
                 onTap: () {
                   controller.followUp(
@@ -584,12 +585,12 @@ class EntryDetailScreen extends ConsumerWidget {
     return Expanded(
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(10),
         child: Container(
-          height: 42,
+          height: 35,
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.10),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(10),
             border: Border.all(color: color.withValues(alpha: 0.20)),
           ),
           child: Row(
