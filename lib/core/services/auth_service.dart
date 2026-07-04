@@ -14,8 +14,8 @@ class AuthService {
   }
 
   /// 🔥 GOOGLE LOGIN
-  Future<void> signInWithGoogle() async {
-    await supabase.auth.signInWithOAuth(
+  Future<bool> signInWithGoogle() async {
+    return supabase.auth.signInWithOAuth(
       OAuthProvider.google,
       redirectTo: 'io.supabase.flutter://login-callback',
       authScreenLaunchMode: LaunchMode.externalApplication,
@@ -46,27 +46,17 @@ class AuthService {
     await supabase.auth.signOut();
   }
 
-  Future<void> ensureUserProfile() async {
+  /// Returns true when the signed-in user already has a business profile.
+  Future<bool> hasBusinessProfile() async {
     final user = supabase.auth.currentUser;
-
-    if (user == null) return;
+    if (user == null) return false;
 
     final existing = await supabase
-        .from('users')
-        .select()
-        .eq('id', user.id)
+        .from('business_profile')
+        .select('id')
+        .eq('user_id', user.id)
         .maybeSingle();
 
-    if (existing != null) return;
-
-    final meta = user.userMetadata;
-
-    await supabase.from('users').insert({
-      "id": user.id,
-      "email": user.email,
-      "avatar": meta?['avatar_url'],
-      "business_name": meta?['full_name'] ?? meta?['name'],
-      "created_at": DateTime.now().toIso8601String(),
-    });
+    return existing != null;
   }
 }

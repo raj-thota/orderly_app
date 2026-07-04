@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orderly_app/app/app_intro_screen.dart';
 import 'package:orderly_app/core/services/auth_service.dart';
+import 'package:orderly_app/features/business/presentation/business_setup_screen.dart';
 import 'package:orderly_app/features/leads/controller/leads_controller.dart';
 import 'package:orderly_app/features/auth/controller/auth_controller.dart';
 import 'package:orderly_app/main.dart';
@@ -54,8 +55,22 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     final isLoggedIn = ref.read(authProvider).isAuthenticated;
 
     if (isLoggedIn) {
-      _setLoadingText("Setting up your workspace...");
-      await AuthService().ensureUserProfile();
+      _setLoadingText("Checking your business...");
+      final hasProfile = await AuthService().hasBusinessProfile();
+
+      if (!mounted) return;
+      if (!hasProfile) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => BusinessSetupScreen(
+              onDone: () => Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const MainScreen()),
+              ),
+            ),
+          ),
+        );
+        return;
+      }
 
       _setLoadingText("Loading your leads...");
       await ref.read(leadsControllerProvider.notifier).loadLeads();
