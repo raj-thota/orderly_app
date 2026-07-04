@@ -7,9 +7,9 @@ final userProfileProvider = FutureProvider<Map<String, dynamic>?>((ref) async {
   if (user == null) return null;
 
   final data = await Supabase.instance.client
-      .from('users')
+      .from('business_profile')
       .select()
-      .eq('id', user.id)
+      .eq('user_id', user.id)
       .maybeSingle();
 
   final metadata = user.userMetadata ?? {};
@@ -18,7 +18,7 @@ final userProfileProvider = FutureProvider<Map<String, dynamic>?>((ref) async {
     ...(data ?? {}),
 
     "business_name":
-        data?["business_name"] ??
+        data?["name"] ??
         metadata["full_name"] ??
         metadata["name"] ??
         "Your Business",

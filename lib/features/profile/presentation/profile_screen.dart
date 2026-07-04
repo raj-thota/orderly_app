@@ -33,11 +33,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   /// 🔥 UPDATE FIELD
   Future<void> updateField(String key, String value) async {
+    final column = key == 'business_name' ? 'name' : key;
     try {
       await supabase
-          .from('users')
-          .update({key: value, "updated_at": DateTime.now().toIso8601String()})
-          .eq('id', user!.id);
+          .from('business_profile')
+          .update({
+            column: value,
+            "updated_at": DateTime.now().toIso8601String(),
+          })
+          .eq('user_id', user!.id);
 
       if (!mounted) return;
 
