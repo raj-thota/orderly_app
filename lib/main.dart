@@ -5,6 +5,7 @@ import 'package:orderly_app/app/app_bootstrap.dart';
 import 'package:orderly_app/app/app_setup_screen.dart';
 import 'package:orderly_app/app/splash_screen.dart';
 import 'package:orderly_app/shared/components/add_entry_screen.dart';
+import 'package:orderly_app/core/theme/app_theme.dart';
 
 // Core
 import 'core/services/notification_service.dart';
@@ -43,11 +44,7 @@ class OrderlyApp extends StatelessWidget {
       scaffoldMessengerKey: scaffoldMessengerKey,
       debugShowCheckedModeBanner: false,
       title: "Closr",
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6C4ED9)),
-        scaffoldBackgroundColor: Colors.white,
-        useMaterial3: true,
-      ),
+      theme: AppTheme.light,
       home: bootstrapState.isReady
           ? const SplashScreen()
           : AppSetupScreen(message: bootstrapState.message),
