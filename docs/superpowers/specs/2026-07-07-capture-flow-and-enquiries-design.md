@@ -59,9 +59,9 @@ Extends the core pipeline spec (`2026-07-04-closr-social-seller-pipeline-design.
 
 **Edge function `parse-enquiry` (Supabase):**
 
-- JWT-verified; per-user rate limit; Anthropic API key in Supabase secrets.
+- JWT-verified; per-user rate limit; LLM API key in Supabase secrets.
 - Input: raw chat text (later: image). Output: strict JSON — `customer_name`, `phone`, `items[{name, qty, price}]`, `intent`, `follow_up_date`, `type: enquiry|order`, `confidence`.
-- Model: Haiku-class (cheap, fast). No chat text in function logs (PII).
+- Model: **Gemini Flash-class initially** (cheap, fast, vision-capable); planned migration to Claude later. The function isolates the provider behind a small adapter (prompt + JSON schema + one `parse(text|image)` call) so switching provider is a config/secret change, not a client change. Client only ever sees the JSON schema. No chat text in function logs (PII).
 
 **Client behavior:**
 
@@ -101,7 +101,7 @@ No new tables. Uses existing `customers`, `leads` (`customer_id`, `product_id`, 
 ## 7. Security
 
 - RLS on all tables (already in place); every query scoped by `user_id`.
-- Edge function verifies JWT, rate-limits per user, keeps the Anthropic key server-side, never logs chat content.
+- Edge function verifies JWT, rate-limits per user, keeps the LLM API key server-side, never logs chat content.
 - AI output is data, not instructions: parsed fields go through the same validation as manual input; no model output triggers privileged actions.
 
 ## 8. Definition of done (per slice)
