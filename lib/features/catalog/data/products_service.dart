@@ -9,10 +9,15 @@ import 'signed_url_cache.dart';
 class ProductsService {
   ProductsService({SupabaseClient? client, SignedUrlCache? urlCache})
       : _supabase = client ?? Supabase.instance.client,
-        _urlCache = urlCache ?? SignedUrlCache();
+        _urlCache = urlCache ??
+            SignedUrlCache(
+              ttl: signedUrlTtl,
+              refreshMargin: signedUrlRefreshMargin,
+            );
 
   static const _bucket = 'product-images';
-  static const _signedUrlTtlSeconds = 3600;
+  static const Duration signedUrlTtl = Duration(hours: 1);
+  static const Duration signedUrlRefreshMargin = Duration(minutes: 5);
 
   final SupabaseClient _supabase;
   final SignedUrlCache _urlCache;
@@ -92,8 +97,20 @@ class ProductsService {
     if (cached != null) return cached;
     final url = await _supabase.storage
         .from(_bucket)
-        .createSignedUrl(path, _signedUrlTtlSeconds);
+        .createSignedUrl(path, signedUrlTtl.inSeconds);
     _urlCache.put(path, url);
     return url;
+  }
+
+  /// Best-effort delete of storage objects (photos dropped in an edit, or
+  /// uploads whose row insert failed). An orphaned object is preferable to
+  /// failing the user's save, so errors are swallowed.
+  Future<void> removeImages(List<String> paths) async {
+    if (paths.isEmpty) return;
+    try {
+      await _supabase.storage.from(_bucket).remove(paths);
+    } catch (_) {
+      // Orphan cleanup is opportunistic; RLS keeps the objects private.
+    }
   }
 }

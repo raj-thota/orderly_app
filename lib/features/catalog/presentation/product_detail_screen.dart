@@ -50,18 +50,41 @@ class ProductDetailScreen extends ConsumerWidget {
     );
     if (confirmed != true || !context.mounted) return;
 
-    await ref.read(productsControllerProvider.notifier).archive(product.id!);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(productsControllerProvider.notifier).archive(product.id!);
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not archive. Try again.')),
+      );
+      return;
+    }
     if (!context.mounted) return;
     Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
+    messenger.showSnackBar(
       const SnackBar(content: Text('Piece archived')),
     );
+  }
+
+  /// Runs a mutation and surfaces failures — a booking that silently fails
+  /// would let a one-off piece be sold twice.
+  Future<void> _mutate(
+    BuildContext context,
+    Future<void> Function() op,
+  ) async {
+    try {
+      await op();
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not update. Try again.')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final p = _current(ref);
-    final controller = ref.read(productsControllerProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(
@@ -123,8 +146,8 @@ class ProductDetailScreen extends ConsumerWidget {
                 const SizedBox(height: AppSpacing.lg),
                 AppCard(
                   child: p.isUnique
-                      ? _pieceStatusControl(p, controller)
-                      : _stockControl(p, controller),
+                      ? _pieceStatusControl(context, ref, p)
+                      : _stockControl(context, ref, p),
                 ),
               ],
             ),
@@ -142,13 +165,14 @@ class ProductDetailScreen extends ConsumerWidget {
       height: 340,
       child: PageView(
         children: [
-          for (final path in p.images) ProductImage(path: path),
+          for (final path in p.images)
+            ProductImage(path: path, cacheWidth: 1200),
         ],
       ),
     );
   }
 
-  Widget _pieceStatusControl(Product p, ProductsController controller) {
+  Widget _pieceStatusControl(BuildContext context, WidgetRef ref, Product p) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -166,9 +190,12 @@ class ProductDetailScreen extends ConsumerWidget {
               ButtonSegment(value: 'sold', label: Text('Sold')),
             ],
             selected: {p.pieceStatus},
-            onSelectionChanged: (selection) {
-              controller.setPieceStatus(p.id!, selection.first);
-            },
+            onSelectionChanged: (selection) => _mutate(
+              context,
+              () => ref
+                  .read(productsControllerProvider.notifier)
+                  .setPieceStatus(p.id!, selection.first),
+            ),
           ),
         ),
         const SizedBox(height: AppSpacing.sm),
@@ -180,7 +207,7 @@ class ProductDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _stockControl(Product p, ProductsController controller) {
+  Widget _stockControl(BuildContext context, WidgetRef ref, Product p) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -188,8 +215,14 @@ class ProductDetailScreen extends ConsumerWidget {
         Row(
           children: [
             IconButton(
-              onPressed:
-                  p.qtyOnHand > 0 ? () => controller.adjustQty(p, -1) : null,
+              onPressed: p.qtyOnHand > 0
+                  ? () => _mutate(
+                        context,
+                        () => ref
+                            .read(productsControllerProvider.notifier)
+                            .adjustQty(p.id!, -1),
+                      )
+                  : null,
               icon: const Icon(Icons.remove_circle_outline),
               color: AppColors.primary,
             ),
@@ -205,7 +238,12 @@ class ProductDetailScreen extends ConsumerWidget {
               ),
             ),
             IconButton(
-              onPressed: () => controller.adjustQty(p, 1),
+              onPressed: () => _mutate(
+                context,
+                () => ref
+                    .read(productsControllerProvider.notifier)
+                    .adjustQty(p.id!, 1),
+              ),
               icon: const Icon(Icons.add_circle_outline),
               color: AppColors.primary,
             ),

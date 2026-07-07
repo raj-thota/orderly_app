@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -34,6 +35,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 
   late bool _isUnique;
   late List<String> _existingImages; // storage paths already uploaded
+  final List<String> _removedImages = []; // dropped in this edit, delete on save
   final List<XFile> _newPhotos = []; // picked locally, uploaded on save
   bool _saving = false;
 
@@ -115,9 +117,10 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 
     final controller = ref.read(productsControllerProvider.notifier);
     final service = ref.read(productsServiceProvider);
+    final messenger = ScaffoldMessenger.of(context);
+    final uploaded = <String>[];
 
     try {
-      final uploaded = <String>[];
       for (final photo in _newPhotos) {
         uploaded.add(await service.uploadImage(photo.path));
       }
@@ -149,15 +152,21 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         ));
       }
 
+      // Row saved — now photos the user removed are safe to delete.
+      unawaited(service.removeImages(_removedImages));
+
       if (!mounted) return;
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(content: Text(_isEdit ? 'Piece updated' : 'Added to catalog')),
       );
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('Product save failed: $e\n$st');
+      // The row was never written, so freshly uploaded photos are orphans.
+      unawaited(service.removeImages(uploaded));
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         const SnackBar(content: Text('Could not save. Try again.')),
       );
     }
@@ -191,7 +200,9 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
               decoration: _decoration('Price (₹)'),
               validator: (v) {
                 final parsed = double.tryParse((v ?? '').trim());
-                if (parsed == null) return 'Enter a valid price';
+                if (parsed == null || !parsed.isFinite) {
+                  return 'Enter a valid price';
+                }
                 if (parsed < 0) return 'Price cannot be negative';
                 return null;
               },
@@ -260,12 +271,22 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         children: [
           for (var i = 0; i < _existingImages.length; i++)
             _thumb(
-              child: ProductImage(path: _existingImages[i], iconSize: 22),
-              onRemove: () => setState(() => _existingImages.removeAt(i)),
+              child: ProductImage(
+                path: _existingImages[i],
+                iconSize: 22,
+                cacheWidth: 300,
+              ),
+              onRemove: () => setState(() {
+                _removedImages.add(_existingImages.removeAt(i));
+              }),
             ),
           for (var i = 0; i < _newPhotos.length; i++)
             _thumb(
-              child: Image.file(File(_newPhotos[i].path), fit: BoxFit.cover),
+              child: Image.file(
+                File(_newPhotos[i].path),
+                fit: BoxFit.cover,
+                cacheWidth: 300,
+              ),
               onRemove: () => setState(() => _newPhotos.removeAt(i)),
             ),
           if (_photoCount < _maxPhotos)

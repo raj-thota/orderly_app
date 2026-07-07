@@ -35,6 +35,24 @@ class Product {
 
   String? get coverImage => images.isEmpty ? null : images.first;
 
+  Product copyWith({int? qtyOnHand, String? pieceStatus}) {
+    return Product(
+      id: id,
+      name: name,
+      description: description,
+      sku: sku,
+      images: images,
+      price: price,
+      unit: unit,
+      gstRate: gstRate,
+      isUnique: isUnique,
+      pieceStatus: pieceStatus ?? this.pieceStatus,
+      qtyOnHand: qtyOnHand ?? this.qtyOnHand,
+      active: active,
+      createdAt: createdAt,
+    );
+  }
+
   static double _asDouble(dynamic v) =>
       v is num ? v.toDouble() : double.tryParse(v?.toString() ?? '') ?? 0;
   static double? _asDoubleOrNull(dynamic v) {

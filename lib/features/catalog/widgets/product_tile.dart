@@ -37,7 +37,7 @@ class ProductTile extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  ProductImage(path: product.coverImage),
+                  ProductImage(path: product.coverImage, cacheWidth: 600),
                   if (product.isUnique)
                     Positioned(
                       top: AppSpacing.sm,

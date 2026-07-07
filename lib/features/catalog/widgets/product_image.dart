@@ -7,10 +7,19 @@ import '../controller/products_provider.dart';
 /// Renders a private-storage product photo via a signed URL, with a quiet
 /// placeholder for missing/loading/error states.
 class ProductImage extends ConsumerWidget {
-  const ProductImage({super.key, this.path, this.iconSize = 34});
+  const ProductImage({
+    super.key,
+    this.path,
+    this.iconSize = 34,
+    this.cacheWidth,
+  });
 
   final String? path;
   final double iconSize;
+
+  /// Decode target in physical pixels — keeps grid tiles and thumbnails from
+  /// decoding full-resolution photos on low-end devices.
+  final int? cacheWidth;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -22,6 +31,7 @@ class ProductImage extends ConsumerWidget {
       data: (u) => Image.network(
         u,
         fit: BoxFit.cover,
+        cacheWidth: cacheWidth,
         errorBuilder: (_, _, _) => _placeholder(),
       ),
       loading: () => _placeholder(),
