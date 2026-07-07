@@ -17,6 +17,7 @@ Extends the core pipeline spec (`2026-07-04-closr-social-seller-pipeline-design.
 4. Auto follow-up scheduling from parsed intent/date, reusing the existing notification engine.
 5. Enquiries (renamed from Leads) rebuilt on the new data model and design system.
 6. Delete the legacy capture path entirely.
+7. Post-call voice capture: speak a call summary → enquiry + quotation draft (catalog-matched items, prices, total) → WhatsApp send.
 
 ### Non-goals (this effort)
 
@@ -79,6 +80,19 @@ Extends the core pipeline spec (`2026-07-04-closr-social-seller-pipeline-design.
 - Shared screenshot → attached to the enquiry and parsed via the same edge function using vision (image in, same JSON schema out).
 - Cold start and warm start both handled (initial shared media + stream).
 
+### Slice D — Post-call voice capture + quotation
+
+**Constraint (locked):** true call-audio recording is unavailable to third-party apps — iOS has no API at all; Android blocks call audio since 10 and Play policy bans accessibility workarounds and restricts call-log/number access to default dialers. Slice D therefore never touches call audio, call logs, or caller identity.
+
+**Flow:**
+
+- **Android call-ended nudge:** listen for call-state transitions via `READ_PHONE_STATE` only (no number available or wanted) → local notification "Just finished a call? Capture it" → opens CaptureScreen in voice mode. iOS gets no nudge (no compliant signal); entry is FAB/voice.
+- **Voice mode:** continuous speech-to-text (existing `speech_to_text`) fills the paste box with the spoken summary → same rules + AI parse pipeline as text.
+- **Catalog matching:** parsed item names fuzzy-matched (case-insensitive contains) against active products → attach product, pull price/image; unmatched items stay free-text with parsed price.
+- **Quotation draft:** plain-text message — business name, line items (name × qty @ price), total, UPI ID when set — previewed on screen, sent only on explicit tap via WhatsApp share. Stored as an activity entry on the enquiry (`activities` jsonb). PDF quotes arrive with the invoice stage (6); this slice is message-based.
+
+Manual approval before anything is sent, per parent spec.
+
 ## 4. Data model
 
 No new tables. Uses existing `customers`, `leads` (`customer_id`, `product_id`, `follow_up_date`, `intent`, `status`), `orders`, `order_items` from `0001_core_schema.sql`. Possible small migration if a needed column is missing (verify at plan time); RLS policies already cover all tables.
@@ -96,7 +110,8 @@ No new tables. Uses existing `customers`, `leads` (`customer_id`, `product_id`, 
 - Unit: parser mappings (intent, dates, items), customer dedupe logic, rules↔AI draft merge.
 - Controller: capture save paths (enquiry / order / customer create-or-link), enquiries buckets, convert-to-order booking.
 - Widget: CaptureScreen draft card, Enquiries screen buckets/search, adaptive save button.
-- Edge function: auth rejection, input validation, schema-conformant output (mock Anthropic); client tests use a fake parse service.
+- Edge function: auth rejection, input validation, schema-conformant output (mocked provider); client tests use a fake parse service.
+- Slice D: catalog fuzzy-match unit tests, quotation text formatting tests, call-state → notification trigger test behind a platform fake.
 
 ## 7. Security
 
