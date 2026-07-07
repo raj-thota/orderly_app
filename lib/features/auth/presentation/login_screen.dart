@@ -26,6 +26,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           );
         });
       }
+
+      final previousError = previous?.errorMessage;
+      final nextError = next.errorMessage;
+
+      if (nextError != null && nextError != previousError) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(nextError)));
+          ref.read(authProvider.notifier).clearError();
+        });
+      }
     });
 
     return Scaffold(
@@ -98,7 +112,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            "Turn chats → leads → orders automatically",
+                            "Turn chats → leads → orders",
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w500,

@@ -15,22 +15,28 @@ class AuthState {
   final bool isAuthenticated;
   final bool isLoading;
   final supabase.User? user;
+  final String? errorMessage;
 
   const AuthState({
     required this.isAuthenticated,
     this.isLoading = false,
     this.user,
+    this.errorMessage,
   });
 
   AuthState copyWith({
     bool? isAuthenticated,
     bool? isLoading,
     Object? user = _userSentinel,
+    Object? errorMessage = _userSentinel,
   }) {
     return AuthState(
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
       isLoading: isLoading ?? this.isLoading,
       user: identical(user, _userSentinel) ? this.user : user as supabase.User?,
+      errorMessage: identical(errorMessage, _userSentinel)
+          ? this.errorMessage
+          : errorMessage as String?,
     );
   }
 }
@@ -46,15 +52,24 @@ class AuthController extends StateNotifier<AuthState> {
 
   /// 🔥 LISTEN TO SUPABASE SESSION (CRITICAL)
   void _listenToAuthChanges() {
-    _authSubscription = _supabase.auth.onAuthStateChange.listen((data) {
-      final session = data.session;
+    _authSubscription = _supabase.auth.onAuthStateChange.listen(
+      (data) {
+        final session = data.session;
 
-      state = state.copyWith(
-        isAuthenticated: session != null,
-        isLoading: false,
-        user: session?.user,
-      );
-    });
+        state = state.copyWith(
+          isAuthenticated: session != null,
+          isLoading: false,
+          user: session?.user,
+          errorMessage: null,
+        );
+      },
+      onError: (error, _) {
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage: _mapAuthError(error),
+        );
+      },
+    );
   }
 
   /// 🔍 Check existing session (app start)
@@ -64,17 +79,25 @@ class AuthController extends StateNotifier<AuthState> {
     state = state.copyWith(
       isAuthenticated: session != null,
       user: session?.user, // ✅ FIX
+      errorMessage: null,
     );
   }
 
   /// 🔑 GOOGLE LOGIN
   Future<void> loginWithGoogle() async {
-    state = state.copyWith(isLoading: true);
+    state = state.copyWith(isLoading: true, errorMessage: null);
 
     try {
-      await _authService.signInWithGoogle();
+      final didLaunch = await _authService.signInWithGoogle();
+
+      if (!didLaunch) {
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage: 'Could not open Google sign-in. Please try again.',
+        );
+      }
     } catch (e) {
-      state = state.copyWith(isLoading: false);
+      state = state.copyWith(isLoading: false, errorMessage: _mapAuthError(e));
     }
   }
 
@@ -126,7 +149,27 @@ class AuthController extends StateNotifier<AuthState> {
   Future<void> logout() async {
     await _authService.logout();
 
-    state = const AuthState(isAuthenticated: false, user: null);
+    state = const AuthState(
+      isAuthenticated: false,
+      user: null,
+      errorMessage: null,
+    );
+  }
+
+  void clearError() {
+    if (state.errorMessage == null) return;
+    state = state.copyWith(errorMessage: null);
+  }
+
+  String _mapAuthError(Object error) {
+    final message = error.toString().trim();
+
+    if (message.isEmpty) {
+      return 'Google sign-in failed. Please try again.';
+    }
+
+    final cleaned = message.replaceFirst(RegExp(r'^AuthException\s*\(?'), '');
+    return cleaned.replaceFirst(RegExp(r'\)?$'), '');
   }
 
   @override

@@ -1,6 +1,3 @@
-import 'dart:async';
-
-import 'package:app_links/app_links.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -35,8 +32,6 @@ class AppBootstrapState {
 }
 
 class AppBootstrapper {
-  static StreamSubscription<Uri>? _deepLinkSubscription;
-
   static Future<AppBootstrapState> bootstrap() async {
     try {
       await dotenv.load(
@@ -57,7 +52,6 @@ class AppBootstrapper {
         ),
       );
 
-      _initializeDeepLinks();
       await NotificationService.init();
 
       return const AppBootstrapState.ready();
@@ -74,20 +68,5 @@ class AppBootstrapper {
       if (supabaseUrl.isNotEmpty) 'SUPABASE_URL': supabaseUrl,
       if (supabaseAnonKey.isNotEmpty) 'SUPABASE_ANON_KEY': supabaseAnonKey,
     };
-  }
-
-  static void _initializeDeepLinks() {
-    _deepLinkSubscription ??= AppLinks().uriLinkStream.listen(
-      (uri) async {
-        try {
-          await Supabase.instance.client.auth.getSessionFromUrl(uri);
-        } catch (_) {
-          // Ignore non-auth links so the stream can continue.
-        }
-      },
-      onError: (_) {
-        // Ignore malformed links and keep the app running.
-      },
-    );
   }
 }
