@@ -11,6 +11,10 @@ import 'package:orderly_app/core/theme/app_theme.dart';
 import 'core/services/notification_service.dart';
 
 // Features
+import 'package:orderly_app/core/theme/app_colors.dart';
+
+import 'features/catalog/presentation/catalog_screen.dart';
+import 'features/catalog/presentation/product_form_screen.dart';
 import 'features/dashboard/presentation/dashboard_screen.dart';
 import 'features/leads/presentation/leads_screen.dart';
 import 'features/orders/presentation/orders_screen.dart';
@@ -78,6 +82,7 @@ class _MainScreenState extends State<MainScreen> {
       DashboardScreen(onNavigate: changeTab),
       const LeadsScreen(),
       OrdersScreen(),
+      const CatalogScreen(),
     ];
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -91,8 +96,15 @@ class _MainScreenState extends State<MainScreen> {
       body: IndexedStack(index: currentIndex, children: _screens),
 
       floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: AppColors.primary,
         onPressed: () {
+          if (currentIndex == 3) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ProductFormScreen()),
+            );
+            return;
+          }
           showModalBottomSheet(
             context: context,
             isScrollControlled: true,

@@ -22,10 +22,10 @@ class ProductImage extends ConsumerWidget {
       data: (u) => Image.network(
         u,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _placeholder(),
+        errorBuilder: (_, _, _) => _placeholder(),
       ),
       loading: () => _placeholder(),
-      error: (_, __) => _placeholder(),
+      error: (_, _) => _placeholder(),
     );
   }
 
