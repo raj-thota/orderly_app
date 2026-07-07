@@ -22,10 +22,12 @@ dependencies:
   shared_preferences: ^2.2.2
   supabase_flutter: ^2.0.0
   flutter_dotenv: ^5.1.0
+  image_picker: ^1.1.2
+  flutter_image_compress: ^2.3.0
 
   # 🔥 SPLASH
   flutter_native_splash: ^2.4.7
-  speech_to_text: ^6.6.0
+  speech_to_text: ^7.3.0
   app_links: ^3.4.1
 
 dev_dependencies:
