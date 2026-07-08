@@ -70,7 +70,9 @@ class Order {
 
   double get paidTotal => payments.fold<double>(0, (sum, p) => sum + p.amount);
   double get dues {
-    final d = grandTotal - paidTotal;
+    // Round to paise so floating-point residue (e.g. 100 - 33.33*3) can't leave
+    // a ~1e-12 balance that shows the pay actions while the server reads 'paid'.
+    final d = ((grandTotal - paidTotal) * 100).round() / 100;
     return d > 0 ? d : 0;
   }
 
