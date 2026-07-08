@@ -86,9 +86,23 @@ class AiParseService {
       return (v is String && allowed.contains(v)) ? v : null;
     }
 
+    // Match the rules parser's strict shape; the coercion layer is the trust
+    // boundary, so a malformed AI phone must not seed a bad customer identity.
+    String? cleanPhone(dynamic v) {
+      final normalized =
+          CaptureDraft.normalizePhone(v is String ? v : null);
+      if (normalized == null) return null;
+      return RegExp(r'^[6-9]\d{9}$').hasMatch(normalized) ? normalized : null;
+    }
+
     DateTime? cleanDate(dynamic v) {
       if (v is! String) return null;
-      return DateTime.tryParse(v);
+      final parsed = DateTime.tryParse(v);
+      if (parsed == null) return null;
+      // Drop past dates: a reminder scheduled in the past would never fire.
+      final now = DateTime.now();
+      final startOfToday = DateTime(now.year, now.month, now.day);
+      return parsed.isBefore(startOfToday) ? null : parsed;
     }
 
     double clampConfidence(dynamic v) {
@@ -100,8 +114,7 @@ class AiParseService {
 
     return AiParse(
       name: cleanName(j['customer_name']),
-      phone: CaptureDraft.normalizePhone(
-          j['phone'] is String ? j['phone'] as String : null),
+      phone: cleanPhone(j['phone']),
       items: cleanItems(j['items']),
       intent: whitelist(j['intent'], _intents),
       type: whitelist(j['type'], _types),

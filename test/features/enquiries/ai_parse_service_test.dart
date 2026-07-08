@@ -22,7 +22,7 @@ void main() {
       ],
       'intent': 'order',
       'type': 'order',
-      'follow_up_date': '2026-07-10',
+      'follow_up_date': '2030-01-15',
       'confidence': 0.9,
     }).refine('order 2 sarees');
 
@@ -36,8 +36,25 @@ void main() {
     expect(ai.items![1].qty, 1); // clamped up from 0
     expect(ai.intent, 'order');
     expect(ai.type, 'order');
-    expect(ai.followUpDate, DateTime(2026, 7, 10));
+    expect(ai.followUpDate, DateTime(2030, 1, 15));
     expect(ai.confidence, 0.9);
+  });
+
+  test('rejects a numeric string that is not a 10-digit mobile', () async {
+    final ai = await withJson({'phone': '12345', 'confidence': 0.5}).refine('x');
+    expect(ai!.phone, isNull);
+  });
+
+  test('accepts a valid mobile carrying a country code', () async {
+    final ai =
+        await withJson({'phone': '919876543210', 'confidence': 0.5}).refine('x');
+    expect(ai!.phone, '9876543210');
+  });
+
+  test('drops a follow-up date in the past', () async {
+    final ai = await withJson(
+        {'follow_up_date': '2000-01-01', 'confidence': 0.5}).refine('x');
+    expect(ai!.followUpDate, isNull);
   });
 
   test('rejects out-of-whitelist intent/type and bad date', () async {

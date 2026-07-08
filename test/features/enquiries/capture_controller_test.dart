@@ -283,4 +283,33 @@ void main() {
     expect(items.first.name, 'Silk Saree'); // attachment pinned first
     expect(items.any((i) => i.name == 'Blouse'), isTrue); // AI item present
   });
+
+  test('a manual edit during an in-flight refine discards that refine',
+      () async {
+    final c = makeContainer(
+      FakeCustomersService(),
+      FakeEnquiriesService(),
+      ai: FakeAiParseService(
+        const AiParse(
+          items: [DraftItem(name: 'Blouse', qty: 5)],
+          intent: 'order',
+          type: 'order',
+          confidence: 0.9,
+        ),
+        delay: const Duration(milliseconds: 60),
+      ),
+    );
+    final controller = c.read(captureControllerProvider.notifier);
+    controller.setText('customer wants some items');
+    // While the refine is in flight, the user edits the draft by hand.
+    final d = c.read(captureControllerProvider).draft;
+    controller.editDraft(
+        d.copyWith(followUpDate: DateTime(2026, 12, 25), intent: 'follow_up'));
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+
+    final state = c.read(captureControllerProvider);
+    expect(state.draft.followUpDate, DateTime(2026, 12, 25)); // manual survived
+    expect(state.draft.intent, 'follow_up'); // AI 'order' discarded
+    expect(state.aiRefining, isFalse);
+  });
 }

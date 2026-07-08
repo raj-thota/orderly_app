@@ -176,19 +176,31 @@ class CaptureController extends StateNotifier<CaptureState> {
     );
   }
 
+  // Any manual edit takes control from the AI: bumping the token discards an
+  // in-flight refine so it cannot clobber the user's change (name/phone are
+  // also guarded by manualName/manualPhone; this protects items/date/intent).
   void setName(String name) {
     final v = name.trim();
     if (v.isEmpty) return;
-    state = state.copyWith(manualName: v, draft: state.draft.copyWith(name: v));
+    _parseToken++;
+    state = state.copyWith(
+        manualName: v, draft: state.draft.copyWith(name: v), aiRefining: false);
   }
 
   void setPhone(String phone) {
     final v = CaptureDraft.normalizePhone(phone);
     if (v == null) return;
-    state = state.copyWith(manualPhone: v, draft: state.draft.copyWith(phone: v));
+    _parseToken++;
+    state = state.copyWith(
+        manualPhone: v,
+        draft: state.draft.copyWith(phone: v),
+        aiRefining: false);
   }
 
-  void editDraft(CaptureDraft draft) => state = state.copyWith(draft: draft);
+  void editDraft(CaptureDraft draft) {
+    _parseToken++;
+    state = state.copyWith(draft: draft, aiRefining: false);
+  }
 
   void attachProduct({
     required String id,
@@ -207,10 +219,12 @@ class CaptureController extends StateNotifier<CaptureState> {
   }
 
   void removeItem(int index) {
+    _parseToken++;
     final removed = state.draft.items[index];
     final items = [...state.draft.items]..removeAt(index);
     state = state.copyWith(
       draft: state.draft.copyWith(items: items),
+      aiRefining: false,
       // Removing the attached product's row also releases the attachment so a
       // save no longer links/books that product.
       clearAttachment: identical(removed, state.attachedItem),
