@@ -55,4 +55,24 @@ void main() {
     expect(CaptureDraft.normalizePhone('09876543210'), '9876543210');
     expect(CaptureDraft.normalizePhone('abc'), isNull);
   });
+
+  test('follow-up intent with no explicit date defaults to +2 days', () {
+    final draft = CaptureDraft.fromText('will confirm later, call me back');
+    expect(draft.intent, 'follow_up');
+    expect(draft.followUpDate, isNotNull);
+    final days = draft.followUpDate!.difference(DateTime.now()).inDays;
+    expect(days, inInclusiveRange(1, 2));
+  });
+
+  test('explicit date is not overridden by the follow-up default', () {
+    final draft = CaptureDraft.fromText('call me tomorrow please');
+    final days = draft.followUpDate!.difference(DateTime.now()).inDays;
+    expect(days, inInclusiveRange(0, 1)); // tomorrow, not +2
+  });
+
+  test('inquiry intent gets no default follow-up date', () {
+    final draft = CaptureDraft.fromText('how much is the blue kurti');
+    expect(draft.intent, 'inquiry');
+    expect(draft.followUpDate, isNull);
+  });
 }

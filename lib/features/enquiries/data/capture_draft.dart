@@ -129,11 +129,20 @@ class CaptureDraft {
       followUp = now;
     }
 
+    final resolvedIntent =
+        isOrder ? 'order' : (wantsFollowUp ? 'follow_up' : 'inquiry');
+
+    // A follow-up with no explicit date still needs one so the reminder
+    // engine can schedule it; default to +2 days (user can change it).
+    if (followUp == null && resolvedIntent == 'follow_up') {
+      followUp = now.add(const Duration(days: 2));
+    }
+
     return CaptureDraft(
       name: name,
       phone: phone,
       items: items,
-      intent: isOrder ? 'order' : (wantsFollowUp ? 'follow_up' : 'inquiry'),
+      intent: resolvedIntent,
       type: isOrder ? 'order' : 'enquiry',
       followUpDate: followUp,
       raw: text,
