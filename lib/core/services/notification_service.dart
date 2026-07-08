@@ -5,7 +5,7 @@ import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
 import 'package:orderly_app/core/services/lead_navigation_service.dart';
-import 'package:orderly_app/core/services/leads_service.dart';
+import 'package:orderly_app/features/enquiries/data/enquiries_service.dart';
 import 'package:orderly_app/main.dart';
 
 class NotificationBuckets {
@@ -358,7 +358,7 @@ class NotificationService {
 
   /// 🧠 SMART REMINDERS
   static Future<void> checkAndTriggerSmartReminders() async {
-    final leads = await LeadsService().fetchLeads();
+    final leads = await EnquiriesService().fetchLegacyMaps();
     await syncLeadNotifications(leads: leads);
   }
 
@@ -367,7 +367,7 @@ class NotificationService {
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final currentTime = DateTime.now();
-    final leadData = leads ?? await LeadsService().fetchLeads();
+    final leadData = leads ?? await EnquiriesService().fetchLegacyMaps();
 
     final previousLeadIds =
         prefs.getStringList(_scheduledLeadIdsKey) ?? <String>[];
