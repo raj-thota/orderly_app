@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:orderly_app/core/services/notification_service.dart';
 import 'package:orderly_app/core/theme/app_colors.dart';
 import 'package:orderly_app/core/theme/app_spacing.dart';
 import 'package:orderly_app/shared/widgets/app_primary_button.dart';
@@ -150,6 +151,9 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
       if (!mounted) return;
       if (Navigator.canPop(context)) Navigator.pop(context);
       ref.read(enquiriesControllerProvider.notifier).load();
+      // Schedule/refresh the follow-up reminder for the just-saved enquiry.
+      // Fire-and-forget; a scheduling failure must never break the save.
+      NotificationService.syncLeadNotifications().catchError((_) {});
       messenger.showSnackBar(SnackBar(
         content: Text(result.kind == SaveKind.order
             ? 'Order created for ${result.customerName}'
