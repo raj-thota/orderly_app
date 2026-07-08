@@ -954,6 +954,10 @@ void main() {
     expect(find.text('Active (1)'), findsOneWidget);
     expect(find.text('Delivered (1)'), findsOneWidget);
 
+    // The Delivered chip sits past the right edge of the horizontal chip row
+    // on the default 800px test surface, so scroll it into view before tapping.
+    await tester.ensureVisible(find.text('Delivered (1)'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Delivered (1)'));
     await tester.pumpAndSettle();
     expect(find.text('#2'), findsOneWidget);
