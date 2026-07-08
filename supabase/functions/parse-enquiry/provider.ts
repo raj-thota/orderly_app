@@ -1,7 +1,12 @@
-import { buildPrompt, ParsedEnquiry, responseSchema } from "./schema.ts";
+import {
+  buildPrompt,
+  ParsedEnquiry,
+  ParseInput,
+  responseSchema,
+} from "./schema.ts";
 
 export interface EnquiryParser {
-  parse(text: string): Promise<ParsedEnquiry>;
+  parse(input: ParseInput): Promise<ParsedEnquiry>;
 }
 
 class GeminiParser implements EnquiryParser {
@@ -11,10 +16,17 @@ class GeminiParser implements EnquiryParser {
     private timeoutMs: number,
   ) {}
 
-  async parse(text: string): Promise<ParsedEnquiry> {
+  async parse(input: ParseInput): Promise<ParsedEnquiry> {
     const today = new Date().toISOString().slice(0, 10);
     const url =
       `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`;
+
+    const parts: unknown[] = [{ text: buildPrompt(input.text, today) }];
+    if (input.image) {
+      parts.push({
+        inlineData: { mimeType: input.image.mimeType, data: input.image.data },
+      });
+    }
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
@@ -24,9 +36,7 @@ class GeminiParser implements EnquiryParser {
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
         body: JSON.stringify({
-          contents: [
-            { role: "user", parts: [{ text: buildPrompt(text, today) }] },
-          ],
+          contents: [{ role: "user", parts }],
           generationConfig: {
             temperature: 0,
             responseMimeType: "application/json",

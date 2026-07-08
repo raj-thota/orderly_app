@@ -1,3 +1,8 @@
+export interface ParseInput {
+  text: string;
+  image?: { mimeType: string; data: string }; // data = base64, no prefix
+}
+
 export interface ParsedEnquiry {
   customer_name: string | null;
   phone: string | null;
@@ -35,10 +40,12 @@ export const responseSchema = {
 };
 
 export function buildPrompt(text: string, todayIso: string): string {
+  const hasText = text.trim().length > 0;
   return [
     "You extract structured sales-lead data from an Indian social-commerce",
-    "seller's chat or spoken note. Return ONLY data that is present or clearly",
-    "implied. Use null when unsure; never invent a phone number or name.",
+    "seller's chat or spoken note. An image, if attached, is a screenshot of a",
+    "chat — read the messages in it. Return ONLY data that is present or",
+    "clearly implied. Use null when unsure; never invent a phone number or name.",
     "",
     "Rules:",
     "- phone: 10-digit Indian mobile if present, digits only, no country code.",
@@ -52,7 +59,7 @@ export function buildPrompt(text: string, todayIso: string): string {
     "  when they mention a time like 'tomorrow'/'next week'; else null.",
     "- confidence: your overall 0..1 confidence in this extraction.",
     "",
-    "Message:",
-    text,
+    hasText ? "Message:" : "Extract from the attached screenshot.",
+    hasText ? text : "",
   ].join("\n");
 }

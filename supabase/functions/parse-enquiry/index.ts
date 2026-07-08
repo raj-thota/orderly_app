@@ -3,6 +3,8 @@ import { corsHeaders, json } from "../_shared/cors.ts";
 import { createParser } from "./provider.ts";
 
 const MAX_INPUT_CHARS = 4000;
+const MAX_IMAGE_B64 = 2_000_000; // ~1.5 MB decoded
+const ALLOWED_IMAGE_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 const RATE_MAX = 30;
 const RATE_WINDOW_SECONDS = 3600;
 
@@ -32,18 +34,41 @@ Deno.serve(async (req) => {
 
   // Validate input before consuming a rate-limit slot so malformed requests
   // never burn the user's quota.
-  let text: unknown;
+  let body: Record<string, unknown>;
   try {
-    const body = await req.json();
-    text = body?.text;
+    body = await req.json();
   } catch (_) {
     return json({ error: "bad_request" }, 400);
   }
-  if (typeof text !== "string" || text.trim().length === 0) {
-    return json({ error: "bad_request" }, 400);
-  }
+
+  const text = typeof body.text === "string" ? body.text : "";
   if (text.length > MAX_INPUT_CHARS) {
     return json({ error: "too_long" }, 413);
+  }
+
+  let image: { mimeType: string; data: string } | undefined;
+  const rawImage = body.image;
+  if (rawImage !== undefined && rawImage !== null) {
+    if (
+      typeof rawImage !== "object" ||
+      typeof (rawImage as Record<string, unknown>).mime !== "string" ||
+      typeof (rawImage as Record<string, unknown>).data !== "string"
+    ) {
+      return json({ error: "bad_request" }, 400);
+    }
+    const mime = (rawImage as Record<string, string>).mime;
+    const dataB64 = (rawImage as Record<string, string>).data;
+    if (!ALLOWED_IMAGE_MIME.has(mime)) {
+      return json({ error: "unsupported_media" }, 415);
+    }
+    if (dataB64.length === 0 || dataB64.length > MAX_IMAGE_B64) {
+      return json({ error: "bad_request" }, 400);
+    }
+    image = { mimeType: mime, data: dataB64 };
+  }
+
+  if (text.trim().length === 0 && image === undefined) {
+    return json({ error: "bad_request" }, 400);
   }
 
   const { data: allowed, error: rlErr } = await supabase.rpc(
@@ -60,7 +85,7 @@ Deno.serve(async (req) => {
 
   try {
     const parser = createParser();
-    const result = await parser.parse(text);
+    const result = await parser.parse({ text, image });
     return json(result, 200);
   } catch (e) {
     // Label only — never the chat text or provider payload.
