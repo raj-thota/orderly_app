@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:orderly_app/core/providers/auth_providers.dart';
 import 'package:orderly_app/features/orders/controller/orders_provider.dart';
 
 import '../data/payments_service.dart';

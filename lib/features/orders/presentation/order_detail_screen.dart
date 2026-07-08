@@ -8,6 +8,12 @@ import 'package:orderly_app/shared/widgets/app_primary_button.dart';
 import 'package:orderly_app/shared/widgets/status_pill.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:orderly_app/features/business/controller/business_profile_provider.dart';
+import 'package:orderly_app/features/payments/controller/payments_provider.dart';
+import 'package:orderly_app/features/payments/data/upi.dart';
+import 'package:orderly_app/features/payments/widgets/record_payment_sheet.dart';
+import 'package:orderly_app/features/payments/widgets/upi_collect_sheet.dart';
+
 import '../controller/orders_provider.dart';
 import '../data/order.dart';
 
@@ -126,11 +132,62 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     await _openUri(Uri.parse('$base?text=${Uri.encodeComponent(msg)}'));
   }
 
+  Future<void> _recordPayment(Order order) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => RecordPaymentSheet(
+        onSave: (amount, method) => ref
+            .read(paymentsControllerProvider.notifier)
+            .recordPayment(order.id!, amount, method),
+      ),
+    );
+  }
+
+  Future<void> _collectUpi(Order order, String vpa, String? vpaName) async {
+    final uri = buildUpiUri(
+      vpa: vpa,
+      name: vpaName,
+      amount: order.dues,
+      note: order.orderNumber != null ? 'Order #${order.orderNumber}' : 'Order',
+    );
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (_) => UpiCollectSheet(
+        amount: order.dues,
+        upiUri: uri,
+        vpa: vpa,
+        vpaName: vpaName,
+        onShareWhatsApp: () {
+          Navigator.of(context).pop();
+          final msg = 'Payment request'
+              '${order.orderNumber != null ? ' for order #${order.orderNumber}' : ''}: '
+              '${Money.inr(order.dues)}\n$uri';
+          _openUri(Uri.parse('${_waLink(order.customerPhone)}'
+              '?text=${Uri.encodeComponent(msg)}'));
+        },
+      ),
+    );
+  }
+
+  Widget _amountRow(String label, double value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(color: AppColors.textSecondary)),
+        Text(Money.inr(value),
+            style: const TextStyle(color: AppColors.textPrimary)),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final order = _live;
     final next = nextOrderStatus(order.status);
     final phone = order.customerPhone;
+    final upiId = ref.watch(businessProfileProvider).valueOrNull?.upiId;
+    final upiName = ref.watch(businessProfileProvider).valueOrNull?.upiName;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -230,10 +287,63 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                 Row(
                   children: [
                     StatusPill(status: order.status),
-                    const SizedBox(width: AppSpacing.sm),
-                    StatusPill(status: order.paymentStatus),
                   ],
                 ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          // Payment.
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _amountRow('Total', order.grandTotal),
+                const SizedBox(height: AppSpacing.xs),
+                _amountRow('Paid', order.paidTotal),
+                const SizedBox(height: AppSpacing.xs),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Dues',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary)),
+                    Text(Money.inr(order.dues),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary)),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: StatusPill(status: order.paymentStatus),
+                ),
+                if (order.dues > 0) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _recordPayment(order),
+                          icon: const Icon(Icons.payments_outlined, size: 18),
+                          label: const Text('Record payment'),
+                        ),
+                      ),
+                      if (upiId != null && upiId.isNotEmpty) ...[
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => _collectUpi(order, upiId, upiName),
+                            icon: const Icon(Icons.qr_code_2_outlined, size: 18),
+                            label: const Text('Collect via UPI'),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
