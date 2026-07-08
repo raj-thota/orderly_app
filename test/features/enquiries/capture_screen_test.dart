@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:orderly_app/features/enquiries/controller/capture_provider.dart';
 import 'package:orderly_app/features/enquiries/controller/enquiries_provider.dart';
+import 'package:orderly_app/features/enquiries/data/ai_parse_service.dart';
 import 'package:orderly_app/features/enquiries/presentation/capture_screen.dart';
 
 import 'capture_controller_test.dart'
-    show FakeCustomersService, FakeEnquiriesService;
+    show FakeAiParseService, FakeCustomersService, FakeEnquiriesService;
 
-Widget wrap(Widget child, FakeEnquiriesService enquiries) {
+Widget wrap(Widget child, FakeEnquiriesService enquiries, {AiParseService? ai}) {
   return ProviderScope(
     overrides: [
       customersServiceProvider.overrideWithValue(FakeCustomersService()),
       enquiriesServiceProvider.overrideWithValue(enquiries),
+      aiParseServiceProvider.overrideWithValue(ai ?? FakeAiParseService(null)),
     ],
     child: MaterialApp(home: child),
   );
@@ -52,5 +55,23 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(enquiries.enquiries, hasLength(1));
+  });
+
+  testWidgets('shows the AI refining indicator while a refine is in flight',
+      (tester) async {
+    await tester.pumpWidget(wrap(
+      const CaptureScreen(),
+      FakeEnquiriesService(),
+      ai: FakeAiParseService(null,
+          delay: const Duration(milliseconds: 500)),
+    ));
+
+    await tester.enterText(
+        find.byKey(const Key('capture-input')), 'order two sarees please');
+    await tester.pump(const Duration(milliseconds: 350)); // debounce elapses
+    expect(find.text('AI refining…'), findsOneWidget);
+
+    await tester.pumpAndSettle();
+    expect(find.text('AI refining…'), findsNothing);
   });
 }

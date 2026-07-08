@@ -213,6 +213,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
             DraftCard(
               draft: draft,
               attachedProductName: state.attachedProductName,
+              highlightedFields: state.aiHighlight,
               onEditName: () => _editField(
                 title: 'Customer name',
                 initial: draft.name ?? '',
@@ -227,6 +228,21 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
               onEditFollowUp: _pickFollowUp,
               onRemoveItem: (i) => controller.removeItem(i),
             ),
+            if (state.aiRefining)
+              const Padding(
+                padding: EdgeInsets.only(top: AppSpacing.md),
+                child: Row(
+                  children: [
+                    SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2)),
+                    SizedBox(width: AppSpacing.sm),
+                    Text('AI refining…',
+                        style: TextStyle(color: AppColors.textSecondary)),
+                  ],
+                ),
+              ),
             const SizedBox(height: AppSpacing.xl),
             AppPrimaryButton(
               label: draft.type == 'order' && draft.items.isNotEmpty

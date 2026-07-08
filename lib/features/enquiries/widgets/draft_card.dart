@@ -16,6 +16,7 @@ class DraftCard extends StatelessWidget {
     required this.onEditPhone,
     required this.onEditFollowUp,
     required this.onRemoveItem,
+    this.highlightedFields = const {},
   });
 
   final CaptureDraft draft;
@@ -24,6 +25,9 @@ class DraftCard extends StatelessWidget {
   final VoidCallback onEditPhone;
   final VoidCallback onEditFollowUp;
   final void Function(int index) onRemoveItem;
+
+  /// Field keys the AI just refined; those rows get a subtle tint.
+  final Set<String> highlightedFields;
 
   @override
   Widget build(BuildContext context) {
@@ -45,11 +49,14 @@ class DraftCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.md),
           _row(Icons.person_outline, draft.name ?? 'Customer',
-              onTap: onEditName, key: const Key('draft-name')),
+              onTap: onEditName,
+              key: const Key('draft-name'),
+              highlighted: highlightedFields.contains('name')),
           _row(Icons.phone_outlined, draft.phone ?? 'Add phone',
               muted: draft.phone == null,
               onTap: onEditPhone,
-              key: const Key('draft-phone')),
+              key: const Key('draft-phone'),
+              highlighted: highlightedFields.contains('phone')),
           if (attachedProductName != null)
             _row(Icons.storefront_outlined, attachedProductName!),
           for (var i = 0; i < draft.items.length; i++)
@@ -57,6 +64,7 @@ class DraftCard extends StatelessWidget {
               Icons.shopping_bag_outlined,
               '${draft.items[i].qty} × ${draft.items[i].name}'
               '${draft.items[i].price != null ? ' @ ${Money.inr(draft.items[i].price!)}' : ''}',
+              highlighted: highlightedFields.contains('items'),
               trailing: IconButton(
                 icon: const Icon(Icons.close, size: 16),
                 onPressed: () => onRemoveItem(i),
@@ -70,6 +78,7 @@ class DraftCard extends StatelessWidget {
             muted: draft.followUpDate == null,
             onTap: onEditFollowUp,
             key: const Key('draft-followup'),
+            highlighted: highlightedFields.contains('followUp'),
           ),
         ],
       ),
@@ -83,11 +92,18 @@ class DraftCard extends StatelessWidget {
     VoidCallback? onTap,
     Widget? trailing,
     Key? key,
+    bool highlighted = false,
   }) {
     return InkWell(
       key: key,
       onTap: onTap,
-      child: Padding(
+      child: Container(
+        decoration: highlighted
+            ? BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+              )
+            : null,
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs + 2),
         child: Row(
           children: [
