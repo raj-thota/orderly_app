@@ -24,6 +24,13 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
   bool _busy = false;
 
   static const _flow = ['pending', 'packed', 'shipped', 'delivered'];
+  static final _mobileRe = RegExp(r'^[6-9]\d{9}$');
+
+  /// wa.me link for an Indian mobile; falls back to a bare wa.me when the
+  /// stored number is not a clean 10-digit mobile.
+  String _waLink(String? phone) => phone != null && _mobileRe.hasMatch(phone)
+      ? 'https://wa.me/91$phone'
+      : 'https://wa.me/';
 
   Order get _live => ref
           .watch(ordersControllerProvider)
@@ -34,7 +41,12 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
 
   Future<void> _openUri(Uri uri) async {
     final messenger = ScaffoldMessenger.of(context);
-    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    var ok = false;
+    try {
+      ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      ok = false;
+    }
     if (!ok && mounted) {
       messenger.showSnackBar(
           const SnackBar(content: Text('Could not open the app')));
@@ -96,51 +108,21 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     }
   }
 
-  /// Returns (courier, tracking) or null if cancelled/incomplete.
+  /// Returns (courier, tracking) or null if cancelled/incomplete. The dialog
+  /// body owns its controllers so they're disposed with the route (disposing
+  /// them on future-completion rebuilds the exiting fields on a dead controller).
   Future<(String, String)?> _askCourier() {
-    final courierCtl = TextEditingController();
-    final trackingCtl = TextEditingController();
     return showDialog<(String, String)?>(
       context: context,
-      builder: (d) => AlertDialog(
-        title: const Text('Shipping details'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: courierCtl,
-              decoration: const InputDecoration(labelText: 'Courier'),
-            ),
-            TextField(
-              controller: trackingCtl,
-              decoration: const InputDecoration(labelText: 'Tracking number'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(d), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () {
-              final c = courierCtl.text.trim();
-              final t = trackingCtl.text.trim();
-              if (c.isEmpty || t.isEmpty) return; // both required
-              Navigator.pop(d, (c, t));
-            },
-            child: const Text('Ship'),
-          ),
-        ],
-      ),
+      builder: (_) => const _ShippingDialog(),
     );
   }
 
   Future<void> _shareTracking(Order order) async {
-    final phone = order.customerPhone;
-    final validPhone = phone != null && RegExp(r'^[6-9]\d{9}$').hasMatch(phone);
     final msg =
         'Hi ${order.customerName ?? 'there'}, your order #${order.orderNumber ?? ''} '
         'has shipped via ${order.courier ?? ''}. Tracking: ${order.trackingNo ?? ''}.';
-    final base = validPhone ? 'https://wa.me/91$phone' : 'https://wa.me/';
+    final base = _waLink(order.customerPhone);
     await _openUri(Uri.parse('$base?text=${Uri.encodeComponent(msg)}'));
   }
 
@@ -195,8 +177,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () =>
-                          _openUri(Uri.parse('https://wa.me/91$phone')),
+                      onPressed: () => _openUri(Uri.parse(_waLink(phone))),
                       icon: const Icon(Icons.chat_outlined, size: 18),
                       label: const Text('WhatsApp'),
                     ),
@@ -204,7 +185,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () => _openUri(Uri.parse('tel:$phone')),
+                      onPressed: () => _openUri(Uri.parse(
+                          'tel:${phone.replaceAll(RegExp(r'\D'), '')}')),
                       icon: const Icon(Icons.call_outlined, size: 18),
                       label: const Text('Call'),
                     ),
@@ -290,6 +272,61 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
           ],
         ],
       ),
+    );
+  }
+}
+
+/// Courier + tracking capture. A StatefulWidget so its controllers live and die
+/// with the dialog route (avoids "used after disposed" during the exit animation).
+class _ShippingDialog extends StatefulWidget {
+  const _ShippingDialog();
+
+  @override
+  State<_ShippingDialog> createState() => _ShippingDialogState();
+}
+
+class _ShippingDialogState extends State<_ShippingDialog> {
+  final _courierCtl = TextEditingController();
+  final _trackingCtl = TextEditingController();
+
+  @override
+  void dispose() {
+    _courierCtl.dispose();
+    _trackingCtl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Shipping details'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _courierCtl,
+            decoration: const InputDecoration(labelText: 'Courier'),
+          ),
+          TextField(
+            controller: _trackingCtl,
+            decoration: const InputDecoration(labelText: 'Tracking number'),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel')),
+        TextButton(
+          onPressed: () {
+            final c = _courierCtl.text.trim();
+            final t = _trackingCtl.text.trim();
+            if (c.isEmpty || t.isEmpty) return; // both required
+            Navigator.pop(context, (c, t));
+          },
+          child: const Text('Ship'),
+        ),
+      ],
     );
   }
 }
