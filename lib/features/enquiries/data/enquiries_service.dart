@@ -65,6 +65,7 @@ class EnquiriesService {
     String? intent,
     DateTime? followUpDate,
     String? screenshotPath,
+    String? quoteText,
   }) async {
     String? screenshotUrl;
     if (screenshotPath != null && screenshotPath.isNotEmpty) {
@@ -93,7 +94,13 @@ class EnquiriesService {
               'type': 'created',
               'note': 'Enquiry captured',
               'time': DateTime.now().toIso8601String(),
-            }
+            },
+            if (quoteText != null && quoteText.isNotEmpty)
+              {
+                'type': 'quote_sent',
+                'note': quoteText,
+                'time': DateTime.now().toIso8601String(),
+              },
           ],
         })
         .select(_selectWithJoins)

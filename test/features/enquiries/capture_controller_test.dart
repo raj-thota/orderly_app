@@ -38,6 +38,7 @@ class FakeEnquiriesService implements EnquiriesService {
     String? intent,
     DateTime? followUpDate,
     String? screenshotPath,
+    String? quoteText,
   }) async {
     enquiries.add({
       'customer_id': customerId,
@@ -45,6 +46,7 @@ class FakeEnquiriesService implements EnquiriesService {
       'source': source,
       'status': followUpDate != null ? 'follow' : 'new',
       'screenshot_path': screenshotPath,
+      'quote_text': quoteText,
     });
     return Enquiry.fromMap({'id': 'e-new', 'customer_id': customerId});
   }
@@ -364,5 +366,17 @@ void main() {
     expect(state.screenshotBytes, isNull);
     expect(state.draft.name, isNot('Late')); // superseded refine dropped
     expect(state.aiRefining, isFalse);
+  });
+
+  test('save forwards the quote text to addEnquiry', () async {
+    final customers = FakeCustomersService();
+    final enquiries = FakeEnquiriesService();
+    final c = makeContainer(customers, enquiries);
+    final controller = c.read(captureControllerProvider.notifier);
+
+    controller.setText('Priya wants a saree');
+    await controller.save(quoteText: 'QUOTE-BODY');
+
+    expect(enquiries.enquiries.single['quote_text'], 'QUOTE-BODY');
   });
 }

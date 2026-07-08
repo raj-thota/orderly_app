@@ -265,7 +265,7 @@ class CaptureController extends StateNotifier<CaptureState> {
     );
   }
 
-  Future<SaveResult> save() async {
+  Future<SaveResult> save({String? quoteText}) async {
     final draft = state.draft;
     state = state.copyWith(saving: true);
     try {
@@ -301,6 +301,7 @@ class CaptureController extends StateNotifier<CaptureState> {
         intent: draft.intent,
         followUpDate: draft.followUpDate,
         screenshotPath: state.screenshotPath,
+        quoteText: quoteText,
       );
       return SaveResult(SaveKind.enquiry, customer.name);
     } finally {
