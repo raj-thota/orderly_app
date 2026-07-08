@@ -73,6 +73,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       if (ok != true) return;
     }
 
+    if (!mounted) return;
     setState(() => _busy = true);
     final messenger = ScaffoldMessenger.of(context);
     try {

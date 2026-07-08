@@ -4,7 +4,6 @@ import 'package:orderly_app/core/theme/app_colors.dart';
 import 'package:orderly_app/core/theme/app_spacing.dart';
 
 import '../controller/orders_provider.dart';
-import '../data/order.dart';
 import '../widgets/order_card.dart';
 import 'order_detail_screen.dart';
 
