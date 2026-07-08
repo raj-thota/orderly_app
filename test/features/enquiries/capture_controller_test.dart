@@ -97,7 +97,7 @@ ProviderContainer makeContainer(
   addTearDown(container.dispose);
   // Keep the autoDispose controller alive across async gaps, as a listening
   // widget would in production; otherwise it disposes and resets mid-test.
-  container.listen(captureControllerProvider, (_, __) {}, fireImmediately: true);
+  container.listen(captureControllerProvider, (_, _) {}, fireImmediately: true);
   return container;
 }
 
