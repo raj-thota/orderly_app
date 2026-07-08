@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/ai_parse_service.dart';
 import '../data/capture_draft.dart';
 import '../data/customers_service.dart';
 import '../data/enquiries_service.dart';
@@ -14,6 +15,8 @@ class CaptureState {
     this.attachedProductName,
     this.attachedProductIsUnique = false,
     this.attachedItem,
+    this.aiRefining = false,
+    this.aiHighlight = const {},
     this.saving = false,
   });
 
@@ -28,6 +31,13 @@ class CaptureState {
 
   /// Line item pinned by attachProduct; survives re-parses of the text.
   final DraftItem? attachedItem;
+
+  /// True while an async AI refine is in flight for the current text.
+  final bool aiRefining;
+
+  /// Field keys the AI just refined, for a subtle highlight:
+  /// 'name', 'phone', 'items', 'followUp', 'intent'.
+  final Set<String> aiHighlight;
   final bool saving;
 
   CaptureState copyWith({
@@ -38,6 +48,8 @@ class CaptureState {
     String? attachedProductName,
     bool? attachedProductIsUnique,
     DraftItem? attachedItem,
+    bool? aiRefining,
+    Set<String>? aiHighlight,
     bool clearAttachment = false,
     bool? saving,
   }) =>
@@ -53,6 +65,8 @@ class CaptureState {
             ? false
             : (attachedProductIsUnique ?? this.attachedProductIsUnique),
         attachedItem: clearAttachment ? null : (attachedItem ?? this.attachedItem),
+        aiRefining: aiRefining ?? this.aiRefining,
+        aiHighlight: aiHighlight ?? this.aiHighlight,
         saving: saving ?? this.saving,
       );
 }
@@ -65,31 +79,100 @@ class SaveResult {
   final String customerName;
 }
 
+final aiParseServiceProvider =
+    Provider<AiParseService>((ref) => AiParseService());
+
 final captureControllerProvider =
     StateNotifierProvider.autoDispose<CaptureController, CaptureState>((ref) {
   return CaptureController(
     ref.watch(customersServiceProvider),
     ref.watch(enquiriesServiceProvider),
+    ref.watch(aiParseServiceProvider),
   );
 });
 
 class CaptureController extends StateNotifier<CaptureState> {
-  CaptureController(this._customers, this._enquiries)
+  CaptureController(this._customers, this._enquiries, this._ai)
       : super(const CaptureState());
 
   final CustomersService _customers;
   final EnquiriesService _enquiries;
+  final AiParseService _ai;
+
+  int _parseToken = 0;
 
   void setText(String text) {
+    _parseToken++;
+    final token = _parseToken;
     final parsed = CaptureDraft.fromText(text);
     // Fresh parse is the base; only explicit manual edits and the pinned
     // attached product survive across re-parses.
+    final willRefine = text.trim().length >= 8;
     state = state.copyWith(
       draft: parsed.copyWith(
         name: state.manualName ?? parsed.name,
         phone: state.manualPhone ?? parsed.phone,
         items: [?state.attachedItem, ...parsed.items],
       ),
+      aiRefining: willRefine,
+      aiHighlight: const {},
+    );
+    if (willRefine) _refine(text, token);
+  }
+
+  Future<void> _refine(String text, int token) async {
+    final ai = await _ai.refine(text);
+    if (!mounted || token != _parseToken) return; // superseded
+    if (ai == null) {
+      state = state.copyWith(aiRefining: false);
+      return;
+    }
+    final cur = state.draft;
+    final highlight = <String>{};
+
+    String? name = cur.name;
+    if (state.manualName == null && ai.name != null) {
+      if (ai.name != cur.name) highlight.add('name');
+      name = ai.name;
+    }
+
+    String? phone = cur.phone;
+    if (state.manualPhone == null && ai.phone != null) {
+      if (ai.phone != cur.phone) highlight.add('phone');
+      phone = ai.phone;
+    }
+
+    List<DraftItem> items = cur.items;
+    if (ai.items != null && ai.items!.isNotEmpty) {
+      items = [?state.attachedItem, ...ai.items!];
+      highlight.add('items');
+    }
+
+    String intent = cur.intent;
+    String type = cur.type;
+    if (ai.type != null) {
+      if (ai.type != cur.type) highlight.add('intent');
+      type = ai.type!;
+      intent = ai.intent ?? cur.intent;
+    }
+
+    DateTime? followUp = cur.followUpDate;
+    if (ai.followUpDate != null) {
+      if (ai.followUpDate != cur.followUpDate) highlight.add('followUp');
+      followUp = ai.followUpDate;
+    }
+
+    state = state.copyWith(
+      draft: cur.copyWith(
+        name: name,
+        phone: phone,
+        items: items,
+        intent: intent,
+        type: type,
+        followUpDate: followUp,
+      ),
+      aiRefining: false,
+      aiHighlight: highlight,
     );
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orderly_app/features/enquiries/controller/capture_provider.dart';
 import 'package:orderly_app/features/enquiries/controller/enquiries_provider.dart';
+import 'package:orderly_app/features/enquiries/data/ai_parse_service.dart';
 import 'package:orderly_app/features/enquiries/data/capture_draft.dart';
 import 'package:orderly_app/features/enquiries/data/customer.dart';
 import 'package:orderly_app/features/enquiries/data/customers_service.dart';
@@ -72,13 +73,31 @@ class FakeEnquiriesService implements EnquiriesService {
   Future<List<Map<String, dynamic>>> fetchLegacyMaps() async => [];
 }
 
+class FakeAiParseService extends AiParseService {
+  FakeAiParseService(this._result, {this.delay = Duration.zero})
+      : super(invoker: (_) async => null);
+  final AiParse? _result;
+  final Duration delay;
+
+  @override
+  Future<AiParse?> refine(String text) async {
+    if (delay != Duration.zero) await Future.delayed(delay);
+    return _result;
+  }
+}
+
 ProviderContainer makeContainer(
-    FakeCustomersService customers, FakeEnquiriesService enquiries) {
+    FakeCustomersService customers, FakeEnquiriesService enquiries,
+    {AiParseService? ai}) {
   final container = ProviderContainer(overrides: [
     customersServiceProvider.overrideWithValue(customers),
     enquiriesServiceProvider.overrideWithValue(enquiries),
+    aiParseServiceProvider.overrideWithValue(ai ?? FakeAiParseService(null)),
   ]);
   addTearDown(container.dispose);
+  // Keep the autoDispose controller alive across async gaps, as a listening
+  // widget would in production; otherwise it disposes and resets mid-test.
+  container.listen(captureControllerProvider, (_, __) {}, fireImmediately: true);
   return container;
 }
 
@@ -176,5 +195,92 @@ void main() {
     await controller.save();
 
     expect(enquiries.orders.single['book'], isNull);
+  });
+
+  test('AI refine overlays fields the user did not edit', () async {
+    final c = makeContainer(
+      FakeCustomersService(),
+      FakeEnquiriesService(),
+      ai: FakeAiParseService(const AiParse(
+        name: 'Priya',
+        phone: '9876543210',
+        intent: 'order',
+        type: 'order',
+        confidence: 0.9,
+      )),
+    );
+    final controller = c.read(captureControllerProvider.notifier);
+    controller.setText('order some things please');
+    await Future<void>.delayed(Duration.zero);
+
+    final state = c.read(captureControllerProvider);
+    expect(state.draft.name, 'Priya');
+    expect(state.draft.phone, '9876543210');
+    expect(state.draft.type, 'order');
+    expect(state.aiRefining, isFalse);
+    expect(state.aiHighlight, contains('name'));
+  });
+
+  test('manual edits are not overwritten by AI', () async {
+    final c = makeContainer(
+      FakeCustomersService(),
+      FakeEnquiriesService(),
+      ai: FakeAiParseService(const AiParse(
+        name: 'Priya',
+        phone: '9876543210',
+        confidence: 0.9,
+      )),
+    );
+    final controller = c.read(captureControllerProvider.notifier);
+    controller.setName('Bob');
+    controller.setText('some message');
+    await Future<void>.delayed(Duration.zero);
+
+    final state = c.read(captureControllerProvider);
+    expect(state.draft.name, 'Bob'); // manual wins
+    expect(state.draft.phone, '9876543210'); // AI fills the un-edited field
+    expect(state.aiHighlight, isNot(contains('name')));
+  });
+
+  test('stale AI responses are discarded', () async {
+    final c = makeContainer(
+      FakeCustomersService(),
+      FakeEnquiriesService(),
+      ai: FakeAiParseService(
+        const AiParse(name: 'Stale', confidence: 0.9),
+        delay: const Duration(milliseconds: 60),
+      ),
+    );
+    final controller = c.read(captureControllerProvider.notifier);
+    controller.setText('first message');
+    controller.setText('second message'); // supersedes the first
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+
+    final state = c.read(captureControllerProvider);
+    expect(state.aiRefining, isFalse);
+    expect(state.draft.raw, 'second message');
+  });
+
+  test('AI item list replaces rules items but keeps the attached product first',
+      () async {
+    final c = makeContainer(
+      FakeCustomersService(),
+      FakeEnquiriesService(),
+      ai: FakeAiParseService(const AiParse(
+        items: [DraftItem(name: 'Blouse', qty: 3, price: 200)],
+        intent: 'order',
+        type: 'order',
+        confidence: 0.8,
+      )),
+    );
+    final controller = c.read(captureControllerProvider.notifier);
+    controller.attachProduct(
+        id: 'p1', name: 'Silk Saree', isUnique: true, price: 5000);
+    controller.setText('order 2 kurtis');
+    await Future<void>.delayed(Duration.zero);
+
+    final items = c.read(captureControllerProvider).draft.items;
+    expect(items.first.name, 'Silk Saree'); // attachment pinned first
+    expect(items.any((i) => i.name == 'Blouse'), isTrue); // AI item present
   });
 }
