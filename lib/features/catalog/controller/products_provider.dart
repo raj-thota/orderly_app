@@ -1,18 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:orderly_app/core/providers/auth_providers.dart';
 import '../data/product.dart';
 import '../data/products_service.dart';
 
-/// Signed-in user id. Catalog providers watch this so every piece of cached
-/// state (product list, signed URLs) is dropped when the account changes —
-/// otherwise user A's catalog would survive logout and show to user B.
-final authUserIdProvider = StreamProvider<String?>((ref) {
-  final auth = Supabase.instance.client.auth;
-  return auth.onAuthStateChange.map((s) => s.session?.user.id).distinct();
-});
+export 'package:orderly_app/core/providers/auth_providers.dart'
+    show authUserIdProvider;
 
 final productsServiceProvider = Provider<ProductsService>((ref) {
   ref.watch(authUserIdProvider.select((v) => v.valueOrNull));
