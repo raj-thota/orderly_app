@@ -10,10 +10,18 @@ import '../controller/enquiries_provider.dart';
 import '../data/capture_draft.dart';
 import '../data/enquiry.dart';
 
-class EnquiryDetailScreen extends ConsumerWidget {
+class EnquiryDetailScreen extends ConsumerStatefulWidget {
   const EnquiryDetailScreen({super.key, required this.enquiry});
 
   final Enquiry enquiry;
+
+  @override
+  ConsumerState<EnquiryDetailScreen> createState() =>
+      _EnquiryDetailScreenState();
+}
+
+class _EnquiryDetailScreenState extends ConsumerState<EnquiryDetailScreen> {
+  bool _busy = false;
 
   Future<void> _openUri(BuildContext context, Uri uri) async {
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -24,10 +32,10 @@ class EnquiryDetailScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _reschedule(BuildContext context, WidgetRef ref) async {
+  Future<void> _reschedule(BuildContext context, Enquiry live) async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: enquiry.followUpDate ??
+      initialDate: live.followUpDate ??
           DateTime.now().add(const Duration(days: 1)),
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
@@ -37,7 +45,7 @@ class EnquiryDetailScreen extends ConsumerWidget {
     try {
       await ref
           .read(enquiriesControllerProvider.notifier)
-          .reschedule(enquiry.id!, picked);
+          .reschedule(live.id!, picked);
       messenger.showSnackBar(SnackBar(
           content: Text('Follow-up set for ${picked.day}/${picked.month}')));
     } catch (_) {
@@ -46,14 +54,16 @@ class EnquiryDetailScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _convert(BuildContext context, WidgetRef ref) async {
+  Future<void> _convert(BuildContext context, Enquiry live) async {
+    if (_busy) return;
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Convert to order?'),
-        content: Text(enquiry.productIsUnique
-            ? 'This books ${enquiry.productName ?? 'the piece'} so it cannot be sold twice.'
-            : 'Creates an order for ${enquiry.customerName ?? 'this customer'}.'),
+        content: Text(live.productIsUnique
+            ? 'This books ${live.productName ?? 'the piece'} so it cannot be sold twice.'
+            : 'Creates an order for ${live.customerName ?? 'this customer'}.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
@@ -66,39 +76,61 @@ class EnquiryDetailScreen extends ConsumerWidget {
     );
     if (confirmed != true || !context.mounted) return;
 
+    setState(() => _busy = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
       await ref.read(enquiriesControllerProvider.notifier).convertToOrder(
-        enquiry,
+        live,
         [
           DraftItem(
-              name: enquiry.productName ?? 'Item',
+              name: live.productName ?? 'Item',
               qty: 1,
-              price: enquiry.productPrice),
+              price: live.productPrice),
         ],
       );
       if (!context.mounted) return;
       if (Navigator.canPop(context)) Navigator.pop(context);
       messenger.showSnackBar(const SnackBar(content: Text('Order created')));
-    } catch (_) {
-      messenger.showSnackBar(
-          const SnackBar(content: Text('Could not convert. Try again.')));
+    } catch (e) {
+      final isUnavailable = e.toString().contains('piece_unavailable');
+      messenger.showSnackBar(SnackBar(
+          content: Text(isUnavailable
+              ? 'This piece is already booked or sold.'
+              : 'Could not convert. Try again.')));
+      if (isUnavailable) {
+        ref.read(enquiriesControllerProvider.notifier).load();
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final phone = enquiry.customerPhone;
+  Widget build(BuildContext context) {
+    final live = ref
+            .watch(enquiriesControllerProvider)
+            .valueOrNull
+            ?.where((e) => e.id == widget.enquiry.id)
+            .firstOrNull ??
+        widget.enquiry;
+
+    final phone = live.customerPhone;
+    String? digits;
+    String? waTarget;
+    if (phone != null && phone.isNotEmpty) {
+      digits = phone.replaceAll(RegExp(r'\D'), '');
+      waTarget = digits.length == 10 ? '91$digits' : digits;
+    }
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: Text(enquiry.customerName ?? 'Enquiry')),
+      appBar: AppBar(title: Text(live.customerName ?? 'Enquiry')),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
-          if ((enquiry.message ?? '').isNotEmpty)
+          if ((live.message ?? '').isNotEmpty)
             AppCard(
-              child: Text(enquiry.message!,
+              child: Text(live.message!,
                   style: const TextStyle(height: 1.5)),
             ),
           const SizedBox(height: AppSpacing.md),
@@ -108,11 +140,11 @@ class EnquiryDetailScreen extends ConsumerWidget {
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.event_outlined),
-                  title: Text(enquiry.followUpDate == null
+                  title: Text(live.followUpDate == null
                       ? 'No follow-up scheduled'
-                      : 'Follow up ${enquiry.followUpDate!.day}/${enquiry.followUpDate!.month}'),
+                      : 'Follow up ${live.followUpDate!.day}/${live.followUpDate!.month}'),
                   trailing: TextButton(
-                    onPressed: () => _reschedule(context, ref),
+                    onPressed: () => _reschedule(context, live),
                     child: const Text('Change'),
                   ),
                 ),
@@ -122,7 +154,8 @@ class EnquiryDetailScreen extends ConsumerWidget {
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () => _openUri(
-                              context, Uri.parse('https://wa.me/91$phone')),
+                              context,
+                              Uri.parse('https://wa.me/$waTarget')),
                           icon: const Icon(Icons.chat_outlined, size: 18),
                           label: const Text('WhatsApp'),
                         ),
@@ -131,7 +164,7 @@ class EnquiryDetailScreen extends ConsumerWidget {
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () =>
-                              _openUri(context, Uri.parse('tel:$phone')),
+                              _openUri(context, Uri.parse('tel:+$waTarget')),
                           icon: const Icon(Icons.call_outlined, size: 18),
                           label: const Text('Call'),
                         ),
@@ -144,16 +177,18 @@ class EnquiryDetailScreen extends ConsumerWidget {
           const SizedBox(height: AppSpacing.xl),
           AppPrimaryButton(
             label: 'Convert to order',
-            onPressed: () => _convert(context, ref),
+            loading: _busy,
+            onPressed: () => _convert(context, live),
           ),
           const SizedBox(height: AppSpacing.sm),
           TextButton(
             onPressed: () async {
+              if (_busy) return;
               final messenger = ScaffoldMessenger.of(context);
               try {
                 await ref
                     .read(enquiriesControllerProvider.notifier)
-                    .markLost(enquiry.id!);
+                    .markLost(live.id!);
                 if (context.mounted && Navigator.canPop(context)) {
                   Navigator.pop(context);
                 }
