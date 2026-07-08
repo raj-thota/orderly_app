@@ -66,9 +66,15 @@ class EnquiriesService {
     DateTime? followUpDate,
     String? screenshotPath,
   }) async {
-    final screenshotUrl = (screenshotPath != null && screenshotPath.isNotEmpty)
-        ? await uploadScreenshot(screenshotPath)
-        : null;
+    String? screenshotUrl;
+    if (screenshotPath != null && screenshotPath.isNotEmpty) {
+      try {
+        screenshotUrl = await uploadScreenshot(screenshotPath);
+      } catch (_) {
+        // Best-effort: a storage hiccup must never block saving the enquiry.
+        screenshotUrl = null;
+      }
+    }
     final row = await _client
         .from('leads')
         .insert({

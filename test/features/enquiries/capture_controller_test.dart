@@ -344,4 +344,25 @@ void main() {
     expect(state.draft.name, 'Priya'); // merge ran
     expect(state.aiRefining, isFalse);
   });
+
+  test('clearScreenshot detaches the shot and discards its refine', () async {
+    final c = makeContainer(
+      FakeCustomersService(),
+      FakeEnquiriesService(),
+      ai: FakeAiParseService(const AiParse(name: 'Late', confidence: 0.9),
+          delay: const Duration(milliseconds: 60)),
+    );
+    final controller = c.read(captureControllerProvider.notifier);
+
+    controller.attachScreenshot(Uint8List.fromList([1, 2, 3]),
+        path: '/tmp/shot.jpg');
+    controller.clearScreenshot();
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    final state = c.read(captureControllerProvider);
+    expect(state.screenshotPath, isNull);
+    expect(state.screenshotBytes, isNull);
+    expect(state.draft.name, isNot('Late')); // superseded refine dropped
+    expect(state.aiRefining, isFalse);
+  });
 }

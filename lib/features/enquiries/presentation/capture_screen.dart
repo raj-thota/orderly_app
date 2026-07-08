@@ -242,14 +242,31 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
           const SizedBox(height: AppSpacing.md),
           if (hasContent) ...[
             if (state.screenshotBytes != null) ...[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(AppRadius.md),
-                child: Image.memory(
-                  state.screenshotBytes!,
-                  height: 160,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                ),
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    child: Image.memory(
+                      state.screenshotBytes!,
+                      height: 160,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: Material(
+                      color: Colors.black54,
+                      shape: const CircleBorder(),
+                      child: IconButton(
+                        iconSize: 18,
+                        icon: const Icon(Icons.close, color: Colors.white),
+                        onPressed: controller.clearScreenshot,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: AppSpacing.md),
             ],

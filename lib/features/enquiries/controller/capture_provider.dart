@@ -61,6 +61,7 @@ class CaptureState {
     bool? aiRefining,
     Set<String>? aiHighlight,
     bool clearAttachment = false,
+    bool clearScreenshot = false,
     bool? saving,
   }) =>
       CaptureState(
@@ -75,8 +76,10 @@ class CaptureState {
             ? false
             : (attachedProductIsUnique ?? this.attachedProductIsUnique),
         attachedItem: clearAttachment ? null : (attachedItem ?? this.attachedItem),
-        screenshotPath: screenshotPath ?? this.screenshotPath,
-        screenshotBytes: screenshotBytes ?? this.screenshotBytes,
+        screenshotPath:
+            clearScreenshot ? null : (screenshotPath ?? this.screenshotPath),
+        screenshotBytes:
+            clearScreenshot ? null : (screenshotBytes ?? this.screenshotBytes),
         aiRefining: aiRefining ?? this.aiRefining,
         aiHighlight: aiHighlight ?? this.aiHighlight,
         saving: saving ?? this.saving,
@@ -143,6 +146,11 @@ class CaptureController extends StateNotifier<CaptureState> {
       aiHighlight: const {},
     );
     _refine(state.draft.raw, token, image: bytes, mime: mime);
+  }
+
+  void clearScreenshot() {
+    _parseToken++; // discard any in-flight image refine
+    state = state.copyWith(clearScreenshot: true, aiRefining: false);
   }
 
   Future<void> _refine(String text, int token,
