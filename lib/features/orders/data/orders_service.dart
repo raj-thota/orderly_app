@@ -2,7 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'order.dart';
 
-const _selectWithJoins = '*, customers(name, phone), order_items(*)';
+const _selectWithJoins = '*, customers(name, phone), order_items(*), payments(*)';
 
 class OrdersService {
   SupabaseClient get _client => Supabase.instance.client;
