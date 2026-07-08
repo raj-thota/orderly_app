@@ -57,6 +57,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
   @override
   void dispose() {
     _debounce?.cancel();
+    _speech.stop();
     _text.dispose();
     super.dispose();
   }
@@ -82,7 +83,13 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
       setState(() => _listening = false);
       return;
     }
-    final ok = await _speech.initialize();
+    final ok = await _speech.initialize(
+      onStatus: (status) {
+        if (mounted && status != 'listening') {
+          setState(() => _listening = false);
+        }
+      },
+    );
     if (!ok) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -209,21 +216,16 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
               onEditName: () => _editField(
                 title: 'Customer name',
                 initial: draft.name ?? '',
-                onSubmit: (v) =>
-                    controller.editDraft(draft.copyWith(name: v)),
+                onSubmit: (v) => controller.setName(v),
               ),
               onEditPhone: () => _editField(
                 title: 'Phone',
                 initial: draft.phone ?? '',
                 keyboard: TextInputType.phone,
-                onSubmit: (v) =>
-                    controller.editDraft(draft.copyWith(phone: v)),
+                onSubmit: (v) => controller.setPhone(v),
               ),
               onEditFollowUp: _pickFollowUp,
-              onRemoveItem: (i) {
-                final items = [...draft.items]..removeAt(i);
-                controller.editDraft(draft.copyWith(items: items));
-              },
+              onRemoveItem: (i) => controller.removeItem(i),
             ),
             const SizedBox(height: AppSpacing.xl),
             AppPrimaryButton(

@@ -134,10 +134,47 @@ void main() {
     final controller = c.read(captureControllerProvider.notifier);
 
     controller.setText('want 2 kurtis');
-    controller.editDraft(
-        c.read(captureControllerProvider).draft.copyWith(name: 'Anita'));
+    controller.setName('Anita');
     controller.setText('want 2 kurtis tomorrow');
 
     expect(c.read(captureControllerProvider).draft.name, 'Anita');
+  });
+
+  test('re-parsed text replaces previously parsed name and phone', () async {
+    final c = makeContainer(FakeCustomersService(), FakeEnquiriesService());
+    final controller = c.read(captureControllerProvider.notifier);
+
+    controller.setText('Hi this is Priya 9876543210');
+    controller.setText('Hi this is Anita 9123456789');
+
+    expect(c.read(captureControllerProvider).draft.name, 'Anita');
+    expect(c.read(captureControllerProvider).draft.phone, '9123456789');
+  });
+
+  test('manual edits survive re-parse', () async {
+    final c = makeContainer(FakeCustomersService(), FakeEnquiriesService());
+    final controller = c.read(captureControllerProvider.notifier);
+
+    controller.setName('Bob');
+    controller.setPhone('+91 91234 56789');
+    controller.setText('Hi this is Anita 9876543210');
+
+    expect(c.read(captureControllerProvider).draft.name, 'Bob');
+    expect(c.read(captureControllerProvider).draft.phone, '9123456789');
+  });
+
+  test('removing the attached item clears product linkage on save', () async {
+    final customers = FakeCustomersService();
+    final enquiries = FakeEnquiriesService();
+    final c = makeContainer(customers, enquiries);
+    final controller = c.read(captureControllerProvider.notifier);
+
+    controller.attachProduct(
+        id: 'p1', name: 'Red Banarasi', isUnique: true, price: 5500);
+    controller.removeItem(0);
+    controller.setText('book 2 sarees at 500 for 9876543210');
+    await controller.save();
+
+    expect(enquiries.orders.single['book'], isNull);
   });
 }

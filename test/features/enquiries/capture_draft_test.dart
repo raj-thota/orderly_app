@@ -38,4 +38,21 @@ void main() {
     final d = CaptureDraft.fromText('   ');
     expect(d.isEmpty, isTrue);
   });
+
+  test('parses phone from a 12-digit 91-prefixed run', () {
+    expect(
+      CaptureDraft.fromText('Contact 919876543210').phone,
+      '9876543210',
+    );
+  });
+
+  test('ignores digit runs longer than a phone number', () {
+    expect(CaptureDraft.fromText('order #98765432101234').phone, isNull);
+  });
+
+  test('normalizePhone strips formatting, country code and trunk zero', () {
+    expect(CaptureDraft.normalizePhone('+91 98765 43210'), '9876543210');
+    expect(CaptureDraft.normalizePhone('09876543210'), '9876543210');
+    expect(CaptureDraft.normalizePhone('abc'), isNull);
+  });
 }

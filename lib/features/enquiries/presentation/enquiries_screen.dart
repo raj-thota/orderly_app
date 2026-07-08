@@ -95,11 +95,13 @@ class _EnquiriesScreenState extends ConsumerState<EnquiriesScreen> {
                         }).toList();
 
                   if (filtered.isEmpty) {
-                    return const Center(
+                    return Center(
                       child: Text(
-                        'No enquiries yet.\nTap + to capture your first one.',
+                        _search.isEmpty
+                            ? 'No enquiries yet.\nTap + to capture your first one.'
+                            : 'No matches for "$_search".',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: AppColors.textSecondary),
+                        style: const TextStyle(color: AppColors.textSecondary),
                       ),
                     );
                   }

@@ -51,7 +51,22 @@ class CaptureDraft {
         raw: raw,
       );
 
-  static final _phoneRe = RegExp(r'(?:\+91[\s-]?)?([6-9]\d{4}[\s-]?\d{5})');
+  static final _phoneRe =
+      RegExp(r'(?<!\d)(?:\+?91[\s-]?)?([6-9]\d{4}[\s-]?\d{5})(?!\d)');
+
+  /// Digits-only phone: strips formatting and a leading country code / trunk
+  /// zero so the same number always dedupes and deep-links cleanly.
+  static String? normalizePhone(String? raw) {
+    if (raw == null) return null;
+    var digits = raw.replaceAll(RegExp(r'\D'), '');
+    if (digits.length == 12 && digits.startsWith('91')) {
+      digits = digits.substring(2);
+    }
+    if (digits.length == 11 && digits.startsWith('0')) {
+      digits = digits.substring(1);
+    }
+    return digits.isEmpty ? null : digits;
+  }
   static final _nameRe = RegExp(
       r"(?:this is|i am|i'm|from)\s+([A-Z][a-z]+)|^([A-Z][a-z]+):",
       caseSensitive: false);
