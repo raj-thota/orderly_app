@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orderly_app/core/theme/app_colors.dart';
 import 'package:orderly_app/core/theme/app_spacing.dart';
 import 'package:orderly_app/core/utils/money.dart';
+import 'package:orderly_app/features/enquiries/presentation/capture_screen.dart';
 import 'package:orderly_app/shared/widgets/app_card.dart';
+import 'package:orderly_app/shared/widgets/app_primary_button.dart';
 
 import '../controller/products_provider.dart';
 import '../data/product.dart';
@@ -148,6 +150,21 @@ class ProductDetailScreen extends ConsumerWidget {
                   child: p.isUnique
                       ? _pieceStatusControl(context, ref, p)
                       : _stockControl(context, ref, p),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                AppPrimaryButton(
+                  label: 'Create enquiry',
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => CaptureScreen(
+                        productId: p.id,
+                        productName: p.name,
+                        productIsUnique: p.isUnique,
+                        productPrice: p.price,
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),

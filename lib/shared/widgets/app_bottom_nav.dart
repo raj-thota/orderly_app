@@ -32,7 +32,7 @@ class AppBottomNav extends StatelessWidget {
           children: [
             Expanded(child: navItem(Icons.home_rounded, "Home", 0)),
             const SizedBox(width: 8),
-            Expanded(child: navItem(Icons.people_alt_rounded, "Leads", 1)),
+            Expanded(child: navItem(Icons.people_alt_rounded, "Enquiries", 1)),
             const SizedBox(width: 8),
             Expanded(child: navItem(Icons.shopping_bag_rounded, "Orders", 2)),
             const SizedBox(width: 8),

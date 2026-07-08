@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orderly_app/app/app_bootstrap.dart';
 import 'package:orderly_app/app/app_setup_screen.dart';
 import 'package:orderly_app/app/splash_screen.dart';
-import 'package:orderly_app/shared/components/add_entry_screen.dart';
 import 'package:orderly_app/core/theme/app_theme.dart';
 
 // Core
@@ -16,7 +15,8 @@ import 'package:orderly_app/core/theme/app_colors.dart';
 import 'features/catalog/presentation/catalog_screen.dart';
 import 'features/catalog/presentation/product_form_screen.dart';
 import 'features/dashboard/presentation/dashboard_screen.dart';
-import 'features/leads/presentation/leads_screen.dart';
+import 'package:orderly_app/features/enquiries/presentation/enquiries_screen.dart';
+import 'package:orderly_app/features/enquiries/presentation/capture_screen.dart';
 import 'features/orders/presentation/orders_screen.dart';
 
 // Shared Widgets
@@ -80,7 +80,7 @@ class _MainScreenState extends State<MainScreen> {
 
     _screens = [
       DashboardScreen(onNavigate: changeTab),
-      const LeadsScreen(),
+      const EnquiriesScreen(),
       OrdersScreen(),
       const CatalogScreen(),
     ];
@@ -105,10 +105,9 @@ class _MainScreenState extends State<MainScreen> {
             );
             return;
           }
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            builder: (_) => const AddEntryScreen(),
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const CaptureScreen()),
           );
         },
         child: const Icon(Icons.add, color: Colors.white),
