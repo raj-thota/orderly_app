@@ -30,18 +30,8 @@ Deno.serve(async (req) => {
     return json({ error: "unauthorized" }, 401);
   }
 
-  const { data: allowed, error: rlErr } = await supabase.rpc(
-    "check_ai_parse_rate_limit",
-    { p_max: RATE_MAX, p_window_seconds: RATE_WINDOW_SECONDS },
-  );
-  if (rlErr) {
-    console.error("rate_limit_rpc_error");
-    return json({ error: "internal" }, 500);
-  }
-  if (allowed !== true) {
-    return json({ error: "rate_limited" }, 429);
-  }
-
+  // Validate input before consuming a rate-limit slot so malformed requests
+  // never burn the user's quota.
   let text: unknown;
   try {
     const body = await req.json();
@@ -54,6 +44,18 @@ Deno.serve(async (req) => {
   }
   if (text.length > MAX_INPUT_CHARS) {
     return json({ error: "too_long" }, 413);
+  }
+
+  const { data: allowed, error: rlErr } = await supabase.rpc(
+    "check_ai_parse_rate_limit",
+    { p_max: RATE_MAX, p_window_seconds: RATE_WINDOW_SECONDS },
+  );
+  if (rlErr) {
+    console.error("rate_limit_rpc_error");
+    return json({ error: "internal" }, 500);
+  }
+  if (allowed !== true) {
+    return json({ error: "rate_limited" }, 429);
   }
 
   try {

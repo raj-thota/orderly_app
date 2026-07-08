@@ -41,7 +41,12 @@ class GeminiParser implements EnquiryParser {
       const data = await res.json();
       const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text;
       if (typeof raw !== "string") throw new Error("gemini_empty");
-      return JSON.parse(raw) as ParsedEnquiry;
+      try {
+        return JSON.parse(raw) as ParsedEnquiry;
+      } catch (_) {
+        // Never surface the payload fragment JSON.parse embeds in its message.
+        throw new Error("gemini_bad_json");
+      }
     } finally {
       clearTimeout(timer);
     }
