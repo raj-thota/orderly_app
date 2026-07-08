@@ -10,6 +10,7 @@ import 'package:orderly_app/features/enquiries/data/customer.dart';
 import 'package:orderly_app/features/enquiries/data/customers_service.dart';
 import 'package:orderly_app/features/enquiries/data/enquiries_service.dart';
 import 'package:orderly_app/features/enquiries/data/enquiry.dart';
+import 'package:orderly_app/features/catalog/data/product.dart';
 
 class FakeCustomersService implements CustomersService {
   final created = <Map<String, String?>>[];
@@ -378,5 +379,24 @@ void main() {
     await controller.save(quoteText: 'QUOTE-BODY');
 
     expect(enquiries.enquiries.single['quote_text'], 'QUOTE-BODY');
+  });
+
+  test('buildQuotation composes from the draft, catalog and business', () async {
+    final c = makeContainer(FakeCustomersService(), FakeEnquiriesService());
+    final controller = c.read(captureControllerProvider.notifier);
+
+    controller.setText('Priya wants 2 saree');
+
+    final quote = controller.buildQuotation(
+      businessName: 'Rekha Boutique',
+      upiId: 'rekha@upi',
+      upiName: 'Rekha',
+      products: const [Product(id: 'p1', name: 'Silk Saree', price: 2500)],
+    );
+
+    expect(quote.total, 5000);
+    expect(quote.message, contains('Rekha Boutique'));
+    expect(quote.message, contains('Silk Saree x 2'));
+    expect(quote.message, contains('₹5,000'));
   });
 }

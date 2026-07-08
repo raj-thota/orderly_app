@@ -1,6 +1,8 @@
 import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:orderly_app/features/catalog/data/product.dart';
+import 'package:orderly_app/features/quotations/data/quotation.dart';
 
 import '../data/ai_parse_service.dart';
 import '../data/capture_draft.dart';
@@ -307,5 +309,21 @@ class CaptureController extends StateNotifier<CaptureState> {
     } finally {
       if (mounted) state = state.copyWith(saving: false);
     }
+  }
+
+  Quotation buildQuotation({
+    required String businessName,
+    required String? upiId,
+    required String? upiName,
+    required List<Product> products,
+  }) {
+    final lines = matchCatalog(state.draft.items, products);
+    return Quotation.compose(
+      businessName: businessName,
+      upiId: upiId,
+      upiName: upiName,
+      customerName: state.draft.name,
+      lines: lines,
+    );
   }
 }
