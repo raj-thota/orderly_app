@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/ai_parse_service.dart';
@@ -15,6 +17,8 @@ class CaptureState {
     this.attachedProductName,
     this.attachedProductIsUnique = false,
     this.attachedItem,
+    this.screenshotPath,
+    this.screenshotBytes,
     this.aiRefining = false,
     this.aiHighlight = const {},
     this.saving = false,
@@ -32,6 +36,10 @@ class CaptureState {
   /// Line item pinned by attachProduct; survives re-parses of the text.
   final DraftItem? attachedItem;
 
+  /// Local path + bytes of an attached chat screenshot (null when none).
+  final String? screenshotPath;
+  final Uint8List? screenshotBytes;
+
   /// True while an async AI refine is in flight for the current text.
   final bool aiRefining;
 
@@ -48,6 +56,8 @@ class CaptureState {
     String? attachedProductName,
     bool? attachedProductIsUnique,
     DraftItem? attachedItem,
+    String? screenshotPath,
+    Uint8List? screenshotBytes,
     bool? aiRefining,
     Set<String>? aiHighlight,
     bool clearAttachment = false,
@@ -65,6 +75,8 @@ class CaptureState {
             ? false
             : (attachedProductIsUnique ?? this.attachedProductIsUnique),
         attachedItem: clearAttachment ? null : (attachedItem ?? this.attachedItem),
+        screenshotPath: screenshotPath ?? this.screenshotPath,
+        screenshotBytes: screenshotBytes ?? this.screenshotBytes,
         aiRefining: aiRefining ?? this.aiRefining,
         aiHighlight: aiHighlight ?? this.aiHighlight,
         saving: saving ?? this.saving,
@@ -120,8 +132,22 @@ class CaptureController extends StateNotifier<CaptureState> {
     if (willRefine) _refine(text, token);
   }
 
-  Future<void> _refine(String text, int token) async {
-    final ai = await _ai.refine(text);
+  void attachScreenshot(Uint8List bytes,
+      {required String path, String mime = 'image/jpeg'}) {
+    _parseToken++;
+    final token = _parseToken;
+    state = state.copyWith(
+      screenshotPath: path,
+      screenshotBytes: bytes,
+      aiRefining: true,
+      aiHighlight: const {},
+    );
+    _refine(state.draft.raw, token, image: bytes, mime: mime);
+  }
+
+  Future<void> _refine(String text, int token,
+      {Uint8List? image, String mime = 'image/jpeg'}) async {
+    final ai = await _ai.refine(text, image: image, mime: mime);
     if (!mounted || token != _parseToken) return; // superseded
     if (ai == null) {
       state = state.copyWith(aiRefining: false);

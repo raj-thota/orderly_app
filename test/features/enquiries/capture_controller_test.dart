@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orderly_app/features/enquiries/controller/capture_provider.dart';
@@ -78,9 +80,12 @@ class FakeAiParseService extends AiParseService {
       : super(invoker: (_) async => null);
   final AiParse? _result;
   final Duration delay;
+  Uint8List? lastImage;
 
   @override
-  Future<AiParse?> refine(String text) async {
+  Future<AiParse?> refine(String text,
+      {Uint8List? image, String mime = 'image/jpeg'}) async {
+    lastImage = image;
     if (delay != Duration.zero) await Future.delayed(delay);
     return _result;
   }
@@ -310,6 +315,29 @@ void main() {
     final state = c.read(captureControllerProvider);
     expect(state.draft.followUpDate, DateTime(2026, 12, 25)); // manual survived
     expect(state.draft.intent, 'follow_up'); // AI 'order' discarded
+    expect(state.aiRefining, isFalse);
+  });
+
+  test('attachScreenshot stores the shot and refines with the image', () async {
+    final fakeAi = FakeAiParseService(const AiParse(
+      name: 'Priya',
+      intent: 'order',
+      type: 'order',
+      confidence: 0.9,
+    ));
+    final c = makeContainer(
+        FakeCustomersService(), FakeEnquiriesService(), ai: fakeAi);
+    final controller = c.read(captureControllerProvider.notifier);
+
+    final bytes = Uint8List.fromList([9, 8, 7]);
+    controller.attachScreenshot(bytes, path: '/tmp/shot.jpg');
+    await Future<void>.delayed(Duration.zero);
+
+    final state = c.read(captureControllerProvider);
+    expect(state.screenshotPath, '/tmp/shot.jpg');
+    expect(state.screenshotBytes, bytes);
+    expect(fakeAi.lastImage, bytes); // image reached the AI service
+    expect(state.draft.name, 'Priya'); // merge ran
     expect(state.aiRefining, isFalse);
   });
 }
