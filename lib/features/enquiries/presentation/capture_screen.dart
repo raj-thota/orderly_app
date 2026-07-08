@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:orderly_app/core/services/notification_service.dart';
 import 'package:orderly_app/core/theme/app_colors.dart';
 import 'package:orderly_app/core/theme/app_spacing.dart';
@@ -143,6 +145,24 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
         draft.copyWith(followUpDate: picked, intent: 'follow_up'));
   }
 
+  Future<void> _attachScreenshot() async {
+    final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (picked == null) return;
+    final compressed = await FlutterImageCompress.compressWithFile(
+      picked.path,
+      minWidth: 1280,
+      minHeight: 1280,
+      quality: 80,
+      format: CompressFormat.jpeg,
+    );
+    final bytes = compressed ?? await picked.readAsBytes();
+    if (!mounted) return;
+    ref.read(captureControllerProvider.notifier).attachScreenshot(
+          Uint8List.fromList(bytes),
+          path: picked.path,
+        );
+  }
+
   Future<void> _save() async {
     final controller = ref.read(captureControllerProvider.notifier);
     final messenger = ScaffoldMessenger.of(context);
@@ -172,7 +192,9 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
     final state = ref.watch(captureControllerProvider);
     final draft = state.draft;
     final controller = ref.read(captureControllerProvider.notifier);
-    final hasContent = !draft.isEmpty || state.attachedProductId != null;
+    final hasContent = !draft.isEmpty ||
+        state.attachedProductId != null ||
+        state.screenshotBytes != null;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Capture')),
@@ -210,10 +232,27 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
                     color: _listening ? AppColors.danger : null),
                 label: Text(_listening ? 'Stop' : 'Speak'),
               ),
+              TextButton.icon(
+                onPressed: _attachScreenshot,
+                icon: const Icon(Icons.image_outlined, size: 18),
+                label: const Text('Screenshot'),
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
           if (hasContent) ...[
+            if (state.screenshotBytes != null) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                child: Image.memory(
+                  state.screenshotBytes!,
+                  height: 160,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+            ],
             DraftCard(
               draft: draft,
               attachedProductName: state.attachedProductName,

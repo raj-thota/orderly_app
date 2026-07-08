@@ -57,6 +57,12 @@ void main() {
     expect(enquiries.enquiries, hasLength(1));
   });
 
+  testWidgets('offers an attach-screenshot action', (tester) async {
+    await tester
+        .pumpWidget(wrap(const CaptureScreen(), FakeEnquiriesService()));
+    expect(find.text('Screenshot'), findsOneWidget);
+  });
+
   testWidgets('shows the AI refining indicator while a refine is in flight',
       (tester) async {
     await tester.pumpWidget(wrap(
