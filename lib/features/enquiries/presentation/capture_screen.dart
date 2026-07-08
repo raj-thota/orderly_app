@@ -199,7 +199,11 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
                 style: TextStyle(
                     fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
             const SizedBox(height: AppSpacing.md),
-            SelectableText(quote.message),
+            Flexible(
+              child: SingleChildScrollView(
+                child: SelectableText(quote.message),
+              ),
+            ),
             const SizedBox(height: AppSpacing.lg),
             AppPrimaryButton(
               label: 'Share on WhatsApp',
@@ -213,11 +217,24 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
     if (send != true || !mounted) return;
 
     final phone = draft.phone;
-    final waBase = (phone != null && phone.isNotEmpty)
-        ? 'https://wa.me/91$phone'
-        : 'https://wa.me/';
+    final validPhone =
+        phone != null && RegExp(r'^[6-9]\d{9}$').hasMatch(phone);
+    final waBase =
+        validPhone ? 'https://wa.me/91$phone' : 'https://wa.me/';
     final uri = Uri.parse('$waBase?text=${Uri.encodeComponent(quote.message)}');
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+    bool launched = false;
+    try {
+      launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {}
+    if (!mounted) return;
+    if (!launched) {
+      // Never record a quote_sent activity when WhatsApp did not open.
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not open WhatsApp')),
+      );
+      return;
+    }
 
     try {
       await controller.save(quoteText: quote.message);

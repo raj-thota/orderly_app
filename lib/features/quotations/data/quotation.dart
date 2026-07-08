@@ -29,7 +29,9 @@ List<QuoteLine> matchCatalog(List<DraftItem> items, List<Product> products) {
     for (final p in products) {
       final hay = p.name.trim().toLowerCase();
       if (needle.isEmpty) break;
-      if (hay.contains(needle) || needle.contains(hay)) {
+      // Reverse match only for names long enough to be meaningful, so a very
+      // short product name (e.g. a size code) can't hijack unrelated items.
+      if (hay.contains(needle) || (hay.length >= 3 && needle.contains(hay))) {
         match = p;
         break;
       }

@@ -37,6 +37,17 @@ void main() {
     expect(lines.single.unitPrice, 0);
   });
 
+  test('matchCatalog does not let a 1-2 char product hijack items', () {
+    // 'ar' is a substring of 'saree'; the reverse-match guard (len >= 3) must
+    // suppress it so the item stays free-text instead of taking 'ar's price.
+    final lines = matchCatalog(
+      const [DraftItem(name: 'saree', qty: 1)],
+      const [Product(id: 'x', name: 'ar', price: 50)],
+    );
+    expect(lines.single.name, 'saree');
+    expect(lines.single.unitPrice, 0);
+  });
+
   test('compose renders lines, total and UPI', () {
     final quote = Quotation.compose(
       businessName: 'Rekha Boutique',
