@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'capture_draft.dart';
@@ -28,7 +31,8 @@ class AiParse {
 /// Sends text to the `parse-enquiry` edge function and coerces the untrusted
 /// JSON into a strict [AiParse]. Never throws and never blocks longer than
 /// [timeout]; any failure resolves to null so the caller keeps the rules draft.
-typedef AiInvoker = Future<Map<String, dynamic>?> Function(String text);
+typedef AiInvoker = Future<Map<String, dynamic>?> Function(
+    Map<String, dynamic> body);
 
 class AiParseService {
   AiParseService({
@@ -43,16 +47,25 @@ class AiParseService {
   static const _intents = {'inquiry', 'order', 'follow_up'};
   static const _types = {'enquiry', 'order'};
 
-  static Future<Map<String, dynamic>?> _defaultInvoke(String text) async {
+  static Future<Map<String, dynamic>?> _defaultInvoke(
+      Map<String, dynamic> body) async {
     final res = await Supabase.instance.client.functions
-        .invoke('parse-enquiry', body: {'text': text});
+        .invoke('parse-enquiry', body: body);
     final data = res.data;
     return data is Map<String, dynamic> ? data : null;
   }
 
-  Future<AiParse?> refine(String text) async {
+  Future<AiParse?> refine(
+    String text, {
+    Uint8List? image,
+    String mime = 'image/jpeg',
+  }) async {
+    final body = <String, dynamic>{
+      'text': text,
+      if (image != null) 'image': {'mime': mime, 'data': base64Encode(image)},
+    };
     try {
-      final json = await _invoke(text).timeout(_timeout);
+      final json = await _invoke(body).timeout(_timeout);
       if (json == null) return null;
       return _coerce(json);
     } catch (_) {

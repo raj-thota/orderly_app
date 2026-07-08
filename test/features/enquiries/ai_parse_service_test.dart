@@ -1,11 +1,16 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orderly_app/features/enquiries/data/ai_parse_service.dart';
 
 void main() {
+  Map<String, dynamic>? lastBody;
   AiParseService withJson(Map<String, dynamic>? json, {Duration? delay}) {
     return AiParseService(
       timeout: const Duration(milliseconds: 100),
-      invoker: (text) async {
+      invoker: (body) async {
+        lastBody = body;
         if (delay != null) await Future.delayed(delay);
         return json;
       },
@@ -94,5 +99,20 @@ void main() {
       invoker: (_) async => throw Exception('boom'),
     );
     expect(await svc.refine('x'), isNull);
+  });
+
+  test('forwards the text in the request body', () async {
+    await withJson({'confidence': 0.5}).refine('order 2 sarees');
+    expect(lastBody!['text'], 'order 2 sarees');
+    expect(lastBody!.containsKey('image'), isFalse);
+  });
+
+  test('base64-encodes an attached image into the body', () async {
+    final bytes = Uint8List.fromList([1, 2, 3, 4]);
+    await withJson({'confidence': 0.5})
+        .refine('', image: bytes, mime: 'image/png');
+    final image = lastBody!['image'] as Map<String, dynamic>;
+    expect(image['mime'], 'image/png');
+    expect(image['data'], base64Encode(bytes));
   });
 }
