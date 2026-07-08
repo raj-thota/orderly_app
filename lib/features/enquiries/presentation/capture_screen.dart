@@ -8,8 +8,11 @@ import 'package:image_picker/image_picker.dart';
 import 'package:orderly_app/core/services/notification_service.dart';
 import 'package:orderly_app/core/theme/app_colors.dart';
 import 'package:orderly_app/core/theme/app_spacing.dart';
+import 'package:orderly_app/features/business/controller/business_profile_provider.dart';
+import 'package:orderly_app/features/catalog/controller/products_provider.dart';
 import 'package:orderly_app/shared/widgets/app_primary_button.dart';
 import 'package:speech_to_text/speech_to_text.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../controller/capture_provider.dart';
 import '../controller/enquiries_provider.dart';
@@ -163,6 +166,76 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
         );
   }
 
+  Future<void> _sendQuote() async {
+    final profile = ref.read(businessProfileProvider).valueOrNull;
+    final products =
+        ref.read(productsControllerProvider).valueOrNull ?? const [];
+    final controller = ref.read(captureControllerProvider.notifier);
+    final draft = ref.read(captureControllerProvider).draft;
+
+    final quote = controller.buildQuotation(
+      businessName: profile?.name ?? 'My Shop',
+      upiId: profile?.upiId,
+      upiName: profile?.upiName,
+      products: products,
+    );
+
+    final messenger = ScaffoldMessenger.of(context);
+    final send = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.only(
+          left: AppSpacing.lg,
+          right: AppSpacing.lg,
+          top: AppSpacing.lg,
+          bottom: MediaQuery.of(sheetContext).viewInsets.bottom + AppSpacing.lg,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text('Quotation preview',
+                style: TextStyle(
+                    fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+            const SizedBox(height: AppSpacing.md),
+            SelectableText(quote.message),
+            const SizedBox(height: AppSpacing.lg),
+            AppPrimaryButton(
+              label: 'Share on WhatsApp',
+              onPressed: () => Navigator.pop(sheetContext, true),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (send != true || !mounted) return;
+
+    final phone = draft.phone;
+    final waBase = (phone != null && phone.isNotEmpty)
+        ? 'https://wa.me/91$phone'
+        : 'https://wa.me/';
+    final uri = Uri.parse('$waBase?text=${Uri.encodeComponent(quote.message)}');
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+    try {
+      await controller.save(quoteText: quote.message);
+      if (!mounted) return;
+      if (Navigator.canPop(context)) Navigator.pop(context);
+      ref.read(enquiriesControllerProvider.notifier).load();
+      NotificationService.syncLeadNotifications().catchError((_) {});
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Quote shared and enquiry saved')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Shared, but could not save. Try again.')),
+      );
+    }
+  }
+
   Future<void> _save() async {
     final controller = ref.read(captureControllerProvider.notifier);
     final messenger = ScaffoldMessenger.of(context);
@@ -192,6 +265,9 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
     final state = ref.watch(captureControllerProvider);
     final draft = state.draft;
     final controller = ref.read(captureControllerProvider.notifier);
+    // Warm the providers the quote action reads so they are loaded on tap.
+    ref.watch(businessProfileProvider);
+    ref.watch(productsControllerProvider);
     final hasContent = !draft.isEmpty ||
         state.attachedProductId != null ||
         state.screenshotBytes != null;
@@ -311,6 +387,14 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
               loading: state.saving,
               onPressed: _save,
             ),
+            if (draft.items.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.sm),
+              OutlinedButton.icon(
+                onPressed: _sendQuote,
+                icon: const Icon(Icons.request_quote_outlined, size: 18),
+                label: const Text('Send quote'),
+              ),
+            ],
           ],
         ],
       ),
