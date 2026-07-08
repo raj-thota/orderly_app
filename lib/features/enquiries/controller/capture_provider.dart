@@ -63,10 +63,14 @@ class CaptureController extends StateNotifier<CaptureState> {
   void setText(String text) {
     final parsed = CaptureDraft.fromText(text);
     // Manual edits to name/phone survive re-parses of the message text.
+    // Previously attached/edited items are preserved when the re-parsed text
+    // yields no item patterns (e.g. "confirm order for 9876543210" has no
+    // qty+item pairs, so we keep whatever was attached via attachProduct).
     state = state.copyWith(
       draft: parsed.copyWith(
         name: state.draft.name ?? parsed.name,
         phone: state.draft.phone ?? parsed.phone,
+        items: parsed.items.isEmpty ? state.draft.items : parsed.items,
       ),
     );
   }
