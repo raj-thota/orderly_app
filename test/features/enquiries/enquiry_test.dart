@@ -56,4 +56,12 @@ void main() {
         EnquiryBucket.upcoming);
     expect(withFollow(null, 'new').bucket(now), EnquiryBucket.fresh);
   });
+
+  test('fromMap reads screenshot_url', () {
+    final e = Enquiry.fromMap({
+      'id': 'e1',
+      'screenshot_url': 'uid/123.jpg',
+    });
+    expect(e.screenshotUrl, 'uid/123.jpg');
+  });
 }

@@ -288,10 +288,11 @@ class CaptureController extends StateNotifier<CaptureState> {
       await _enquiries.addEnquiry(
         customerId: customer.id!,
         productId: state.attachedProductId,
-        source: source,
+        source: state.screenshotPath != null ? 'screenshot' : source,
         message: draft.raw.trim(),
         intent: draft.intent,
         followUpDate: draft.followUpDate,
+        screenshotPath: state.screenshotPath,
       );
       return SaveResult(SaveKind.enquiry, customer.name);
     } finally {

@@ -37,12 +37,14 @@ class FakeEnquiriesService implements EnquiriesService {
     String? message,
     String? intent,
     DateTime? followUpDate,
+    String? screenshotPath,
   }) async {
     enquiries.add({
       'customer_id': customerId,
       'product_id': productId,
       'source': source,
       'status': followUpDate != null ? 'follow' : 'new',
+      'screenshot_path': screenshotPath,
     });
     return Enquiry.fromMap({'id': 'e-new', 'customer_id': customerId});
   }
@@ -65,6 +67,8 @@ class FakeEnquiriesService implements EnquiriesService {
     return 'o-new';
   }
 
+  @override
+  Future<String> uploadScreenshot(String localPath) async => 'fake/$localPath';
   @override
   Future<List<Enquiry>> fetchEnquiries() async => [];
   @override

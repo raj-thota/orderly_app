@@ -13,6 +13,7 @@ class Enquiry {
     this.productPrice,
     this.source = 'manual',
     this.message,
+    this.screenshotUrl,
     this.intent,
     this.status = 'new',
     this.followUpDate,
@@ -32,6 +33,7 @@ class Enquiry {
   final double? productPrice;
   final String source;
   final String? message;
+  final String? screenshotUrl;
   final String? intent;
   final String status;
   final DateTime? followUpDate;
@@ -58,6 +60,7 @@ class Enquiry {
           : null,
       source: (map['source'] ?? 'manual').toString(),
       message: map['message']?.toString(),
+      screenshotUrl: map['screenshot_url'] as String?,
       intent: map['intent']?.toString(),
       status: (map['status'] ?? 'new').toString(),
       followUpDate:

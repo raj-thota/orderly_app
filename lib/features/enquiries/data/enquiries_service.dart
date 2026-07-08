@@ -1,3 +1,7 @@
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'capture_draft.dart';
@@ -9,6 +13,29 @@ const _selectWithJoins =
 class EnquiriesService {
   SupabaseClient get _client => Supabase.instance.client;
   String get _userId => _client.auth.currentUser!.id;
+
+  static const _attachmentsBucket = 'enquiry-attachments';
+
+  /// Compresses and uploads a screenshot to the private attachments bucket,
+  /// returning the stored object path (scoped under the user's folder).
+  Future<String> uploadScreenshot(String localPath) async {
+    final bytes = await FlutterImageCompress.compressWithFile(
+      localPath,
+      minWidth: 1280,
+      minHeight: 1280,
+      quality: 80,
+      format: CompressFormat.jpeg,
+    );
+    final data = bytes ?? await File(localPath).readAsBytes();
+    final path =
+        '$_userId/${DateTime.now().millisecondsSinceEpoch}_${data.length}.jpg';
+    await _client.storage.from(_attachmentsBucket).uploadBinary(
+          path,
+          Uint8List.fromList(data),
+          fileOptions: const FileOptions(contentType: 'image/jpeg'),
+        );
+    return path;
+  }
 
   Future<List<Enquiry>> fetchEnquiries() async {
     final rows = await _client
@@ -37,7 +64,11 @@ class EnquiriesService {
     String? message,
     String? intent,
     DateTime? followUpDate,
+    String? screenshotPath,
   }) async {
+    final screenshotUrl = (screenshotPath != null && screenshotPath.isNotEmpty)
+        ? await uploadScreenshot(screenshotPath)
+        : null;
     final row = await _client
         .from('leads')
         .insert({
@@ -47,6 +78,7 @@ class EnquiriesService {
           'source': source,
           if (message != null && message.isNotEmpty) 'message': message,
           'intent': ?intent,
+          'screenshot_url': ?screenshotUrl,
           'status': followUpDate != null ? 'follow' : 'new',
           if (followUpDate != null)
             'follow_up_date': followUpDate.toIso8601String(),
