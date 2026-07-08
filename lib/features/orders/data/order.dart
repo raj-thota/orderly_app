@@ -1,3 +1,5 @@
+import 'package:orderly_app/features/payments/data/payment.dart';
+
 class OrderItem {
   const OrderItem({
     required this.name,
@@ -45,6 +47,7 @@ class Order {
     this.notes,
     this.createdAt,
     this.items = const [],
+    this.payments = const [],
   });
 
   final String? id;
@@ -63,10 +66,18 @@ class Order {
   final String? notes;
   final DateTime? createdAt;
   final List<OrderItem> items;
+  final List<Payment> payments;
+
+  double get paidTotal => payments.fold<double>(0, (sum, p) => sum + p.amount);
+  double get dues {
+    final d = grandTotal - paidTotal;
+    return d > 0 ? d : 0;
+  }
 
   factory Order.fromMap(Map<String, dynamic> map) {
     final customer = map['customers'];
     final itemsRaw = map['order_items'] as List? ?? const [];
+    final paymentsRaw = map['payments'] as List? ?? const [];
     return Order(
       id: map['id']?.toString(),
       orderNumber: int.tryParse(map['order_number']?.toString() ?? ''),
@@ -86,6 +97,10 @@ class Order {
       items: [
         for (final i in itemsRaw)
           if (i is Map) OrderItem.fromMap(Map<String, dynamic>.from(i)),
+      ],
+      payments: [
+        for (final p in paymentsRaw)
+          if (p is Map) Payment.fromMap(Map<String, dynamic>.from(p)),
       ],
     );
   }
