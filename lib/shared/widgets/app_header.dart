@@ -6,6 +6,31 @@ import 'package:orderly_app/features/profile/presentation/profile_screen.dart';
 import 'package:orderly_app/features/leads/controller/leads_controller.dart';
 import 'package:orderly_app/shared/components/help_and_support_screen.dart';
 
+/// One-line status shown under the business name on the dashboard. Pure so it
+/// can be unit-tested. Counts open follow-ups due today or overdue, plus fresh
+/// enquiries still to chase; falls back to an all-clear message.
+String dashboardDailyBrief(List<Map<String, dynamic>> leads, DateTime now) {
+  final endOfToday = DateTime(now.year, now.month, now.day, 23, 59, 59);
+  var followUpsDue = 0;
+  var toChase = 0;
+  for (final l in leads) {
+    final status = l['status']?.toString();
+    if (status == 'closed' || status == 'won' || status == 'lost') continue;
+    final d = DateTime.tryParse(l['follow_up_date']?.toString() ?? '');
+    if (d != null && !d.isAfter(endOfToday)) followUpsDue++;
+    if (status == 'new') toChase++;
+  }
+  final parts = <String>[];
+  if (followUpsDue > 0) {
+    parts.add('$followUpsDue follow-up${followUpsDue == 1 ? '' : 's'} due');
+  }
+  if (toChase > 0) {
+    parts.add('$toChase ${toChase == 1 ? 'enquiry' : 'enquiries'} to chase');
+  }
+  if (parts.isEmpty) return "You're all caught up today 🎉";
+  return parts.join(' · ');
+}
+
 class AppHeader extends ConsumerWidget {
   const AppHeader({super.key});
 
@@ -157,9 +182,10 @@ class AppHeader extends ConsumerWidget {
 
           const SizedBox(height: 8),
 
-          const Text(
-            "Stay on top of every lead. Never miss a customer again.",
-            style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+          Text(
+            dashboardDailyBrief(leads, now),
+            style: const TextStyle(
+                color: Colors.white70, fontSize: 13, height: 1.4),
           ),
         ],
       ),

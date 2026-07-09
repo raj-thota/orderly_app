@@ -19,7 +19,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   late final AnimationController _controller;
   late final Animation<double> _scaleAnimation;
 
-  String loadingText = "Initializing...";
+  String loadingText = "Getting things ready…";
 
   @override
   void initState() {
@@ -48,14 +48,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   Future<void> _initApp() async {
     final authController = ref.read(authProvider.notifier);
 
-    _setLoadingText("Checking session...");
+    _setLoadingText("Signing you in…");
 
     await authController.checkAuth();
 
     final isLoggedIn = ref.read(authProvider).isAuthenticated;
 
     if (isLoggedIn) {
-      _setLoadingText("Checking your business...");
+      _setLoadingText("Loading your shop…");
       final hasProfile = await AuthService().hasBusinessProfile();
 
       if (!mounted) return;
@@ -72,7 +72,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         return;
       }
 
-      _setLoadingText("Loading your leads...");
+      _setLoadingText("Loading your enquiries…");
       await ref.read(leadsControllerProvider.notifier).loadLeads();
     }
 
@@ -112,7 +112,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
               ),
               const SizedBox(height: 8),
               const Text(
-                "Close deals from chats, instantly",
+                "Turn DMs into paid orders.",
                 style: TextStyle(color: Colors.white60, fontSize: 13),
               ),
               const SizedBox(height: 30),
