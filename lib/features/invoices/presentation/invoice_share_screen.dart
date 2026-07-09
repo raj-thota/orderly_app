@@ -24,6 +24,7 @@ class _InvoiceShareScreenState extends ConsumerState<InvoiceShareScreen> {
   InvoiceTemplate? _template;
   bool _preparing = true;
   bool _failed = false;
+  String? _assignedNumber;
 
   @override
   void initState() {
@@ -42,6 +43,7 @@ class _InvoiceShareScreenState extends ConsumerState<InvoiceShareScreen> {
     setState(() {
       _preparing = false;
       _failed = number == null;
+      _assignedNumber = number;
     });
   }
 
@@ -57,13 +59,14 @@ class _InvoiceShareScreenState extends ConsumerState<InvoiceShareScreen> {
     final profile = ref.watch(businessProfileProvider).valueOrNull;
     final template = _template ?? invoiceTemplateFromKey(profile?.invoiceTemplate);
     final order = _live;
+    // Prefer the number in hand from prepare(); the reloaded order may have
+    // failed to fetch after a successful assign.
+    final number = order.invoiceNumber ?? _assignedNumber;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(order.invoiceNumber != null
-            ? 'Invoice ${order.invoiceNumber}'
-            : 'Invoice'),
+        title: Text(number != null ? 'Invoice $number' : 'Invoice'),
       ),
       body: _preparing
           ? const Center(child: CircularProgressIndicator())
@@ -104,7 +107,8 @@ class _InvoiceShareScreenState extends ConsumerState<InvoiceShareScreen> {
                       child: PdfPreview(
                         key: ValueKey(template),
                         build: (format) => buildInvoicePdf(
-                          InvoiceData.fromOrder(order, profile),
+                          InvoiceData.fromOrder(order, profile,
+                              overrideNumber: number),
                           template,
                         ),
                         canChangePageFormat: false,

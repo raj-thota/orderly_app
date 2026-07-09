@@ -27,14 +27,8 @@ class _BusinessSetupScreenState extends ConsumerState<BusinessSetupScreen> {
   final _gstin = TextEditingController();
   final _gstRate = TextEditingController();
   String _template = 'classic';
+  bool _seededTemplate = false;
   bool _saving = false;
-
-  @override
-  void initState() {
-    super.initState();
-    final existing = ref.read(businessProfileProvider).valueOrNull;
-    if (existing != null) _template = existing.invoiceTemplate;
-  }
 
   @override
   void dispose() {
@@ -75,6 +69,15 @@ class _BusinessSetupScreenState extends ConsumerState<BusinessSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Seed the template from the saved profile once it resolves, so re-saving
+    // setup can't silently revert a chosen template back to 'classic'.
+    final existingTemplate =
+        ref.watch(businessProfileProvider).valueOrNull?.invoiceTemplate;
+    if (!_seededTemplate && existingTemplate != null) {
+      _template = existingTemplate;
+      _seededTemplate = true;
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('Set up your business')),
       body: Form(

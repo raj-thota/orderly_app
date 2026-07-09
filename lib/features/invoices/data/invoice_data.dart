@@ -77,9 +77,13 @@ class InvoiceData {
 
   bool get hasGst => (gstin ?? '').trim().isNotEmpty;
 
-  factory InvoiceData.fromOrder(Order order, BusinessProfile? profile) {
+  factory InvoiceData.fromOrder(
+    Order order,
+    BusinessProfile? profile, {
+    String? overrideNumber,
+  }) {
     final hasGst = (profile?.gstin ?? '').trim().isNotEmpty;
-    double taxable = 0;
+    double summedTaxable = 0;
     double tax = 0;
     final lines = <InvoiceLine>[];
 
@@ -87,10 +91,10 @@ class InvoiceData {
       final lt = it.lineTotal;
       if (hasGst && it.gstRate > 0) {
         final base = lt / (1 + it.gstRate / 100);
-        taxable += base;
+        summedTaxable += base;
         tax += lt - base;
       } else {
-        taxable += lt;
+        summedTaxable += lt;
       }
       lines.add(InvoiceLine(
         name: it.name,
@@ -102,16 +106,27 @@ class InvoiceData {
     }
 
     double round2(double v) => (v * 100).round() / 100;
-    final half = round2(tax / 2);
 
-    final upiUri = (profile?.upiId != null && profile!.upiId!.isNotEmpty)
-        ? buildUpiUri(
-            vpa: profile.upiId!,
-            name: profile.upiName,
-            amount: order.dues,
-            note: order.orderNumber != null ? 'Order #${order.orderNumber}' : 'Order',
-          )
-        : null;
+    // Derive the GST components from a single rounded total and take the
+    // taxable base as (grand total - tax), so subtotal + CGST + SGST always
+    // reconciles to the printed grand total (no ±1 paise drift).
+    final totalTax = hasGst ? round2(tax) : 0.0;
+    final cgst = round2(totalTax / 2);
+    final sgst = totalTax - cgst;
+    final taxable =
+        hasGst ? round2(order.grandTotal - totalTax) : round2(summedTaxable);
+
+    final upiUri =
+        (profile?.upiId != null && profile!.upiId!.isNotEmpty && order.dues > 0)
+            ? buildUpiUri(
+                vpa: profile.upiId!,
+                name: profile.upiName,
+                amount: order.dues,
+                note: order.orderNumber != null
+                    ? 'Order #${order.orderNumber}'
+                    : 'Order',
+              )
+            : null;
 
     return InvoiceData(
       businessName: profile?.name ?? 'My Business',
@@ -122,13 +137,13 @@ class InvoiceData {
       upiName: profile?.upiName,
       customerName: order.customerName,
       customerPhone: order.customerPhone,
-      invoiceNumber: order.invoiceNumber,
+      invoiceNumber: overrideNumber ?? order.invoiceNumber,
       date: order.createdAt ?? DateTime.now(),
       lines: lines,
-      subtotal: round2(taxable),
-      taxable: round2(taxable),
-      cgst: hasGst ? half : 0,
-      sgst: hasGst ? half : 0,
+      subtotal: taxable,
+      taxable: taxable,
+      cgst: cgst,
+      sgst: sgst,
       grandTotal: order.grandTotal,
       paid: order.paidTotal,
       dues: order.dues,
