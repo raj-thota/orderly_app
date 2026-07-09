@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:orderly_app/core/theme/app_colors.dart';
 
 class AppBottomNav extends StatelessWidget {
   final int currentIndex;
@@ -10,16 +11,24 @@ class AppBottomNav extends StatelessWidget {
     required this.onTap,
   });
 
+  static const List<(IconData, String)> _items = [
+    (Icons.home_rounded, 'Home'),
+    (Icons.people_alt_rounded, 'Enquiries'),
+    (Icons.shopping_bag_rounded, 'Orders'),
+    (Icons.storefront_rounded, 'Catalog'),
+    (Icons.receipt_long_rounded, 'Invoices'),
+  ];
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       top: false,
       child: Container(
-        height: 58,
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+        height: 62,
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.98),
-          border: const Border(top: BorderSide(color: Color(0xFFE5E7EB))),
+          color: AppColors.surface,
+          border: const Border(top: BorderSide(color: AppColors.border)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
@@ -30,72 +39,41 @@ class AppBottomNav extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Expanded(child: navItem(Icons.home_rounded, "Home", 0)),
-            const SizedBox(width: 8),
-            Expanded(child: navItem(Icons.people_alt_rounded, "Enquiries", 1)),
-            const SizedBox(width: 8),
-            Expanded(child: navItem(Icons.shopping_bag_rounded, "Orders", 2)),
-            const SizedBox(width: 8),
-            Expanded(child: navItem(Icons.storefront_rounded, "Catalog", 3)),
-            const SizedBox(width: 8),
-            Expanded(child: navItem(Icons.receipt_long_rounded, "Invoices", 4)),
+            for (var i = 0; i < _items.length; i++)
+              Expanded(child: _navItem(_items[i].$1, _items[i].$2, i)),
           ],
         ),
       ),
     );
   }
 
-  Widget navItem(IconData icon, String label, int index) {
+  Widget _navItem(IconData icon, String label, int index) {
     final isSelected = index == currentIndex;
+    final color = isSelected ? AppColors.primary : AppColors.textSecondary;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(14),
         onTap: isSelected ? null : () => onTap(index),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? const Color(0xFF6C4ED9).withValues(alpha: 0.10)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: Row(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                icon,
-                color: isSelected ? const Color(0xFF6C4ED9) : Colors.grey,
-                size: 20,
-              ),
-              Flexible(
-                child: AnimatedSize(
-                  duration: const Duration(milliseconds: 220),
-                  curve: Curves.easeOutCubic,
-                  child: isSelected
-                      ? Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const SizedBox(width: 6),
-                            Flexible(
-                              child: Text(
-                                label,
-                                maxLines: 1,
-                                softWrap: false,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Color(0xFF6C4ED9),
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ],
-                        )
-                      : const SizedBox.shrink(),
+              Icon(icon, color: color, size: 22),
+              const SizedBox(height: 3),
+              Text(
+                label,
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 10.5,
+                  height: 1.0,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                 ),
               ),
             ],
