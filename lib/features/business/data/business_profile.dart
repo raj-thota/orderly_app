@@ -13,6 +13,7 @@ class BusinessProfile {
     this.invoicePrefix = 'INV-',
     this.nextInvoiceNumber = 1,
     this.currency = 'INR',
+    this.invoiceTemplate = 'classic',
   });
 
   final String? id;
@@ -28,6 +29,7 @@ class BusinessProfile {
   final String invoicePrefix;
   final int nextInvoiceNumber;
   final String currency;
+  final String invoiceTemplate;
 
   bool get hasGst => (gstin ?? '').trim().isNotEmpty;
 
@@ -51,6 +53,7 @@ class BusinessProfile {
       invoicePrefix: (map['invoice_prefix'] ?? 'INV-').toString(),
       nextInvoiceNumber: _asInt(map['next_invoice_number'], 1),
       currency: (map['currency'] ?? 'INR').toString(),
+      invoiceTemplate: (map['invoice_template'] ?? 'classic').toString(),
     );
   }
 
@@ -65,9 +68,8 @@ class BusinessProfile {
         'upi_name': upiName,
         'gstin': gstin,
         'default_gst_rate': defaultGstRate,
-        'invoice_prefix': invoicePrefix,
-        'next_invoice_number': nextInvoiceNumber,
         'currency': currency,
+        'invoice_template': invoiceTemplate,
       };
 
   BusinessProfile copyWith({
@@ -78,6 +80,7 @@ class BusinessProfile {
     String? upiName,
     String? gstin,
     double? defaultGstRate,
+    String? invoiceTemplate,
   }) {
     return BusinessProfile(
       id: id,
@@ -93,6 +96,7 @@ class BusinessProfile {
       invoicePrefix: invoicePrefix,
       nextInvoiceNumber: nextInvoiceNumber,
       currency: currency,
+      invoiceTemplate: invoiceTemplate ?? this.invoiceTemplate,
     );
   }
 }
