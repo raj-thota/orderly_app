@@ -26,7 +26,15 @@ class _BusinessSetupScreenState extends ConsumerState<BusinessSetupScreen> {
   final _upiName = TextEditingController();
   final _gstin = TextEditingController();
   final _gstRate = TextEditingController();
+  String _template = 'classic';
   bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final existing = ref.read(businessProfileProvider).valueOrNull;
+    if (existing != null) _template = existing.invoiceTemplate;
+  }
 
   @override
   void dispose() {
@@ -48,6 +56,7 @@ class _BusinessSetupScreenState extends ConsumerState<BusinessSetupScreen> {
       upiName: _upiName.text.trim().isEmpty ? null : _upiName.text.trim(),
       gstin: _gstin.text.trim().isEmpty ? null : _gstin.text.trim(),
       defaultGstRate: double.tryParse(_gstRate.text.trim()) ?? 0,
+      invoiceTemplate: _template,
     );
 
     try {
@@ -97,6 +106,22 @@ class _BusinessSetupScreenState extends ConsumerState<BusinessSetupScreen> {
             const SizedBox(height: AppSpacing.sm),
             _field(_gstin, 'GSTIN'),
             _field(_gstRate, 'Default GST %', keyboard: TextInputType.number),
+            const SizedBox(height: AppSpacing.md),
+            DropdownButtonFormField<String>(
+              initialValue: _template,
+              decoration: InputDecoration(
+                labelText: 'Invoice template',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+              ),
+              items: const [
+                DropdownMenuItem(value: 'classic', child: Text('Classic')),
+                DropdownMenuItem(value: 'minimal', child: Text('Minimal')),
+                DropdownMenuItem(value: 'boutique', child: Text('Boutique')),
+              ],
+              onChanged: (v) => setState(() => _template = v ?? 'classic'),
+            ),
             const SizedBox(height: AppSpacing.xl),
             AppPrimaryButton(
               label: 'Save & continue',

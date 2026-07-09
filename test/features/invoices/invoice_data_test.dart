@@ -13,7 +13,7 @@ void main() {
         'created_at': '2026-07-08T00:00:00Z',
         'order_items': [
           {'name': 'Saree', 'qty': 1, 'unit_price': '5250', 'line_total': '5250',
-           if (gstRate != null) 'gst_rate': gstRate},
+           'gst_rate': ?gstRate},
         ],
         'payments': [
           {'amount': '2000'},

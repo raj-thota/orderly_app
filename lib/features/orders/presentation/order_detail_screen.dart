@@ -13,6 +13,7 @@ import 'package:orderly_app/features/payments/controller/payments_provider.dart'
 import 'package:orderly_app/features/payments/data/upi.dart';
 import 'package:orderly_app/features/payments/widgets/record_payment_sheet.dart';
 import 'package:orderly_app/features/payments/widgets/upi_collect_sheet.dart';
+import 'package:orderly_app/features/invoices/presentation/invoice_share_screen.dart';
 
 import '../controller/orders_provider.dart';
 import '../data/order.dart';
@@ -346,6 +347,16 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                 ],
               ],
             ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          OutlinedButton.icon(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => InvoiceShareScreen(order: order)),
+            ),
+            icon: const Icon(Icons.description_outlined, size: 18),
+            label: const Text('Share invoice'),
           ),
           if (order.courier != null && order.courier!.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.md),
