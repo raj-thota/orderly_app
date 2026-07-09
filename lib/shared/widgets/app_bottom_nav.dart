@@ -56,7 +56,7 @@ class AppBottomNav extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 220),
           curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
           decoration: BoxDecoration(
             color: isSelected
                 ? const Color(0xFF6C4ED9).withValues(alpha: 0.10)
@@ -71,24 +71,32 @@ class AppBottomNav extends StatelessWidget {
                 color: isSelected ? const Color(0xFF6C4ED9) : Colors.grey,
                 size: 20,
               ),
-              AnimatedSize(
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOutCubic,
-                child: isSelected
-                    ? Row(
-                        children: [
-                          const SizedBox(width: 8),
-                          Text(
-                            label,
-                            style: const TextStyle(
-                              color: Color(0xFF6C4ED9),
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w700,
+              Flexible(
+                child: AnimatedSize(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  child: isSelected
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                label,
+                                maxLines: 1,
+                                softWrap: false,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Color(0xFF6C4ED9),
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
                             ),
-                          ),
-                        ],
-                      )
-                    : const SizedBox.shrink(),
+                          ],
+                        )
+                      : const SizedBox.shrink(),
+                ),
               ),
             ],
           ),
