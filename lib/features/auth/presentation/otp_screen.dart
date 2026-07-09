@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:orderly_app/core/services/event_service.dart';
 import 'package:orderly_app/main.dart';
 import '../controller/auth_controller.dart';
 
@@ -32,6 +33,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     if (!mounted) return;
 
     if (success) {
+      ref.read(eventServiceProvider).track('signup_completed');
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => const MainScreen()),

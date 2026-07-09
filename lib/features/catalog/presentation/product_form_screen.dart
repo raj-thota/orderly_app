@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:orderly_app/core/services/event_service.dart';
 import 'package:orderly_app/core/theme/app_colors.dart';
 import 'package:orderly_app/core/theme/app_spacing.dart';
 import 'package:orderly_app/shared/widgets/app_primary_button.dart';
@@ -150,6 +151,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           qtyOnHand: qty,
           images: images,
         ));
+        ref.read(eventServiceProvider).track('catalog_item_added');
       }
 
       // Row saved — now photos the user removed are safe to delete.

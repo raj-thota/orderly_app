@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:orderly_app/core/services/event_service.dart';
 import 'package:orderly_app/features/orders/controller/orders_provider.dart';
 
 import '../data/payments_service.dart';
@@ -32,6 +33,7 @@ class PaymentsController extends StateNotifier<AsyncValue<void>> {
     state = result.hasError ? result : const AsyncValue.data(null);
     if (result.hasError) return false;
     await _ref.read(ordersControllerProvider.notifier).load();
+    _ref.read(eventServiceProvider).track('payment_recorded');
     return true;
   }
 }

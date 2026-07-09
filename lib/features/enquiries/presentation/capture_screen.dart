@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:orderly_app/core/services/event_service.dart';
 import 'package:orderly_app/core/services/notification_service.dart';
 import 'package:orderly_app/core/theme/app_colors.dart';
 import 'package:orderly_app/core/theme/app_spacing.dart';
@@ -237,7 +238,9 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
     }
 
     try {
-      await controller.save(quoteText: quote.message);
+      final result = await controller.save(quoteText: quote.message);
+      ref.read(eventServiceProvider).track(
+          result.kind == SaveKind.order ? 'order_created' : 'enquiry_created');
       if (!mounted) return;
       if (Navigator.canPop(context)) Navigator.pop(context);
       ref.read(enquiriesControllerProvider.notifier).load();
@@ -258,6 +261,8 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
     final messenger = ScaffoldMessenger.of(context);
     try {
       final result = await controller.save();
+      ref.read(eventServiceProvider).track(
+          result.kind == SaveKind.order ? 'order_created' : 'enquiry_created');
       if (!mounted) return;
       if (Navigator.canPop(context)) Navigator.pop(context);
       ref.read(enquiriesControllerProvider.notifier).load();
