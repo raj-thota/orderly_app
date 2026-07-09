@@ -18,6 +18,7 @@ import 'features/dashboard/presentation/dashboard_screen.dart';
 import 'package:orderly_app/features/enquiries/presentation/enquiries_screen.dart';
 import 'package:orderly_app/features/enquiries/presentation/capture_screen.dart';
 import 'features/orders/presentation/orders_screen.dart';
+import 'features/orders/controller/orders_provider.dart';
 import 'features/invoices/presentation/invoices_screen.dart';
 
 // Shared Widgets
@@ -58,14 +59,14 @@ class OrderlyApp extends StatelessWidget {
 }
 
 /// 🏠 Main App Screen
-class MainScreen extends StatefulWidget {
+class MainScreen extends ConsumerStatefulWidget {
   const MainScreen({super.key});
 
   @override
-  State<MainScreen> createState() => _MainScreenState();
+  ConsumerState<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class _MainScreenState extends ConsumerState<MainScreen> {
   int currentIndex = 0;
   late final List<Widget> _screens;
 
@@ -73,6 +74,12 @@ class _MainScreenState extends State<MainScreen> {
     setState(() {
       currentIndex = index;
     });
+    // The Orders and Invoices tabs live in an always-alive IndexedStack and
+    // only load once at startup; reload when entering them so a freshly
+    // converted enquiry / recorded payment / issued invoice shows up.
+    if (index == 2 || index == 4) {
+      ref.read(ordersControllerProvider.notifier).load();
+    }
   }
 
   @override
