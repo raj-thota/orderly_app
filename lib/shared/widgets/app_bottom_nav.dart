@@ -37,6 +37,8 @@ class AppBottomNav extends StatelessWidget {
             Expanded(child: navItem(Icons.shopping_bag_rounded, "Orders", 2)),
             const SizedBox(width: 8),
             Expanded(child: navItem(Icons.storefront_rounded, "Catalog", 3)),
+            const SizedBox(width: 8),
+            Expanded(child: navItem(Icons.receipt_long_rounded, "Invoices", 4)),
           ],
         ),
       ),

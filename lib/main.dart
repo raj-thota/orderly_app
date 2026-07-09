@@ -18,6 +18,7 @@ import 'features/dashboard/presentation/dashboard_screen.dart';
 import 'package:orderly_app/features/enquiries/presentation/enquiries_screen.dart';
 import 'package:orderly_app/features/enquiries/presentation/capture_screen.dart';
 import 'features/orders/presentation/orders_screen.dart';
+import 'features/invoices/presentation/invoices_screen.dart';
 
 // Shared Widgets
 import 'shared/widgets/app_bottom_nav.dart';
@@ -83,6 +84,7 @@ class _MainScreenState extends State<MainScreen> {
       const EnquiriesScreen(),
       OrdersScreen(),
       const CatalogScreen(),
+      const InvoicesScreen(),
     ];
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -95,23 +97,25 @@ class _MainScreenState extends State<MainScreen> {
     return Scaffold(
       body: IndexedStack(index: currentIndex, children: _screens),
 
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.primary,
-        onPressed: () {
-          if (currentIndex == 3) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ProductFormScreen()),
-            );
-            return;
-          }
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const CaptureScreen()),
-          );
-        },
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
+      floatingActionButton: currentIndex == 4
+          ? null
+          : FloatingActionButton(
+              backgroundColor: AppColors.primary,
+              onPressed: () {
+                if (currentIndex == 3) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ProductFormScreen()),
+                  );
+                  return;
+                }
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CaptureScreen()),
+                );
+              },
+              child: const Icon(Icons.add, color: Colors.white),
+            ),
 
       bottomNavigationBar: AppBottomNav(
         currentIndex: currentIndex,
