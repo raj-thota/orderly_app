@@ -7,6 +7,7 @@ class OrderItem {
     this.unitPrice = 0,
     this.qty = 1,
     this.lineTotal = 0,
+    this.gstRate = 0,
     this.productId,
   });
 
@@ -15,6 +16,7 @@ class OrderItem {
   final double unitPrice;
   final int qty;
   final double lineTotal;
+  final double gstRate;
   final String? productId;
 
   factory OrderItem.fromMap(Map<String, dynamic> map) {
@@ -24,6 +26,7 @@ class OrderItem {
       unitPrice: double.tryParse(map['unit_price']?.toString() ?? '') ?? 0,
       qty: int.tryParse(map['qty']?.toString() ?? '') ?? 1,
       lineTotal: double.tryParse(map['line_total']?.toString() ?? '') ?? 0,
+      gstRate: double.tryParse(map['gst_rate']?.toString() ?? '') ?? 0,
       productId: map['product_id']?.toString(),
     );
   }
@@ -33,6 +36,7 @@ class Order {
   const Order({
     this.id,
     this.orderNumber,
+    this.invoiceNumber,
     this.customerId,
     this.customerName,
     this.customerPhone,
@@ -52,6 +56,7 @@ class Order {
 
   final String? id;
   final int? orderNumber;
+  final String? invoiceNumber;
   final String? customerId;
   final String? customerName;
   final String? customerPhone;
@@ -83,6 +88,7 @@ class Order {
     return Order(
       id: map['id']?.toString(),
       orderNumber: int.tryParse(map['order_number']?.toString() ?? ''),
+      invoiceNumber: map['invoice_number']?.toString(),
       customerId: map['customer_id']?.toString(),
       customerName: customer is Map ? customer['name']?.toString() : null,
       customerPhone: customer is Map ? customer['phone']?.toString() : null,

@@ -43,4 +43,24 @@ void main() {
     expect(order.grandTotal, 0);
     expect(order.items, isEmpty);
   });
+
+  test('fromMap reads invoice_number and item gst_rate', () {
+    final order = Order.fromMap({
+      'id': 'o1',
+      'invoice_number': 'INV-0042',
+      'order_items': [
+        {'name': 'Silk Saree', 'qty': 1, 'unit_price': '2500', 'gst_rate': '5'},
+      ],
+    });
+    expect(order.invoiceNumber, 'INV-0042');
+    expect(order.items.single.gstRate, 5);
+  });
+
+  test('invoiceNumber is null and gstRate defaults to 0 when absent', () {
+    final order = Order.fromMap({'id': 'o2', 'order_items': [
+      {'name': 'X', 'qty': 1},
+    ]});
+    expect(order.invoiceNumber, isNull);
+    expect(order.items.single.gstRate, 0);
+  });
 }
