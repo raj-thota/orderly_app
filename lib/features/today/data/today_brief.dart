@@ -42,9 +42,10 @@ TodayBrief buildTodayBrief({
   }).length;
 
   return TodayBrief(
-    outstanding: outstanding,
+    // Paise-round accumulated money so float drift can't reach the UI.
+    outstanding: (outstanding * 100).round() / 100,
     dueFollowUps: dueFollowUps,
     ordersToday: ordersToday,
-    revenueToday: revenueToday,
+    revenueToday: (revenueToday * 100).round() / 100,
   );
 }

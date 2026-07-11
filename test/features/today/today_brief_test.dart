@@ -21,6 +21,7 @@ void main() {
         Order(grandTotal: 1000, payments: [Payment(amount: 400)]), // 600 due
         const Order(grandTotal: 500), // 500 due
         Order(grandTotal: 300, payments: [Payment(amount: 300)]), // paid
+        Order(grandTotal: 100, payments: [Payment(amount: 150)]), // over-paid → dues 0
       ];
       final b = buildTodayBrief(orders: orders, enquiries: [], now: now);
       expect(b.outstanding, 1100);
