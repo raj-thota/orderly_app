@@ -76,6 +76,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     });
     // Tabs live in an always-alive IndexedStack; refresh their data on entry
     // so captures, payments, and conversions made elsewhere show up.
+    // 0=Today (shows orders+enquiries), 1=My Work, 2=Orders, 3=Business.
     if (index == 0 || index == 2) {
       ref.read(ordersControllerProvider.notifier).load();
     }
@@ -97,11 +98,11 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       NotificationService.checkAndTriggerSmartReminders();
-      // Today is the cold-open tab and ordersControllerProvider does not
-      // auto-load; prime it so the brief has real numbers on first frame.
-      ref.read(ordersControllerProvider.notifier).load();
+      // Orders load once at cold open via OrdersScreen.initState (all
+      // IndexedStack children build on first paint) — no prime needed here.
       // Dashboard used to trigger the legacy load that syncs follow-up
       // notifications; owned here until M4 rebuilds the engine.
+      // TODO(M4): remove; SplashScreen already primes this on login.
       ref.read(leadsControllerProvider.notifier).loadLeads();
     });
   }
