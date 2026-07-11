@@ -40,7 +40,7 @@ class AppBottomNav extends StatelessWidget {
           children: [
             Expanded(child: _navItem(_items[0].$1, _items[0].$2, 0)),
             Expanded(child: _navItem(_items[1].$1, _items[1].$2, 1)),
-            // Center gap for the docked capture FAB (MainScreen owns it).
+            // Gap for the centerDocked capture FAB: 56dp circle + 4dp clearance each side.
             const SizedBox(width: 64),
             Expanded(child: _navItem(_items[2].$1, _items[2].$2, 2)),
             Expanded(child: _navItem(_items[3].$1, _items[3].$2, 3)),

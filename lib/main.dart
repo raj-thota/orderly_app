@@ -12,14 +12,14 @@ import 'core/services/notification_service.dart';
 // Features
 import 'package:orderly_app/core/theme/app_colors.dart';
 
-import 'features/catalog/presentation/catalog_screen.dart';
-import 'features/catalog/presentation/product_form_screen.dart';
-import 'features/dashboard/presentation/dashboard_screen.dart';
+import 'features/business/presentation/business_hub_screen.dart';
+import 'features/leads/controller/leads_controller.dart';
+import 'features/today/presentation/today_screen.dart';
+import 'package:orderly_app/features/enquiries/controller/enquiries_provider.dart';
 import 'package:orderly_app/features/enquiries/presentation/enquiries_screen.dart';
 import 'package:orderly_app/features/enquiries/presentation/capture_screen.dart';
 import 'features/orders/presentation/orders_screen.dart';
 import 'features/orders/controller/orders_provider.dart';
-import 'features/invoices/presentation/invoices_screen.dart';
 
 // Shared Widgets
 import 'shared/widgets/app_bottom_nav.dart';
@@ -74,11 +74,13 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     setState(() {
       currentIndex = index;
     });
-    // The Orders and Invoices tabs live in an always-alive IndexedStack and
-    // only load once at startup; reload when entering them so a freshly
-    // converted enquiry / recorded payment / issued invoice shows up.
-    if (index == 2 || index == 4) {
+    // Tabs live in an always-alive IndexedStack; refresh their data on entry
+    // so captures, payments, and conversions made elsewhere show up.
+    if (index == 0 || index == 2) {
       ref.read(ordersControllerProvider.notifier).load();
+    }
+    if (index == 0 || index == 1) {
+      ref.read(enquiriesControllerProvider.notifier).load();
     }
   }
 
@@ -87,15 +89,20 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     super.initState();
 
     _screens = [
-      DashboardScreen(onNavigate: changeTab),
-      const EnquiriesScreen(),
+      TodayScreen(onNavigate: changeTab),
+      const EnquiriesScreen(), // temporary My Work host; replaced in M4
       OrdersScreen(),
-      const CatalogScreen(),
-      const InvoicesScreen(),
+      const BusinessHubScreen(),
     ];
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       NotificationService.checkAndTriggerSmartReminders();
+      // Today is the cold-open tab and ordersControllerProvider does not
+      // auto-load; prime it so the brief has real numbers on first frame.
+      ref.read(ordersControllerProvider.notifier).load();
+      // Dashboard used to trigger the legacy load that syncs follow-up
+      // notifications; owned here until M4 rebuilds the engine.
+      ref.read(leadsControllerProvider.notifier).loadLeads();
     });
   }
 
@@ -103,27 +110,18 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(index: currentIndex, children: _screens),
-
-      floatingActionButton: currentIndex == 4
-          ? null
-          : FloatingActionButton(
-              backgroundColor: AppColors.primary,
-              onPressed: () {
-                if (currentIndex == 3) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const ProductFormScreen()),
-                  );
-                  return;
-                }
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const CaptureScreen()),
-                );
-              },
-              child: const Icon(Icons.add, color: Colors.white),
-            ),
-
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: AppColors.primary,
+        shape: const CircleBorder(),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const CaptureScreen()),
+          );
+        },
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
       bottomNavigationBar: AppBottomNav(
         currentIndex: currentIndex,
         onTap: changeTab,
