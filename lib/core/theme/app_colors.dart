@@ -4,10 +4,18 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
-  // Brand — boutique plum + warm accent
-  static const Color primary = Color(0xFF6C4ED9);
-  static const Color primaryDark = Color(0xFF4B2FB0);
-  static const Color accent = Color(0xFFE0A82E); // warm gold
+  // Brand — V1 indigo (per V1.0.0 mock; confirm exact hex against Figma)
+  static const Color primary = Color(0xFF5B4FE9);
+  static const Color primaryDark = Color(0xFF4638C9);
+  static const Color accent = Color(0xFFE0A82E); // warm gold (legacy, unused in V1 mock)
+
+  // AI surfaces (lilac cards: summary, suggested reply, brief chips)
+  static const Color aiSurface = Color(0xFFF1EFFE);
+  static const Color aiAccent = Color(0xFF7A6CF0);
+
+  // Today brief card gradient
+  static const Color briefGradientStart = Color(0xFF7C6BF7);
+  static const Color briefGradientEnd = Color(0xFF5B4FE9);
 
   // Surfaces
   static const Color background = Color(0xFFF6F7FB);
