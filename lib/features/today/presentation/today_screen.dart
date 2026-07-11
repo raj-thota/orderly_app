@@ -91,6 +91,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
           ),
         ),
         IconButton(
+          tooltip: 'Notifications',
           icon: const Icon(Icons.notifications_none_rounded,
               color: AppColors.textPrimary),
           onPressed: () => Navigator.push(context,
@@ -125,7 +126,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -161,9 +162,9 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
   Widget _dueNudge(int count) {
     return Material(
       color: AppColors.aiSurface,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(AppRadius.md),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadius.md),
         onTap: () => widget.onNavigate(1),
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.lg),

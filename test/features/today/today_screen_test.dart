@@ -93,4 +93,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(events, ['brief_view']);
   });
+
+  testWidgets('due nudge tap navigates to tab 1', (tester) async {
+    int? navigated;
+    await tester.pumpWidget(harness(
+        orders: [],
+        enquiries: [dueEnquiry],
+        events: [],
+        onNavigate: (i) => navigated = i));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.textContaining('need your attention'));
+    expect(navigated, 1);
+  });
 }
