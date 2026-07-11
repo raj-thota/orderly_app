@@ -12,11 +12,10 @@ class AppBottomNav extends StatelessWidget {
   });
 
   static const List<(IconData, String)> _items = [
-    (Icons.home_rounded, 'Home'),
-    (Icons.people_alt_rounded, 'Enquiries'),
+    (Icons.home_rounded, 'Today'),
+    (Icons.checklist_rounded, 'My Work'),
     (Icons.shopping_bag_rounded, 'Orders'),
-    (Icons.storefront_rounded, 'Catalog'),
-    (Icons.receipt_long_rounded, 'Invoices'),
+    (Icons.storefront_rounded, 'Business'),
   ];
 
   @override
@@ -39,8 +38,12 @@ class AppBottomNav extends StatelessWidget {
         ),
         child: Row(
           children: [
-            for (var i = 0; i < _items.length; i++)
-              Expanded(child: _navItem(_items[i].$1, _items[i].$2, i)),
+            Expanded(child: _navItem(_items[0].$1, _items[0].$2, 0)),
+            Expanded(child: _navItem(_items[1].$1, _items[1].$2, 1)),
+            // Center gap for the docked capture FAB (MainScreen owns it).
+            const SizedBox(width: 64),
+            Expanded(child: _navItem(_items[2].$1, _items[2].$2, 2)),
+            Expanded(child: _navItem(_items[3].$1, _items[3].$2, 3)),
           ],
         ),
       ),

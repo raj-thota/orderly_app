@@ -3,24 +3,39 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:orderly_app/shared/widgets/app_bottom_nav.dart';
 
 void main() {
-  testWidgets('five tabs do not overflow on a narrow screen', (tester) async {
-    // Emulate a small phone width where 5 tabs are tightest.
+  Widget harness({required int current, void Function(int)? onTap}) {
+    return MaterialApp(
+      home: Scaffold(
+        bottomNavigationBar: AppBottomNav(
+          currentIndex: current,
+          onTap: onTap ?? (_) {},
+        ),
+      ),
+    );
+  }
+
+  testWidgets('shows the four V1 tabs without overflow on a narrow screen',
+      (tester) async {
     tester.view.physicalSize = const Size(320, 640);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        bottomNavigationBar: AppBottomNav(
-          currentIndex: 4, // Invoices selected — shows its label
-          onTap: (_) {},
-        ),
-      ),
-    ));
+    await tester.pumpWidget(harness(current: 0));
     await tester.pumpAndSettle();
 
-    // A RenderFlex overflow would have been thrown during layout.
     expect(tester.takeException(), isNull);
-    expect(find.text('Invoices'), findsOneWidget);
+    for (final label in ['Today', 'My Work', 'Orders', 'Business']) {
+      expect(find.text(label), findsOneWidget);
+    }
+  });
+
+  testWidgets('taps report the logical index across the center gap',
+      (tester) async {
+    final taps = <int>[];
+    await tester.pumpWidget(harness(current: 0, onTap: taps.add));
+
+    await tester.tap(find.text('Orders'));
+    await tester.tap(find.text('Business'));
+    expect(taps, [2, 3]);
   });
 }
