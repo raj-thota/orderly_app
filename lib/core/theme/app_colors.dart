@@ -7,7 +7,7 @@ class AppColors {
   // Brand — V1 indigo (per V1.0.0 mock; confirm exact hex against Figma)
   static const Color primary = Color(0xFF5B4FE9);
   static const Color primaryDark = Color(0xFF4638C9);
-  static const Color accent = Color(0xFFE0A82E); // warm gold (legacy, unused in V1 mock)
+  static const Color accent = Color(0xFFE0A82E); // warm gold — preserve until V1 color audit pass
 
   // AI surfaces (lilac cards: summary, suggested reply, brief chips)
   static const Color aiSurface = Color(0xFFF1EFFE);

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../controller/auth_controller.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../main.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -169,7 +170,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     .loginWithGoogle();
                               },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6C4ED9),
+                          backgroundColor: AppColors.primary,
                           elevation: 0,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(

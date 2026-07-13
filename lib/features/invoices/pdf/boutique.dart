@@ -5,7 +5,8 @@ import 'package:pdf/widgets.dart' as pw;
 
 import '../data/invoice_data.dart';
 
-const _accent = PdfColor.fromInt(0xFF6C4ED9);
+// Keep in sync with AppColors.primary (pdf package can't use Flutter colors).
+const _accent = PdfColor.fromInt(0xFF5B4FE9);
 
 pw.Document boutiqueDoc(InvoiceData d, Uint8List? qr) {
   final doc = pw.Document();

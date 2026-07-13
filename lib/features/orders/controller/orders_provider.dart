@@ -40,7 +40,7 @@ final ordersServiceProvider = Provider<OrdersService>((ref) {
 
 final ordersControllerProvider =
     StateNotifierProvider<OrdersController, AsyncValue<List<Order>>>((ref) {
-  return OrdersController(ref.watch(ordersServiceProvider));
+  return OrdersController(ref.watch(ordersServiceProvider))..load();
 });
 
 class OrdersController extends StateNotifier<AsyncValue<List<Order>>> {

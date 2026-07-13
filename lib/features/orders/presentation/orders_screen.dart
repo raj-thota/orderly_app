@@ -26,13 +26,6 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
   ];
 
   @override
-  void initState() {
-    super.initState();
-    Future.microtask(
-        () => ref.read(ordersControllerProvider.notifier).load());
-  }
-
-  @override
   Widget build(BuildContext context) {
     final async = ref.watch(ordersControllerProvider);
 
