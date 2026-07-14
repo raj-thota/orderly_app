@@ -200,33 +200,50 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
-          // Status stepper.
+          // Status stepper — replaced by cancelled banner when order is cancelled.
           AppCard(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                for (final s in _flow)
-                  Expanded(
-                    child: Column(
-                      children: [
-                        Icon(
-                          _flow.indexOf(order.status) >= _flow.indexOf(s)
-                              ? Icons.check_circle
-                              : Icons.radio_button_unchecked,
-                          size: 18,
-                          color: _flow.indexOf(order.status) >= _flow.indexOf(s)
-                              ? AppColors.primary
-                              : AppColors.border,
+            child: order.status == 'cancelled'
+                ? Row(
+                    children: [
+                      Icon(Icons.cancel_outlined,
+                          size: 18, color: AppColors.danger),
+                      const SizedBox(width: AppSpacing.sm),
+                      Text(
+                        'Order cancelled',
+                        style: TextStyle(
+                          color: AppColors.danger,
+                          fontWeight: FontWeight.w700,
                         ),
-                        const SizedBox(height: 4),
-                        Text(s,
-                            style: const TextStyle(
-                                fontSize: 10, color: AppColors.textSecondary)),
-                      ],
-                    ),
+                      ),
+                    ],
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      for (final s in _flow)
+                        Expanded(
+                          child: Column(
+                            children: [
+                              Icon(
+                                _flow.indexOf(order.status) >= _flow.indexOf(s)
+                                    ? Icons.check_circle
+                                    : Icons.radio_button_unchecked,
+                                size: 18,
+                                color:
+                                    _flow.indexOf(order.status) >= _flow.indexOf(s)
+                                        ? AppColors.primary
+                                        : AppColors.border,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(s,
+                                  style: const TextStyle(
+                                      fontSize: 10,
+                                      color: AppColors.textSecondary)),
+                            ],
+                          ),
+                        ),
+                    ],
                   ),
-              ],
-            ),
           ),
           const SizedBox(height: AppSpacing.md),
           if (phone != null && phone.isNotEmpty)
@@ -321,7 +338,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                   alignment: Alignment.centerLeft,
                   child: StatusPill(status: order.paymentStatus),
                 ),
-                if (order.dues > 0) ...[
+                if (order.dues > 0 && order.status != 'cancelled') ...[
                   const SizedBox(height: AppSpacing.md),
                   Row(
                     children: [
@@ -348,16 +365,18 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
               ],
             ),
           ),
-          const SizedBox(height: AppSpacing.md),
-          OutlinedButton.icon(
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (_) => InvoiceShareScreen(order: order)),
+          if (order.status != 'cancelled') ...[
+            const SizedBox(height: AppSpacing.md),
+            OutlinedButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => InvoiceShareScreen(order: order)),
+              ),
+              icon: const Icon(Icons.description_outlined, size: 18),
+              label: const Text('Share invoice'),
             ),
-            icon: const Icon(Icons.description_outlined, size: 18),
-            label: const Text('Share invoice'),
-          ),
+          ],
           if (order.courier != null && order.courier!.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.md),
             AppCard(

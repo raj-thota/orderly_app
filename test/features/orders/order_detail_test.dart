@@ -65,4 +65,51 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Share tracking'), findsOneWidget);
   });
+
+  testWidgets('cancelled order shows banner and hides payment actions',
+      (tester) async {
+    await tester.pumpWidget(wrap(
+      FakeOrdersService(const []),
+      const Order(
+        id: 'o1',
+        status: 'cancelled',
+        grandTotal: 1000,
+        // dues > 0 to verify payment buttons are hidden despite outstanding amount
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    // Banner is visible
+    expect(find.text('Order cancelled'), findsOneWidget);
+
+    // Payment action buttons are hidden
+    expect(find.text('Record payment'), findsNothing);
+    expect(find.text('Collect via UPI'), findsNothing);
+
+    // No advance button
+    expect(find.textContaining('Mark as'), findsNothing);
+  });
+
+  testWidgets('active order with dues shows payment actions and stepper',
+      (tester) async {
+    await tester.pumpWidget(wrap(
+      FakeOrdersService(const []),
+      const Order(
+        id: 'o1',
+        status: 'confirmed',
+        grandTotal: 1000,
+        // no payments → dues == 1000
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    // Stepper steps are visible (confirmed is in _flow)
+    expect(find.text('confirmed'), findsOneWidget);
+
+    // Advance button present for non-terminal status
+    expect(find.text('Mark as packed'), findsOneWidget);
+
+    // Payment action visible (Record payment shown when dues > 0)
+    expect(find.text('Record payment'), findsOneWidget);
+  });
 }
