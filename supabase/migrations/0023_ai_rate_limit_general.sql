@@ -30,14 +30,19 @@ begin
     return false;
   end if;
 
+  -- Prune on a fixed 24h horizon (not the caller-supplied window) so a direct
+  -- call with a tiny window can't wipe the caller's counter, and rows for
+  -- abandoned feature names still get swept. Valid windows are <= 86400s, so
+  -- the horizon never deletes rows a legitimate count still needs.
   delete from ai_parse_usage
   where user_id = auth.uid()
-    and feature = p_feature
-    and created_at < now() - make_interval(secs => p_window_seconds);
+    and created_at < now() - interval '24 hours';
 
   select count(*) into v_count
   from ai_parse_usage
-  where user_id = auth.uid() and feature = p_feature;
+  where user_id = auth.uid()
+    and feature = p_feature
+    and created_at >= now() - make_interval(secs => p_window_seconds);
 
   if v_count >= p_max then
     return false;
