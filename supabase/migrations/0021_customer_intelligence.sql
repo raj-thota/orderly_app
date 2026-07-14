@@ -28,6 +28,12 @@ alter table public.ai_summaries enable row level security;
 create policy "own ai_summaries" on public.ai_summaries
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+-- Defense-in-depth: remove anon schema discoverability (mirrors 0004 pattern).
+revoke all on public.ai_summaries from anon;
+
+-- FK-support index: avoids sequential scan on customers during cascade delete.
+create index idx_ai_summaries_customer on public.ai_summaries (customer_id);
+
 create view public.customer_stats
 with (security_invoker = true) as
 select
@@ -43,7 +49,7 @@ from public.customers c
 left join public.orders o
   on o.customer_id = c.id and o.user_id = c.user_id
 left join lateral (
-  select sum(p.amount) as amt from public.payments p where p.order_id = o.id
+  select sum(p.amount) as amt from public.payments p where p.order_id = o.id and p.user_id = c.user_id
 ) paid on true
 group by c.id, c.user_id;
 

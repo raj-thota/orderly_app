@@ -17,7 +17,7 @@ create table public.ai_work_items (
   context text,
   amount numeric(12,2),
   draft jsonb not null default '{}'::jsonb,
-  confidence numeric(3,2),
+  confidence numeric(3,2) check (confidence is null or (confidence >= 0 and confidence <= 1)),
   status text not null default 'pending'
     check (status in ('pending','approved','dismissed','expired','done')),
   batch_id uuid not null,
@@ -29,6 +29,7 @@ create table public.ai_work_items (
 create trigger trg_ai_work_items_updated before update on public.ai_work_items
   for each row execute function public.set_updated_at();
 
+-- Filter index: priority is text, so btree order is alphabetical (high < low < medium); never rely on index order for ranking — sort by score desc in queries.
 create index idx_ai_work_items_queue
   on public.ai_work_items (user_id, status, priority, score desc);
 
@@ -36,3 +37,11 @@ alter table public.ai_work_items enable row level security;
 
 create policy "own ai_work_items" on public.ai_work_items
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- Defense-in-depth: remove anon schema discoverability (mirrors 0004 pattern).
+revoke all on public.ai_work_items from anon;
+
+-- FK-support indexes: avoids sequential scans on FK columns during cascade deletes.
+create index idx_ai_work_items_customer on public.ai_work_items (customer_id);
+create index idx_ai_work_items_lead on public.ai_work_items (lead_id);
+create index idx_ai_work_items_order on public.ai_work_items (order_id);

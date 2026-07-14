@@ -31,6 +31,9 @@ create trigger trg_conversations_updated before update on public.conversations
 create index idx_messages_user_conv_time
   on public.messages (user_id, conversation_id, created_at);
 
+-- FK-support index: avoids sequential scan on conversations during cascade delete.
+create index idx_messages_conversation on public.messages (conversation_id);
+
 alter table public.conversations enable row level security;
 alter table public.messages enable row level security;
 
@@ -40,6 +43,10 @@ create policy "own messages select" on public.messages
   for select using (auth.uid() = user_id);
 create policy "own messages insert" on public.messages
   for insert with check (auth.uid() = user_id);
+
+-- Defense-in-depth: remove anon schema discoverability (mirrors 0004 pattern).
+revoke all on public.conversations from anon;
+revoke all on public.messages from anon;
 
 -- Backfill: conversation per (user, customer) that has at least one lead message.
 insert into public.conversations (user_id, customer_id, last_message_at, created_at)
@@ -53,7 +60,7 @@ on conflict (user_id, customer_id) do nothing;
 insert into public.messages
   (user_id, conversation_id, direction, source, body, sent_at, created_at)
 select l.user_id, c.id, 'inbound',
-       case when l.source in ('paste','manual') then l.source else 'paste' end,
+       case when l.source in ('paste','manual','screenshot') then l.source else 'paste' end,
        l.message, l.created_at, l.created_at
 from public.leads l
 join public.conversations c

@@ -29,6 +29,12 @@ alter table public.follow_ups enable row level security;
 create policy "own follow_ups" on public.follow_ups
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+-- Defense-in-depth: remove anon schema discoverability (mirrors 0004 pattern).
+revoke all on public.follow_ups from anon;
+
+-- FK-support index: avoids sequential scan on customers during cascade delete.
+create index idx_follow_ups_customer on public.follow_ups (customer_id);
+
 -- Backfill: one pending follow-up per lead currently in 'follow' with a date.
 -- Leads without a customer are skipped (customer_id is required here; such
 -- rows can't exist via the current capture flow anyway).
