@@ -68,4 +68,26 @@ void main() {
     expect(order.invoiceNumber, isNull);
     expect(order.items.single.gstRate, 0);
   });
+
+  test('fromMap parses discount, shipping fee and expected date', () {
+    final order = Order.fromMap({
+      'id': 'o4',
+      'subtotal': '10000',
+      'discount': '500',
+      'shipping_fee': '0',
+      'expected_date': '2026-06-12',
+      'grand_total': '9500',
+    });
+    expect(order.discount, 500);
+    expect(order.shippingFee, 0);
+    expect(order.expectedDate, DateTime.parse('2026-06-12'));
+    expect(order.grandTotal, 9500);
+  });
+
+  test('discount and shipping default to zero when absent', () {
+    final order = Order.fromMap({'id': 'o5'});
+    expect(order.discount, 0);
+    expect(order.shippingFee, 0);
+    expect(order.expectedDate, isNull);
+  });
 }

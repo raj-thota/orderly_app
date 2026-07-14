@@ -38,4 +38,8 @@ class OrdersService {
   Future<void> markDelivered(String id) async {
     await _client.rpc('mark_order_delivered', params: {'p_order_id': id});
   }
+
+  Future<void> cancelOrder(String id) async {
+    await _client.rpc('cancel_order', params: {'p_order_id': id});
+  }
 }

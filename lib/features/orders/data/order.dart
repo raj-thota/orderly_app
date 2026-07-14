@@ -48,6 +48,9 @@ class Order {
     this.paymentStatus = 'unpaid',
     this.subtotal = 0,
     this.grandTotal = 0,
+    this.discount = 0,
+    this.shippingFee = 0,
+    this.expectedDate,
     this.notes,
     this.createdAt,
     this.items = const [],
@@ -68,6 +71,9 @@ class Order {
   final String paymentStatus;
   final double subtotal;
   final double grandTotal;
+  final double discount;
+  final double shippingFee;
+  final DateTime? expectedDate;
   final String? notes;
   final DateTime? createdAt;
   final List<OrderItem> items;
@@ -100,6 +106,9 @@ class Order {
       paymentStatus: (map['payment_status'] ?? 'unpaid').toString(),
       subtotal: double.tryParse(map['subtotal']?.toString() ?? '') ?? 0,
       grandTotal: double.tryParse(map['grand_total']?.toString() ?? '') ?? 0,
+      discount: double.tryParse(map['discount']?.toString() ?? '') ?? 0,
+      shippingFee: double.tryParse(map['shipping_fee']?.toString() ?? '') ?? 0,
+      expectedDate: DateTime.tryParse(map['expected_date']?.toString() ?? ''),
       notes: map['notes']?.toString(),
       createdAt: DateTime.tryParse(map['created_at']?.toString() ?? ''),
       items: [

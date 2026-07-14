@@ -124,6 +124,9 @@ class EnquiriesService {
     String? bookProductId,
     List<String?>? productIds,
     String? notes,
+    double discount = 0,
+    double shippingFee = 0,
+    DateTime? expectedDate,
   }) async {
     final payload = <Map<String, dynamic>>[
       for (var i = 0; i < items.length; i++)
@@ -141,6 +144,9 @@ class EnquiriesService {
       'p_items': payload,
       'p_book_product_id': bookProductId,
       'p_notes': notes,
+      'p_discount': discount,
+      'p_shipping_fee': shippingFee,
+      'p_expected_date': expectedDate?.toIso8601String().substring(0, 10),
     });
     return orderId.toString();
   }

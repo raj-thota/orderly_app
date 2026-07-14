@@ -11,6 +11,7 @@ class FakeOrdersService implements OrdersService {
   final List<Order> _rows;
   final List<Map<String, dynamic>> updates = [];
   final List<String> delivered = [];
+  final List<String> cancelled = [];
 
   @override
   Future<List<Order>> fetchOrders() async => List.of(_rows);
@@ -23,6 +24,8 @@ class FakeOrdersService implements OrdersService {
   }
   @override
   Future<void> markDelivered(String id) async => delivered.add(id);
+  @override
+  Future<void> cancelOrder(String id) async => cancelled.add(id);
 }
 
 void main() {
