@@ -16,6 +16,8 @@ alter table public.orders
   add column expected_date date,
   add column booked_product_id uuid references public.products(id) on delete set null;
 
+create index idx_orders_booked_product on public.orders (booked_product_id);
+
 alter table public.orders drop constraint orders_status_check;
 update public.orders set status = 'confirmed' where status = 'pending';
 alter table public.orders add constraint orders_status_check
