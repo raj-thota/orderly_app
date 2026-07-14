@@ -21,8 +21,10 @@ class StatusPillStyle {
         return const StatusPillStyle('Partial', AppColors.warning);
       case 'unpaid':
         return const StatusPillStyle('Unpaid', AppColors.danger);
-      case 'pending':
-        return const StatusPillStyle('Pending', AppColors.warning);
+      case 'confirmed':
+        return const StatusPillStyle('Confirmed', AppColors.warning);
+      case 'cancelled':
+        return const StatusPillStyle('Cancelled', AppColors.danger);
       case 'packed':
         return const StatusPillStyle('Packed', AppColors.info);
       case 'shipped':

@@ -196,7 +196,7 @@ List<Map<String, dynamic>> buildLegacyMaps({
       'name': customerName(order),
       'msg': order['notes'] ?? '',
       'status': 'closed',
-      'order_status': order['status'] ?? 'pending',
+      'order_status': order['status'] ?? 'confirmed',
       'intent': 'order',
       'created_at': order['created_at'],
       'follow_up_date': null,

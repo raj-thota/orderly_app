@@ -27,23 +27,26 @@ class FakeOrdersService implements OrdersService {
 
 void main() {
   test('nextOrderStatus advances linearly and stops at delivered', () {
-    expect(nextOrderStatus('pending'), 'packed');
+    expect(nextOrderStatus('confirmed'), 'packed');
     expect(nextOrderStatus('packed'), 'shipped');
     expect(nextOrderStatus('shipped'), 'delivered');
     expect(nextOrderStatus('delivered'), isNull);
+    expect(nextOrderStatus('cancelled'), isNull);
   });
 
-  test('filterOrders Active excludes delivered', () {
+  test('filterOrders Active excludes delivered and cancelled', () {
     final orders = const [
-      Order(id: 'a', status: 'pending'),
+      Order(id: 'a', status: 'confirmed'),
       Order(id: 'b', status: 'shipped'),
       Order(id: 'c', status: 'delivered'),
+      Order(id: 'd', status: 'cancelled'),
     ];
     expect(filterOrders(orders, OrderFilter.active).map((o) => o.id),
         ['a', 'b']);
     expect(filterOrders(orders, OrderFilter.delivered).map((o) => o.id),
         ['c']);
-    expect(filterOrders(orders, OrderFilter.pending).map((o) => o.id), ['a']);
+    expect(filterOrders(orders, OrderFilter.confirmed).map((o) => o.id), ['a']);
+    expect(filterOrders(orders, OrderFilter.cancelled).map((o) => o.id), ['d']);
   });
 
   ProviderContainer makeContainer(FakeOrdersService fake) {
@@ -55,18 +58,18 @@ void main() {
   }
 
   test('load exposes orders', () async {
-    final fake = FakeOrdersService(const [Order(id: 'o1', status: 'pending')]);
+    final fake = FakeOrdersService(const [Order(id: 'o1', status: 'confirmed')]);
     final c = makeContainer(fake);
     await c.read(ordersControllerProvider.notifier).load();
     expect(c.read(ordersControllerProvider).value, hasLength(1));
   });
 
   test('advanceTo packed sends a status-only update', () async {
-    final fake = FakeOrdersService(const [Order(id: 'o1', status: 'pending')]);
+    final fake = FakeOrdersService(const [Order(id: 'o1', status: 'confirmed')]);
     final c = makeContainer(fake);
     final controller = c.read(ordersControllerProvider.notifier);
     await controller.load();
-    await controller.advanceTo(const Order(id: 'o1', status: 'pending'), 'packed');
+    await controller.advanceTo(const Order(id: 'o1', status: 'confirmed'), 'packed');
     expect(fake.updates.single, {'id': 'o1', 'status': 'packed'});
   });
 

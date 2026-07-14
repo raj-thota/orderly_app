@@ -19,10 +19,11 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
 
   static const _chips = [
     (OrderFilter.active, 'Active'),
-    (OrderFilter.pending, 'Pending'),
+    (OrderFilter.confirmed, 'Confirmed'),
     (OrderFilter.packed, 'Packed'),
     (OrderFilter.shipped, 'Shipped'),
     (OrderFilter.delivered, 'Delivered'),
+    (OrderFilter.cancelled, 'Cancelled'),
   ];
 
   @override

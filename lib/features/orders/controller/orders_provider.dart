@@ -7,29 +7,33 @@ import '../data/orders_service.dart';
 export 'package:orderly_app/core/providers/auth_providers.dart'
     show authUserIdProvider;
 
-enum OrderFilter { active, pending, packed, shipped, delivered }
+enum OrderFilter { active, confirmed, packed, shipped, delivered, cancelled }
 
 /// The next status in the linear lifecycle, or null when terminal.
 String? nextOrderStatus(String current) {
-  const flow = ['pending', 'packed', 'shipped', 'delivered'];
+  const flow = ['confirmed', 'packed', 'shipped', 'delivered'];
   final i = flow.indexOf(current);
   if (i < 0 || i >= flow.length - 1) return null;
   return flow[i + 1];
 }
 
-/// Filters orders for a chip. `active` = anything not delivered.
+/// Filters orders for a chip. `active` = anything not delivered or cancelled.
 List<Order> filterOrders(List<Order> orders, OrderFilter filter) {
   switch (filter) {
     case OrderFilter.active:
-      return orders.where((o) => o.status != 'delivered').toList();
-    case OrderFilter.pending:
-      return orders.where((o) => o.status == 'pending').toList();
+      return orders
+          .where((o) => o.status != 'delivered' && o.status != 'cancelled')
+          .toList();
+    case OrderFilter.confirmed:
+      return orders.where((o) => o.status == 'confirmed').toList();
     case OrderFilter.packed:
       return orders.where((o) => o.status == 'packed').toList();
     case OrderFilter.shipped:
       return orders.where((o) => o.status == 'shipped').toList();
     case OrderFilter.delivered:
       return orders.where((o) => o.status == 'delivered').toList();
+    case OrderFilter.cancelled:
+      return orders.where((o) => o.status == 'cancelled').toList();
   }
 }
 

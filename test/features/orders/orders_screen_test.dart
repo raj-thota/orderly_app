@@ -17,7 +17,7 @@ void main() {
 
   testWidgets('shows chips with counts and filters cards', (tester) async {
     final fake = FakeOrdersService(const [
-      Order(id: 'o1', orderNumber: 1, customerName: 'Priya', status: 'pending'),
+      Order(id: 'o1', orderNumber: 1, customerName: 'Priya', status: 'confirmed'),
       Order(id: 'o2', orderNumber: 2, customerName: 'Anita', status: 'delivered'),
     ]);
     await tester.pumpWidget(wrap(fake));
@@ -27,12 +27,17 @@ void main() {
     expect(find.text('#1'), findsOneWidget);
     expect(find.text('#2'), findsNothing);
     expect(find.text('Active (1)'), findsOneWidget);
-    expect(find.text('Delivered (1)'), findsOneWidget);
 
     // The Delivered chip sits past the right edge of the horizontal chip row
-    // on the default 800px test surface, so scroll it into view before tapping.
-    await tester.ensureVisible(find.text('Delivered (1)'));
+    // on the default 800px test surface (especially now with 6 chips), so
+    // drag until visible before asserting or tapping.
+    await tester.dragUntilVisible(
+      find.text('Delivered (1)'),
+      find.byType(ListView).first,
+      const Offset(-200, 0),
+    );
     await tester.pumpAndSettle();
+    expect(find.text('Delivered (1)'), findsOneWidget);
     await tester.tap(find.text('Delivered (1)'));
     await tester.pumpAndSettle();
     expect(find.text('#2'), findsOneWidget);

@@ -30,7 +30,7 @@ class OrderDetailScreen extends ConsumerStatefulWidget {
 class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
   bool _busy = false;
 
-  static const _flow = ['pending', 'packed', 'shipped', 'delivered'];
+  static const _flow = ['confirmed', 'packed', 'shipped', 'delivered'];
   static final _mobileRe = RegExp(r'^[6-9]\d{9}$');
 
   /// wa.me link for an Indian mobile; falls back to a bare wa.me when the

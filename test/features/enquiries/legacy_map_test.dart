@@ -25,7 +25,7 @@ void main() {
     final maps = buildLegacyMaps(leads: [], orders: [
       {
         'id': 'o1',
-        'status': 'pending',
+        'status': 'confirmed',
         'created_at': '2026-07-08T10:00:00Z',
         'customers': {'name': 'Anita'},
         'order_items': [
@@ -34,7 +34,7 @@ void main() {
       }
     ]);
     expect(maps.single['status'], 'closed');
-    expect(maps.single['order_status'], 'pending');
+    expect(maps.single['order_status'], 'confirmed');
     expect(maps.single['items'], [
       {'product_name': 'Kurti', 'quantity': 2, 'price': 500, 'total': 1000},
     ]);

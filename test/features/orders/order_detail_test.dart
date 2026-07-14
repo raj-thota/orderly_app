@@ -18,7 +18,7 @@ void main() {
   testWidgets('primary button reads the next status', (tester) async {
     await tester.pumpWidget(wrap(
       FakeOrdersService(const []),
-      const Order(id: 'o1', orderNumber: 5, status: 'pending'),
+      const Order(id: 'o1', orderNumber: 5, status: 'confirmed'),
     ));
     await tester.pumpAndSettle();
     expect(find.text('Mark as packed'), findsOneWidget);

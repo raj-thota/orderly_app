@@ -26,7 +26,7 @@ void main() {
       'id': 'o1',
       'order_number': 7,
       'grand_total': '5000',
-      'status': 'pending',
+      'status': 'confirmed',
       'payments': [
         {'amount': '2000'},
       ],
@@ -43,7 +43,7 @@ void main() {
     final order = Order.fromMap({
       'id': 'o1',
       'grand_total': '5000',
-      'status': 'pending',
+      'status': 'confirmed',
       'payments': [
         {'amount': '2000'},
       ],

@@ -27,6 +27,18 @@ void main() {
       expect(StatusPillStyle.forStatus('paid').color, AppColors.success);
     });
 
+    test('maps confirmed to warning with Confirmed label', () {
+      final s = StatusPillStyle.forStatus('confirmed');
+      expect(s.label, 'Confirmed');
+      expect(s.color, AppColors.warning);
+    });
+
+    test('maps cancelled to danger with Cancelled label', () {
+      final s = StatusPillStyle.forStatus('cancelled');
+      expect(s.label, 'Cancelled');
+      expect(s.color, AppColors.danger);
+    });
+
     test('unknown status falls back to a readable label + neutral color', () {
       final s = StatusPillStyle.forStatus('whatever');
       expect(s.label, 'Whatever');

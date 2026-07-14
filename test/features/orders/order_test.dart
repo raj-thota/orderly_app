@@ -38,10 +38,15 @@ void main() {
   test('fromMap tolerates missing joins and fields', () {
     final order = Order.fromMap({'id': 'o2'});
     expect(order.customerName, isNull);
-    expect(order.status, 'pending'); // default
+    expect(order.status, 'confirmed'); // default (was 'pending')
     expect(order.paymentStatus, 'unpaid'); // default
     expect(order.grandTotal, 0);
     expect(order.items, isEmpty);
+  });
+
+  test('fromMap parses cancelled status', () {
+    final order = Order.fromMap({'id': 'o3', 'status': 'cancelled'});
+    expect(order.status, 'cancelled');
   });
 
   test('fromMap reads invoice_number and item gst_rate', () {
