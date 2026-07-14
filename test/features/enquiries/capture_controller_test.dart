@@ -60,6 +60,9 @@ class FakeEnquiriesService implements EnquiriesService {
     String? bookProductId,
     List<String?>? productIds,
     String? notes,
+    double discount = 0,
+    double shippingFee = 0,
+    DateTime? expectedDate,
   }) async {
     orders.add({
       'customer_id': customerId,

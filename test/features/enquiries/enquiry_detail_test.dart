@@ -22,6 +22,9 @@ class RecordingEnquiriesService extends FakeEnquiriesService {
     String? bookProductId,
     List<String?>? productIds,
     String? notes,
+    double discount = 0,
+    double shippingFee = 0,
+    DateTime? expectedDate,
   }) async {
     convertedLeadId = leadId;
     bookedProductId = bookProductId;
@@ -44,6 +47,9 @@ class BlockingEnquiriesService extends FakeEnquiriesService {
     String? bookProductId,
     List<String?>? productIds,
     String? notes,
+    double discount = 0,
+    double shippingFee = 0,
+    DateTime? expectedDate,
   }) async {
     callCount += 1;
     return completer.future;
@@ -60,6 +66,9 @@ class UnavailableEnquiriesService extends FakeEnquiriesService {
     String? bookProductId,
     List<String?>? productIds,
     String? notes,
+    double discount = 0,
+    double shippingFee = 0,
+    DateTime? expectedDate,
   }) async {
     throw Exception('piece_unavailable');
   }
