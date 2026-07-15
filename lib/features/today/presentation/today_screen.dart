@@ -6,12 +6,11 @@ import 'package:orderly_app/core/theme/app_spacing.dart';
 import 'package:orderly_app/core/utils/money.dart';
 import 'package:orderly_app/features/auth/controller/user_provider.dart';
 import 'package:orderly_app/features/enquiries/controller/enquiries_provider.dart';
-import 'package:orderly_app/features/notifications/presentation/notifications_screen.dart';
 import 'package:orderly_app/features/orders/controller/orders_provider.dart';
 import 'package:orderly_app/features/today/data/today_brief.dart';
+import 'package:orderly_app/features/work/controller/work_items_provider.dart';
+import 'package:orderly_app/shared/widgets/approval_tile.dart';
 
-/// Home tab per the V1 mock: greeting, brief card, due-work nudge.
-/// M0 = DB-only numbers; AI brief copy and approval queue land in M4.
 class TodayScreen extends ConsumerStatefulWidget {
   const TodayScreen({super.key, required this.onNavigate});
 
@@ -27,6 +26,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
     super.initState();
     Future.microtask(() {
       ref.read(eventServiceProvider).track('brief_view');
+      ref.read(workItemsProvider.notifier).load();
     });
   }
 
@@ -44,6 +44,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
     final name = ref.watch(userProfileProvider).value?['business_name'] ?? '';
     final now = DateTime.now();
     final brief = buildTodayBrief(orders: orders, enquiries: enquiries, now: now);
+    final workState = ref.watch(workItemsProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -52,15 +53,24 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
           onRefresh: () async {
             await ref.read(ordersControllerProvider.notifier).load();
             await ref.read(enquiriesControllerProvider.notifier).load();
+            await ref.read(workItemsProvider.notifier).load();
           },
           child: ListView(
             padding: const EdgeInsets.all(AppSpacing.lg),
             children: [
-              _header(context, name, now),
+              _header(name, now),
               const SizedBox(height: AppSpacing.lg),
               _briefCard(brief),
               const SizedBox(height: AppSpacing.lg),
-              if (brief.dueFollowUps > 0) _dueNudge(brief.dueFollowUps),
+              if (brief.dueFollowUps > 0) ...[
+                _dueNudge(brief.dueFollowUps),
+                const SizedBox(height: AppSpacing.lg),
+              ],
+              if (workState.pendingCount > 0) ...[
+                _approvalsSection(workState.highItems.isNotEmpty
+                    ? workState.highItems
+                    : workState.items),
+              ],
             ],
           ),
         ),
@@ -68,7 +78,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
     );
   }
 
-  Widget _header(BuildContext context, String name, DateTime now) {
+  Widget _header(String name, DateTime now) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -89,13 +99,6 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                       color: AppColors.textPrimary)),
             ],
           ),
-        ),
-        IconButton(
-          tooltip: 'Notifications',
-          icon: const Icon(Icons.notifications_none_rounded,
-              color: AppColors.textPrimary),
-          onPressed: () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => const NotificationsScreen())),
         ),
       ],
     );
@@ -186,6 +189,44 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _approvalsSection(List items) {
+    final workItems = ref.watch(workItemsProvider);
+    final displayItems = items.take(3).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Needs your approval (${workItems.pendingCount})',
+              style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary),
+            ),
+            TextButton(
+              onPressed: () => widget.onNavigate(1),
+              child: const Text('See all',
+                  style: TextStyle(color: AppColors.primary, fontSize: 13)),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        for (final item in displayItems) ...[
+          ApprovalTile(
+            item: item,
+            onTap: () => widget.onNavigate(1),
+            onActionTap: () => widget.onNavigate(1),
+            onDismiss: () =>
+                ref.read(workItemsProvider.notifier).dismiss(item.id),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+        ],
+      ],
     );
   }
 }

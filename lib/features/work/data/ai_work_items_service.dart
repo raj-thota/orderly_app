@@ -2,12 +2,22 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'ai_work_item.dart';
 
-class AiWorkItemsService {
+abstract class AiWorkItemsService {
+  Future<List<AiWorkItem>> fetchPending();
+  Future<void> updateStatus(String id, String status);
+  Future<void> approve(String id);
+  Future<void> dismiss(String id);
+  Future<void> markDone(String id);
+  Future<void> triggerGenerate();
+}
+
+class SupabaseAiWorkItemsService implements AiWorkItemsService {
   SupabaseClient get _client => Supabase.instance.client;
   String get _userId => _client.auth.currentUser!.id;
 
   static const _selectWithJoins = '*, customers(name)';
 
+  @override
   Future<List<AiWorkItem>> fetchPending() async {
     final rows = await _client
         .from('ai_work_items')
@@ -18,6 +28,7 @@ class AiWorkItemsService {
     return rows.map<AiWorkItem>((r) => AiWorkItem.fromMap(r)).toList();
   }
 
+  @override
   Future<void> updateStatus(String id, String status) async {
     await _client
         .from('ai_work_items')
@@ -26,7 +37,17 @@ class AiWorkItemsService {
         .eq('user_id', _userId);
   }
 
+  @override
   Future<void> approve(String id) => updateStatus(id, 'approved');
+
+  @override
   Future<void> dismiss(String id) => updateStatus(id, 'dismissed');
+
+  @override
   Future<void> markDone(String id) => updateStatus(id, 'done');
+
+  @override
+  Future<void> triggerGenerate() async {
+    await _client.functions.invoke('generate-work-items', body: {});
+  }
 }

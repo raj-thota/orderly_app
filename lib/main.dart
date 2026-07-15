@@ -13,13 +13,12 @@ import 'core/services/notification_service.dart';
 import 'package:orderly_app/core/theme/app_colors.dart';
 
 import 'features/business/presentation/business_hub_screen.dart';
-import 'features/leads/controller/leads_controller.dart';
 import 'features/today/presentation/today_screen.dart';
 import 'package:orderly_app/features/enquiries/controller/enquiries_provider.dart';
 import 'package:orderly_app/features/capture/presentation/capture_sheet.dart';
-import 'package:orderly_app/features/enquiries/presentation/enquiries_screen.dart';
 import 'features/orders/presentation/orders_screen.dart';
 import 'features/orders/controller/orders_provider.dart';
+import 'features/work/presentation/my_work_screen.dart';
 
 // Shared Widgets
 import 'shared/widgets/app_bottom_nav.dart';
@@ -91,19 +90,13 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
     _screens = [
       TodayScreen(onNavigate: changeTab),
-      const EnquiriesScreen(), // temporary My Work host; replaced in M4
+      const MyWorkScreen(),
       OrdersScreen(),
       const BusinessHubScreen(),
     ];
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       NotificationService.checkAndTriggerSmartReminders();
-      // Orders load once at cold open via OrdersScreen.initState (all
-      // IndexedStack children build on first paint) — no prime needed here.
-      // Dashboard used to trigger the legacy load that syncs follow-up
-      // notifications; owned here until M4 rebuilds the engine.
-      // TODO(M4): remove; SplashScreen already primes this on login.
-      ref.read(leadsControllerProvider.notifier).loadLeads();
     });
   }
 

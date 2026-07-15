@@ -11,6 +11,10 @@ import 'package:orderly_app/features/orders/data/order.dart';
 import 'package:orderly_app/features/orders/data/orders_service.dart';
 import 'package:orderly_app/features/payments/data/payment.dart';
 import 'package:orderly_app/features/today/presentation/today_screen.dart';
+import 'package:orderly_app/features/work/controller/work_items_provider.dart';
+import 'package:orderly_app/features/work/data/ai_work_item.dart';
+
+import '../work/work_items_provider_test.dart' show FakeAiWorkItemsService;
 
 class _FixedOrders extends OrdersController {
   _FixedOrders(List<Order> orders) : super(OrdersService()) {
@@ -34,6 +38,7 @@ void main() {
     required List<Enquiry> enquiries,
     required List<String> events,
     void Function(int)? onNavigate,
+    FakeAiWorkItemsService? workItems,
   }) {
     return ProviderScope(
       overrides: [
@@ -46,6 +51,8 @@ void main() {
           sink: (row) async => events.add(row['name'] as String),
           currentUserId: () => 'u1',
         )),
+        aiWorkItemsServiceProvider
+            .overrideWithValue(workItems ?? FakeAiWorkItemsService([])),
       ],
       child: MaterialApp(
         home: TodayScreen(onNavigate: onNavigate ?? (_) {}),
@@ -105,5 +112,27 @@ void main() {
 
     await tester.tap(find.textContaining('need your attention'));
     expect(navigated, 1);
+  });
+
+  testWidgets('shows pending approvals count when work items exist',
+      (tester) async {
+    final svc = FakeAiWorkItemsService([
+      AiWorkItem(
+        id: '1',
+        kind: 'payment_reminder',
+        priority: 'high',
+        score: 90,
+        title: 'Payment pending',
+        status: 'pending',
+        batchId: 'b-1',
+        customerId: 'c-1',
+        customerName: 'Priya',
+      ),
+    ]);
+    await tester.pumpWidget(
+        harness(orders: [], enquiries: [], events: [], workItems: svc));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('approval'), findsWidgets);
   });
 }
