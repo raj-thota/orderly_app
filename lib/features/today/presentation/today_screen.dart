@@ -52,22 +52,22 @@ class _StatTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            width: 36,
-            height: 36,
+            width: 52,
+            height: 52,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(10),
+              color: Colors.white.withValues(alpha: 0.20),
+              borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(icon, color: Colors.white, size: 18),
+            child: Icon(icon, color: Colors.white, size: 26),
           ),
-          const SizedBox(height: AppSpacing.xs),
+          const SizedBox(height: AppSpacing.sm),
           Text(
             label,
-            style: const TextStyle(color: Colors.white70, fontSize: 9.5),
+            style: const TextStyle(color: Colors.white70, fontSize: 12),
             textAlign: TextAlign.center,
             maxLines: 2,
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 4),
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
@@ -75,13 +75,13 @@ class _StatTile extends StatelessWidget {
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
-                fontSize: 14,
+                fontSize: 20,
               ),
             ),
           ),
-          const SizedBox(height: AppSpacing.xs),
+          const SizedBox(height: AppSpacing.sm),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
             decoration: BoxDecoration(
               color: badgeColor.withValues(alpha: 0.25),
               borderRadius: BorderRadius.circular(AppRadius.pill),
@@ -90,7 +90,7 @@ class _StatTile extends StatelessWidget {
               badgeText,
               style: TextStyle(
                 color: badgeColor,
-                fontSize: 8,
+                fontSize: 9,
                 fontWeight: FontWeight.w600,
               ),
               textAlign: TextAlign.center,
@@ -493,33 +493,36 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
             await ref.read(enquiriesControllerProvider.notifier).load();
             await ref.read(workItemsProvider.notifier).load();
           },
-          child: ListView(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(AppSpacing.lg),
-            children: [
-              // Greeting
-              _buildGreeting(name, now),
-              const SizedBox(height: AppSpacing.lg),
-
-              // Glance card
-              _buildGlanceCard(brief),
-              const SizedBox(height: AppSpacing.lg),
-
-              // Nudge carousel
-              if (nudges.isNotEmpty) ...[
-                _buildNudgeCarousel(nudges),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Greeting
+                _buildGreeting(name, now),
                 const SizedBox(height: AppSpacing.lg),
+
+                // Glance card
+                _buildGlanceCard(brief),
+                const SizedBox(height: AppSpacing.lg),
+
+                // Nudge carousel
+                if (nudges.isNotEmpty) ...[
+                  _buildNudgeCarousel(nudges),
+                  const SizedBox(height: AppSpacing.lg),
+                ],
+
+                // Needs your attention
+                if (workState.items.isNotEmpty) ...[
+                  _buildAttentionSection(workState),
+                  const SizedBox(height: AppSpacing.lg),
+
+                  // AI suggested actions
+                  _buildAiActionsSection(workState),
+                  const SizedBox(height: AppSpacing.lg),
+                ],
               ],
-
-              // Needs your attention
-              if (workState.items.isNotEmpty) ...[
-                _buildAttentionSection(workState),
-                const SizedBox(height: AppSpacing.lg),
-
-                // AI suggested actions
-                _buildAiActionsSection(workState),
-                const SizedBox(height: AppSpacing.lg),
-              ],
-            ],
+            ),
           ),
         ),
       ),
@@ -630,11 +633,52 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Today at a glance',
-            style: TextStyle(color: Colors.white70, fontSize: 13),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'Today at a glance',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      "Here's your business snapshot for today ✨",
+                      style: TextStyle(color: Colors.white70, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Today',
+                      style: TextStyle(color: Colors.white, fontSize: 12),
+                    ),
+                    SizedBox(width: 2),
+                    Icon(Icons.keyboard_arrow_down,
+                        color: Colors.white, size: 16),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.lg),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -685,10 +729,10 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
               ),
               Image.asset(
                 'assets/robo.png',
-                width: 90,
-                height: 120,
+                width: 110,
+                height: 150,
                 fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => const SizedBox(width: 90),
+                errorBuilder: (_, __, ___) => const SizedBox(width: 110),
               ),
             ],
           ),
