@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orderly_app/core/theme/app_colors.dart';
 import 'package:orderly_app/core/theme/app_spacing.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as supa;
+import 'package:orderly_app/main.dart';
 import '../controller/auth_controller.dart';
 import 'otp_screen.dart';
 
@@ -17,6 +21,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _phone = TextEditingController();
   bool _canSubmit = false;
   bool _loading = false;
+  bool _googleLoading = false;
+  StreamSubscription<supa.AuthState>? _authSub;
 
   static final _phoneRe = RegExp(r'^[6-9]\d{9}$');
 
@@ -32,7 +38,37 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   void dispose() {
     _phone.dispose();
+    _authSub?.cancel();
     super.dispose();
+  }
+
+  Future<void> _signInWithGoogle() async {
+    if (_googleLoading || _loading) return;
+    setState(() => _googleLoading = true);
+    try {
+      await ref.read(authProvider.notifier).loginWithGoogle();
+      // Browser launched. Subscribe to session changes so we navigate when
+      // the deep link callback delivers the session.
+      _authSub?.cancel();
+      _authSub = supa.Supabase.instance.client.auth.onAuthStateChange.listen(
+        (data) {
+          if (data.session != null && mounted) {
+            _authSub?.cancel();
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const MainScreen()),
+              (_) => false,
+            );
+          }
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Google sign-in failed: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _googleLoading = false);
+    }
   }
 
   Future<void> _submit() async {
@@ -194,6 +230,61 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   'We\'ll send a one-time password to verify your number',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              Row(
+                children: [
+                  const Expanded(child: Divider(color: AppColors.border)),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                    child: Text('or',
+                        style: TextStyle(
+                            color: AppColors.textSecondary, fontSize: 13)),
+                  ),
+                  const Expanded(child: Divider(color: AppColors.border)),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: OutlinedButton(
+                  key: const Key('google_signin_btn'),
+                  onPressed: (_googleLoading || _loading) ? null : _signInWithGoogle,
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppColors.border),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.md)),
+                  ),
+                  child: _googleLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: AppColors.primary))
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'G',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF4285F4),
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            const Text(
+                              'Continue with Google',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
                 ),
               ),
               const Spacer(),

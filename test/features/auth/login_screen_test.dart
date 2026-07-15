@@ -38,10 +38,15 @@ void main() {
     expect(btn.onPressed, isNotNull);
   });
 
-  testWidgets('does not show Google or Apple login buttons', (t) async {
+  testWidgets('shows Google sign-in button', (t) async {
     await t.pumpWidget(_wrap());
     await t.pumpAndSettle();
-    expect(find.textContaining('Continue with Google'), findsNothing);
+    expect(find.byKey(const Key('google_signin_btn')), findsOneWidget);
+  });
+
+  testWidgets('does not show Apple login or password options', (t) async {
+    await t.pumpWidget(_wrap());
+    await t.pumpAndSettle();
     expect(find.textContaining('Sign in with Apple'), findsNothing);
     expect(find.textContaining('Enter password'), findsNothing);
   });
