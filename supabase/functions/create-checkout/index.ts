@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
   } catch (err) {
     const msg = err instanceof Error ? err.message : "unknown";
     console.error("create-checkout error:", msg);
-    return json({ error: "checkout_failed", detail: msg }, 500);
+    return json({ error: "checkout_failed" }, 500);
   }
 });
 

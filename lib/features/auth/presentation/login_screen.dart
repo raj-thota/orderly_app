@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:orderly_app/core/theme/app_colors.dart';
+import 'package:orderly_app/core/theme/app_spacing.dart';
 import '../controller/auth_controller.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../main.dart';
+import 'otp_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -13,327 +14,199 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  @override
-  Widget build(BuildContext context) {
-    final state = ref.watch(authProvider);
+  final _phone = TextEditingController();
+  bool _canSubmit = false;
+  bool _loading = false;
 
-    ref.listen(authProvider, (previous, next) {
-      if (next.isAuthenticated) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (_) => const MainScreen()),
-            (route) => false,
-          );
-        });
-      }
-
-      final previousError = previous?.errorMessage;
-      final nextError = next.errorMessage;
-
-      if (nextError != null && nextError != previousError) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(nextError)));
-          ref.read(authProvider.notifier).clearError();
-        });
-      }
-    });
-
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.black,
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: AnimatedSlide(
-            duration: const Duration(milliseconds: 300),
-            offset: const Offset(0, 0.05),
-            child: AnimatedOpacity(
-              duration: const Duration(milliseconds: 400),
-              opacity: 1,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 20),
-
-                  /// 🔥 BRAND
-                  Center(
-                    child: Column(
-                      children: [
-                        CircleAvatar(
-                          radius: 36,
-                          backgroundColor: Color(0xFFF3EFFF),
-                          child: Image.asset(
-                            "assets/logo/logo.png",
-                            height: 90,
-                          ),
-                        ),
-                        SizedBox(height: 14),
-                        Text(
-                          "Welcome to Closr",
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(height: 6),
-                        Text(
-                          "AI-powered follow-ups for your business",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.grey, fontSize: 13),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 30),
-
-                  /// 🔥 VALUE LINE
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF5F3FF),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(
-                          Icons.auto_awesome,
-                          size: 20,
-                          color: Colors.deepPurple,
-                        ),
-                        SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            "Turn chats → leads → orders",
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 30),
-
-                  /// 🔥 BENEFITS
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      _BenefitItem(
-                        text: "Never miss a follow-up again",
-                        index: 0,
-                      ),
-                      SizedBox(height: 10),
-                      _BenefitItem(
-                        text: "Track leads & orders in one place",
-                        index: 1,
-                      ),
-                      SizedBox(height: 10),
-                      _BenefitItem(
-                        text: "AI tells you who is ready to buy",
-                        index: 2,
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 40),
-
-                  /// 🔥 GOOGLE LOGIN BUTTON
-                  SizedBox(
-                    width: double.infinity,
-                    child: AnimatedScale(
-                      duration: const Duration(milliseconds: 120),
-                      scale: state.isLoading ? 0.98 : 1,
-                      child: ElevatedButton(
-                        onPressed: state.isLoading
-                            ? null
-                            : () async {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text("Redirecting to Google..."),
-                                  ),
-                                );
-
-                                await ref
-                                    .read(authProvider.notifier)
-                                    .loginWithGoogle();
-                              },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 120),
-                          curve: Curves.easeOut,
-                          child: state.isLoading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: const FaIcon(
-                                        FontAwesomeIcons.google,
-                                        size: 16,
-                                        color: Color(0xFFDB4437),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    const Text(
-                                      "Continue with Google",
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  const Center(
-                    child: Text(
-                      "One tap login • No password needed",
-                      style: TextStyle(color: Colors.grey, fontSize: 12),
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  /// 🔥 TRUST BADGES
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: const [
-                      Column(
-                        children: [
-                          Icon(Icons.lock, size: 18, color: Colors.grey),
-                          SizedBox(height: 4),
-                          Text(
-                            "Secure",
-                            style: TextStyle(fontSize: 11, color: Colors.grey),
-                          ),
-                        ],
-                      ),
-                      Column(
-                        children: [
-                          Icon(Icons.flash_on, size: 18, color: Colors.grey),
-                          SizedBox(height: 4),
-                          Text(
-                            "Fast Setup",
-                            style: TextStyle(fontSize: 11, color: Colors.grey),
-                          ),
-                        ],
-                      ),
-                      Column(
-                        children: [
-                          Icon(Icons.cloud_done, size: 18, color: Colors.grey),
-                          SizedBox(height: 4),
-                          Text(
-                            "Synced",
-                            style: TextStyle(fontSize: 11, color: Colors.grey),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-
-                  const Spacer(),
-
-                  const Center(
-                    child: Text(
-                      "Built for small businesses & founders",
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BenefitItem extends StatefulWidget {
-  final String text;
-  final int index;
-  const _BenefitItem({required this.text, this.index = 0});
-
-  @override
-  State<_BenefitItem> createState() => _BenefitItemState();
-}
-
-class _BenefitItemState extends State<_BenefitItem>
-    with SingleTickerProviderStateMixin {
-  late AnimationController controller;
-  late Animation<double> fade;
+  static final _phoneRe = RegExp(r'^[6-9]\d{9}$');
 
   @override
   void initState() {
     super.initState();
-    controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    );
-
-    Future.delayed(Duration(milliseconds: 120 * widget.index), () {
-      if (mounted) controller.forward();
+    _phone.addListener(() {
+      final ok = _phoneRe.hasMatch(_phone.text.trim());
+      if (ok != _canSubmit) setState(() => _canSubmit = ok);
     });
-
-    fade = CurvedAnimation(parent: controller, curve: Curves.easeIn);
   }
 
   @override
   void dispose() {
-    controller.dispose();
+    _phone.dispose();
     super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_canSubmit || _loading) return;
+    final phone = _phone.text.trim();
+    setState(() => _loading = true);
+    try {
+      await ref.read(authProvider.notifier).sendOtp(phone);
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => OtpScreen(phone: phone)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not send OTP: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: fade,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            Icon(Icons.check_circle, size: 16, color: Colors.green.shade600),
-            const SizedBox(width: 8),
-            Text(widget.text, style: const TextStyle(fontSize: 13)),
-          ],
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        foregroundColor: AppColors.textPrimary,
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: AppSpacing.xl),
+              Center(
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withAlpha(20),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Image.asset('assets/logo/logo.png', height: 48),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    const Text(
+                      'Welcome to Closr',
+                      style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Your AI-powered sales assistant',
+                      style: TextStyle(
+                          color: AppColors.textSecondary, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xxl),
+              Text(
+                'Mobile number',
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Row(
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md, vertical: AppSpacing.md),
+                      child: Text('+91',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary)),
+                    ),
+                    Container(
+                        width: 1,
+                        height: 24,
+                        color: AppColors.border),
+                    Expanded(
+                      child: TextField(
+                        key: const Key('phone_field'),
+                        controller: _phone,
+                        keyboardType: TextInputType.phone,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(10),
+                        ],
+                        style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            letterSpacing: 2,
+                            fontWeight: FontWeight.w500),
+                        decoration: const InputDecoration(
+                          hintText: '10-digit mobile number',
+                          hintStyle: TextStyle(
+                              color: AppColors.textSecondary,
+                              letterSpacing: 0,
+                              fontWeight: FontWeight.normal,
+                              fontSize: 13),
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: AppSpacing.md,
+                              vertical: AppSpacing.md),
+                        ),
+                        onSubmitted: (_) => _submit(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: FilledButton(
+                  key: const Key('get_otp_btn'),
+                  onPressed: (_canSubmit && !_loading) ? _submit : null,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    disabledBackgroundColor: AppColors.border,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.md)),
+                  ),
+                  child: _loading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
+                      : const Text(
+                          'Get OTP',
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white),
+                        ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              const Center(
+                child: Text(
+                  'We\'ll send a one-time password to verify your number',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                ),
+              ),
+              const Spacer(),
+              const Center(
+                child: Text(
+                  'By continuing you agree to our Terms of Service',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+            ],
+          ),
         ),
       ),
     );

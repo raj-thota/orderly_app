@@ -5,6 +5,7 @@ import 'package:orderly_app/features/assistant/presentation/assistant_screen.dar
 import 'package:orderly_app/features/catalog/presentation/catalog_screen.dart';
 import 'package:orderly_app/features/invoices/presentation/invoices_screen.dart';
 import 'package:orderly_app/features/profile/presentation/profile_screen.dart';
+import 'package:orderly_app/features/settings/presentation/settings_screen.dart';
 import 'package:orderly_app/features/subscription/presentation/subscription_screen.dart';
 
 /// Business tab: hub for everything that isn't the daily pipeline.
@@ -28,6 +29,8 @@ class BusinessHubScreen extends StatelessWidget {
           () => push(const ProfileScreen())),
       (Icons.workspace_premium_rounded, 'Go Pro', 'Closr Pro subscription',
           () => push(const SubscriptionScreen())),
+      (Icons.settings_rounded, 'Settings', 'Profile, invoices, privacy',
+          () => push(const SettingsScreen())),
     ];
 
     return Scaffold(

@@ -147,6 +147,13 @@ async function _verifyStripeSignature(
   const expected = parts["v1"];
   if (!timestamp || !expected) return false;
 
+  // Reject events older than 300 seconds (Stripe replay window).
+  const ageSecs = Math.abs(Date.now() / 1000 - Number(timestamp));
+  if (ageSecs > 300) {
+    console.error("stripe webhook timestamp too old:", ageSecs.toFixed(0) + "s");
+    return false;
+  }
+
   const payload = `${timestamp}.${new TextDecoder().decode(rawBody)}`;
   const keyBytes = new TextEncoder().encode(secret);
   const msgBytes = new TextEncoder().encode(payload);
@@ -161,7 +168,7 @@ async function _verifyStripeSignature(
   const computed = Array.from(new Uint8Array(sig))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
-  return computed === expected;
+  return _timingSafeEqual(computed, expected);
 }
 
 // ---------------------------------------------------------------------------
@@ -188,10 +195,17 @@ async function _handleRazorpay(
   const eventType = event.event;
   const payload = event.payload;
 
-  // Razorpay doesn't provide stable event IDs; derive from subscription + event type.
+  // Use Razorpay's stable event entity ID if present; fall back to subscription+type per billing cycle.
+  // Razorpay does include event.entity.id on webhook payloads.
+  const rzpEventEntityId = (payload["entity"] as Record<string, unknown> | undefined)?.["id"] as string | undefined;
   const subPayload = payload["subscription"] as { entity?: Record<string, unknown> } | undefined;
   const rzpSubId = subPayload?.entity?.["id"] as string | undefined;
-  const eventId = rzpSubId ? `rzp_${rzpSubId}_${eventType}` : `rzp_${Date.now()}_${eventType}`;
+  // Include eventType so the same subscription can have charged events across multiple billing cycles.
+  const eventId = rzpEventEntityId
+    ? `rzp_evt_${rzpEventEntityId}`
+    : rzpSubId
+    ? `rzp_${rzpSubId}_${eventType}_${Math.floor(Date.now() / 86400000)}`
+    : `rzp_fallback_${eventType}_${Date.now()}`;
 
   // Idempotency.
   const { error: dupErr } = await supabase.from("billing_events").insert({
@@ -278,5 +292,14 @@ async function _verifyRazorpaySignature(
   const computed = Array.from(new Uint8Array(sig))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
-  return computed === signature;
+  return _timingSafeEqual(computed, signature);
+}
+
+function _timingSafeEqual(a: string, b: string): boolean {
+  const aBytes = new TextEncoder().encode(a);
+  const bBytes = new TextEncoder().encode(b);
+  if (aBytes.length !== bBytes.length) return false;
+  // crypto.subtle.timingSafeEqual is available in Deno.
+  return (crypto.subtle as unknown as { timingSafeEqual(a: ArrayBuffer, b: ArrayBuffer): boolean })
+    .timingSafeEqual(aBytes, bBytes);
 }
