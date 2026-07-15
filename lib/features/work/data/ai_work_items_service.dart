@@ -15,7 +15,7 @@ class SupabaseAiWorkItemsService implements AiWorkItemsService {
   SupabaseClient get _client => Supabase.instance.client;
   String get _userId => _client.auth.currentUser!.id;
 
-  static const _selectWithJoins = '*, customers(name)';
+  static const _selectWithJoins = '*, customers(name, phone)';
 
   @override
   Future<List<AiWorkItem>> fetchPending() async {

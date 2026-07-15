@@ -10,6 +10,7 @@ class AiWorkItem {
     this.userId,
     this.customerId,
     this.customerName,
+    this.phone,
     this.leadId,
     this.orderId,
     this.context,
@@ -30,6 +31,7 @@ class AiWorkItem {
   final String? userId;
   final String? customerId;
   final String? customerName;
+  final String? phone;
   final String? leadId;
   final String? orderId;
   final String? context;
@@ -58,6 +60,7 @@ class AiWorkItem {
       userId: map['user_id']?.toString(),
       customerId: map['customer_id']?.toString(),
       customerName: customer?['name']?.toString(),
+      phone: customer?['phone']?.toString(),
       leadId: map['lead_id']?.toString(),
       orderId: map['order_id']?.toString(),
       context: map['context']?.toString(),

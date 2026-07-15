@@ -107,4 +107,17 @@ void main() {
     });
     expect(item.customerName, 'Priya Sharma');
   });
+
+  test('fromMap reads customer phone from join', () {
+    final item = AiWorkItem.fromMap({
+      'id': 'wi8',
+      'kind': 'payment_reminder',
+      'priority': 'high',
+      'score': 80,
+      'title': 'Remind Priya',
+      'batch_id': 'b1',
+      'customers': {'name': 'Priya Sharma', 'phone': '9876543210'},
+    });
+    expect(item.phone, '9876543210');
+  });
 }

@@ -3,6 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orderly_app/core/services/event_service.dart';
 import 'package:orderly_app/features/auth/controller/user_provider.dart';
+import 'package:orderly_app/features/conversations/controller/conversation_provider.dart';
+import 'package:orderly_app/features/conversations/data/ai_summary.dart';
+import 'package:orderly_app/features/conversations/data/conversation.dart';
+import 'package:orderly_app/features/conversations/data/conversations_service.dart';
+import 'package:orderly_app/features/conversations/data/customer_summary_service.dart';
+import 'package:orderly_app/features/conversations/data/draft_reply_service.dart';
+import 'package:orderly_app/features/conversations/data/message.dart';
 import 'package:orderly_app/features/enquiries/controller/enquiries_provider.dart';
 import 'package:orderly_app/features/enquiries/data/enquiries_service.dart';
 import 'package:orderly_app/features/enquiries/data/enquiry.dart';
@@ -10,11 +17,56 @@ import 'package:orderly_app/features/orders/controller/orders_provider.dart';
 import 'package:orderly_app/features/orders/data/order.dart';
 import 'package:orderly_app/features/orders/data/orders_service.dart';
 import 'package:orderly_app/features/payments/data/payment.dart';
+import 'package:orderly_app/features/subscription/controller/subscription_provider.dart';
+import 'package:orderly_app/features/subscription/data/subscription.dart';
 import 'package:orderly_app/features/today/presentation/today_screen.dart';
 import 'package:orderly_app/features/work/controller/work_items_provider.dart';
 import 'package:orderly_app/features/work/data/ai_work_item.dart';
 
 import '../work/work_items_provider_test.dart' show FakeAiWorkItemsService;
+
+// ─── Workspace fakes (so tapping a card can push CustomerWorkspaceScreen) ──────
+
+class _FakeConv implements ConversationsService {
+  @override
+  Future<Conversation> getOrCreate(String id) async =>
+      Conversation(id: 'cv-1', customerId: id);
+  @override
+  Future<Conversation?> fetchByCustomerId(String id) async =>
+      Conversation(id: 'cv-1', customerId: id);
+  @override
+  Future<List<Message>> fetchMessages(String _) async => const [];
+  @override
+  Future<Message> addMessage({
+    required String conversationId,
+    required String direction,
+    required String source,
+    required String body,
+    DateTime? sentAt,
+    Map<String, dynamic> meta = const {},
+  }) async =>
+      Message(
+        id: 'm-new',
+        conversationId: conversationId,
+        direction: direction,
+        source: source,
+        body: body,
+      );
+}
+
+class _FakeSummary implements CustomerSummaryService {
+  @override
+  Future<AiSummary?> fetch(String _) async => null;
+  @override
+  Future<AiSummary?> refresh(String _) async => null;
+}
+
+class _FakeDraft implements DraftReplyService {
+  @override
+  Future<DraftReply?> generate(
+          {required String customerId, required String objective}) async =>
+      null;
+}
 
 class _FixedOrders extends OrdersController {
   _FixedOrders(List<Order> orders) : super(OrdersService()) {
@@ -38,6 +90,7 @@ Widget _harness({
   List<String>? events,
   void Function(int)? onNavigate,
   FakeAiWorkItemsService? workItems,
+  Map<String, dynamic>? profile,
 }) {
   final captured = events ?? [];
   return ProviderScope(
@@ -46,13 +99,18 @@ Widget _harness({
       enquiriesControllerProvider
           .overrideWith((ref) => _FixedEnquiries(enquiries)),
       userProfileProvider
-          .overrideWith((ref) async => {'business_name': 'Raj'}),
+          .overrideWith((ref) async => profile ?? {'business_name': 'Raj'}),
       eventServiceProvider.overrideWithValue(EventService(
         sink: (row) async => captured.add(row['name'] as String),
         currentUserId: () => 'u1',
       )),
       aiWorkItemsServiceProvider
           .overrideWithValue(workItems ?? FakeAiWorkItemsService([])),
+      // Let a pushed CustomerWorkspaceScreen build without Supabase.
+      conversationsServiceProvider.overrideWithValue(_FakeConv()),
+      customerSummaryServiceProvider.overrideWithValue(_FakeSummary()),
+      draftReplyServiceProvider.overrideWithValue(_FakeDraft()),
+      entitlementProvider.overrideWith((_) => EntitlementStatus.trialing),
     ],
     child: MaterialApp(
       home: TodayScreen(onNavigate: onNavigate ?? (_) {}),
@@ -72,6 +130,7 @@ AiWorkItem _workItem({
   String priority = 'high',
   String? customerName,
   double? amount,
+  String? phone,
 }) =>
     AiWorkItem(
       id: id,
@@ -84,6 +143,7 @@ AiWorkItem _workItem({
       customerId: 'c-1',
       customerName: customerName,
       amount: amount,
+      phone: phone,
     );
 
 void main() {
@@ -200,5 +260,69 @@ void main() {
     expect(find.textContaining('Orders'), findsOneWidget);
     expect(find.textContaining('Revenue'), findsOneWidget);
     expect(find.textContaining('Outstanding'), findsOneWidget);
+  });
+
+  testWidgets('app bar shows a profile avatar, not a hamburger menu',
+      (t) async {
+    await t.pumpWidget(_harness());
+    await t.pumpAndSettle();
+
+    expect(find.byIcon(Icons.menu_rounded), findsNothing);
+    expect(find.byKey(const Key('today_profile_avatar')), findsOneWidget);
+  });
+
+  testWidgets('profile avatar shows initial letter when no photo', (t) async {
+    await t.pumpWidget(_harness(profile: {'business_name': 'Raj'}));
+    await t.pumpAndSettle();
+
+    final avatar = t.widget<CircleAvatar>(
+        find.byKey(const Key('today_profile_avatar')));
+    expect(avatar.backgroundImage, isNull);
+    expect(find.descendant(
+      of: find.byKey(const Key('today_profile_avatar')),
+      matching: find.text('R'),
+    ), findsOneWidget);
+  });
+
+  test('profileAvatarImage returns null when no url', () {
+    expect(profileAvatarImage(null), isNull);
+    expect(profileAvatarImage(''), isNull);
+  });
+
+  test('profileAvatarImage returns NetworkImage for a url', () {
+    final image = profileAvatarImage('https://example.com/me.png');
+    expect(image, isA<NetworkImage>());
+    expect((image as NetworkImage).url, 'https://example.com/me.png');
+  });
+
+  testWidgets('tapping an attention tile opens the customer workspace',
+      (t) async {
+    int? navigated;
+    final svc = FakeAiWorkItemsService([
+      _workItem(customerName: 'Priya', kind: 'reply'),
+    ]);
+    await t.pumpWidget(_harness(workItems: svc, onNavigate: (i) => navigated = i));
+    await t.pumpAndSettle();
+
+    await t.tap(find.text('Priya'));
+    await t.pumpAndSettle();
+
+    // Workspace screen is unique: it has a Chat tab.
+    expect(find.text('Chat'), findsOneWidget);
+    expect(navigated, isNull);
+  });
+
+  testWidgets('AI action card with no phone opens the workspace', (t) async {
+    final svc = FakeAiWorkItemsService([
+      _workItem(customerName: 'Priya', kind: 'payment_reminder'),
+    ]);
+    await t.pumpWidget(_harness(workItems: svc));
+    await t.pumpAndSettle();
+
+    await t.ensureVisible(find.textContaining('Send price to Priya'));
+    await t.tap(find.textContaining('Send price to Priya'));
+    await t.pumpAndSettle();
+
+    expect(find.text('Chat'), findsOneWidget);
   });
 }

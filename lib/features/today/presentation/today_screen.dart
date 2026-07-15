@@ -1,16 +1,28 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:orderly_app/core/services/event_service.dart';
 import 'package:orderly_app/core/theme/app_colors.dart';
 import 'package:orderly_app/core/theme/app_spacing.dart';
 import 'package:orderly_app/core/utils/money.dart';
 import 'package:orderly_app/features/auth/controller/user_provider.dart';
+import 'package:orderly_app/features/conversations/presentation/customer_workspace_screen.dart';
 import 'package:orderly_app/features/enquiries/controller/enquiries_provider.dart';
 import 'package:orderly_app/features/notifications/presentation/notifications_screen.dart';
 import 'package:orderly_app/features/orders/controller/orders_provider.dart';
+import 'package:orderly_app/features/profile/presentation/profile_screen.dart';
+import 'package:orderly_app/features/today/data/ai_card_action.dart';
 import 'package:orderly_app/features/today/data/today_brief.dart';
 import 'package:orderly_app/features/work/controller/work_items_provider.dart';
 import 'package:orderly_app/features/work/data/ai_work_item.dart';
+
+/// Google/profile photo if present, else null (caller renders initials).
+ImageProvider? profileAvatarImage(String? avatarUrl) {
+  if (avatarUrl == null || avatarUrl.isEmpty) return null;
+  return NetworkImage(avatarUrl);
+}
 
 // ─── Nudge data ──────────────────────────────────────────────────────────────
 
@@ -20,81 +32,64 @@ class _NudgeData {
     required this.title,
     required this.subtitle,
     required this.onTap,
+    required this.cardColor,
+    required this.iconColor,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
+  final Color cardColor;
+  final Color iconColor;
 }
 
 // ─── Stat tile ───────────────────────────────────────────────────────────────
 
-class _StatTile extends StatelessWidget {
-  const _StatTile({
+class _StatRow extends StatelessWidget {
+  const _StatRow({
     required this.icon,
     required this.label,
     required this.value,
-    required this.badgeText,
-    required this.badgeColor,
+    required this.highlightColor,
   });
 
   final IconData icon;
   final String label;
   final String value;
-  final String badgeText;
-  final Color badgeColor;
+  final Color highlightColor;
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 9),
+      child: Row(
         children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.20),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(icon, color: Colors.white, size: 26),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            label,
-            style: const TextStyle(color: Colors.white70, fontSize: 12),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-          ),
-          const SizedBox(height: 4),
-          FittedBox(
-            fit: BoxFit.scaleDown,
+          Icon(icon, color: Colors.white70, size: 15),
+          const SizedBox(width: 8),
+          Expanded(
             child: Text(
-              value,
+              label,
               style: const TextStyle(
                 color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
-          const SizedBox(height: AppSpacing.sm),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-              color: badgeColor.withValues(alpha: 0.25),
-              borderRadius: BorderRadius.circular(AppRadius.pill),
+              color: highlightColor.withValues(alpha: 0.22),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              badgeText,
+              value,
               style: TextStyle(
-                color: badgeColor,
-                fontSize: 9,
-                fontWeight: FontWeight.w600,
+                color: highlightColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
               ),
-              textAlign: TextAlign.center,
-              maxLines: 2,
             ),
           ),
         ],
@@ -116,14 +111,10 @@ class _AttentionTile extends StatelessWidget {
 
   Color _priorityColor(String priority) {
     switch (priority) {
-      case 'high':
-        return AppColors.danger;
-      case 'medium':
-        return AppColors.warning;
-      case 'low':
-        return AppColors.success;
-      default:
-        return AppColors.textSecondary;
+      case 'high': return AppColors.danger;
+      case 'medium': return AppColors.warning;
+      case 'low': return AppColors.success;
+      default: return AppColors.textSecondary;
     }
   }
 
@@ -154,11 +145,24 @@ class _AttentionTile extends StatelessWidget {
 
   String _timeAgo(DateTime? dt) {
     if (dt == null) return '';
-    final now = DateTime.now();
-    final diff = now.difference(dt);
+    final diff = DateTime.now().difference(dt);
     if (diff.inDays >= 1) return '${diff.inDays} days ago';
     if (diff.inHours >= 1) return '${diff.inHours} hours ago';
     return 'Today';
+  }
+
+  String _subtitle() {
+    final time = _timeAgo(item.createdAt);
+    final String? prefix;
+    if (item.orderId != null) {
+      prefix = 'Order #${item.orderId}';
+    } else if (item.leadId != null) {
+      prefix = 'Hot lead';
+    } else {
+      prefix = null;
+    }
+    if (prefix != null && time.isNotEmpty) return '$prefix • $time';
+    return prefix ?? time;
   }
 
   @override
@@ -193,14 +197,15 @@ class _AttentionTile extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Expanded(
+                      Flexible(
                         child: Text(
-                          item.customerName ?? item.title,
+                          item.customerName ?? '—',
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 14,
+                            fontSize: 15,
                             color: AppColors.textPrimary,
                           ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       const SizedBox(width: AppSpacing.xs),
@@ -210,8 +215,7 @@ class _AttentionTile extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: _priorityColor(item.priority)
                               .withValues(alpha: 0.15),
-                          borderRadius:
-                              BorderRadius.circular(AppRadius.pill),
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
                         ),
                         child: Text(
                           _priorityLabel(item.priority),
@@ -224,26 +228,24 @@ class _AttentionTile extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
                   Text(
-                    item.context ?? item.title,
+                    item.title,
                     style: const TextStyle(
-                      color: AppColors.textSecondary,
+                      color: Color(0xFF374151),
                       fontSize: 12,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  if (item.createdAt != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      _timeAgo(item.createdAt),
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 11,
-                      ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _subtitle(),
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 11,
                     ),
-                  ],
+                  ),
                 ],
               ),
             ),
@@ -268,13 +270,18 @@ class _AttentionTile extends StatelessWidget {
                         horizontal: 8, vertical: 4),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    side: const BorderSide(color: AppColors.primary),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    foregroundColor: AppColors.primary,
                     textStyle: const TextStyle(fontSize: 11),
                   ),
                   child: Text(_actionLabel(item.kind)),
                 ),
               ],
             ),
-            const SizedBox(width: AppSpacing.xs),
+            const SizedBox(width: AppSpacing.sm),
             const Icon(Icons.chevron_right_rounded,
                 color: AppColors.textSecondary, size: 18),
           ],
@@ -338,12 +345,12 @@ class _AiActionCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 148,
+        width: 160,
         margin: const EdgeInsets.only(right: AppSpacing.sm),
         padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderRadius: BorderRadius.circular(8),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.06),
@@ -355,30 +362,43 @@ class _AiActionCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: cfg.color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(AppRadius.sm),
-              ),
-              child: Icon(cfg.icon, color: cfg.color, size: 20),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: cfg.color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(cfg.icon, color: cfg.color, size: 18),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    cfg.desc,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: AppSpacing.sm),
-            Text(
-              cfg.desc,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              cfg.cta,
-              style: const TextStyle(
-                fontSize: 11,
-                color: AppColors.primary,
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                cfg.cta,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                ),
               ),
             ),
           ],
@@ -413,8 +433,9 @@ class TodayScreen extends ConsumerStatefulWidget {
 }
 
 class _TodayScreenState extends ConsumerState<TodayScreen> {
-  final PageController _nudgePageCtrl = PageController();
   int _nudgePage = 0;
+  int _nudgeCount = 0;
+  Timer? _nudgeTimer;
 
   @override
   void initState() {
@@ -423,11 +444,18 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
       ref.read(eventServiceProvider).track('brief_view');
       ref.read(workItemsProvider.notifier).load();
     });
+    _nudgeTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (_nudgeCount > 1 && mounted) {
+        setState(() {
+          _nudgePage = (_nudgePage + 1) % _nudgeCount;
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
-    _nudgePageCtrl.dispose();
+    _nudgeTimer?.cancel();
     super.dispose();
   }
 
@@ -435,6 +463,76 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
     if (now.hour < 12) return 'Good morning';
     if (now.hour < 17) return 'Good afternoon';
     return 'Good evening';
+  }
+
+  String _initialLetter(String name) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return '?';
+    return trimmed[0].toUpperCase();
+  }
+
+  /// Opens the full customer workspace for a work item.
+  void _openWorkspace(AiWorkItem item) {
+    if (item.customerId == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CustomerWorkspaceScreen(
+          customerId: item.customerId!,
+          customerName: item.customerName ?? 'Customer',
+          phone: item.phone,
+        ),
+      ),
+    );
+  }
+
+  /// Runs the direct CTA action for an AI card (call / WhatsApp / workspace).
+  Future<void> _runCardAction(AiWorkItem item) async {
+    final action = resolveAiCardAction(item);
+    if (action.type == AiCardActionType.workspace) {
+      _openWorkspace(item);
+      return;
+    }
+    try {
+      final launched =
+          await launchUrl(action.uri!, mode: LaunchMode.externalApplication);
+      if (!launched && mounted) _openWorkspace(item);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open that app')),
+        );
+      }
+    }
+  }
+
+  Widget _buildProfileAvatar() {
+    final profile = ref.watch(userProfileProvider).valueOrNull;
+    final avatarUrl = profile?['avatar_url'] as String?;
+    final name = (profile?['business_name'] as String?) ?? '';
+    final image = profileAvatarImage(avatarUrl);
+    return Center(
+      child: GestureDetector(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const ProfileScreen()),
+        ),
+        child: CircleAvatar(
+          key: const Key('today_profile_avatar'),
+          radius: 16,
+          backgroundColor: AppColors.aiSurface,
+          backgroundImage: image,
+          child: image != null
+              ? null
+              : Text(
+                  _initialLetter(name),
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -458,15 +556,18 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
             '${brief.dueFollowUps} follow-up${brief.dueFollowUps == 1 ? '' : 's'} need your attention',
         subtitle: 'Review and take action',
         onTap: () => widget.onNavigate(1),
+        cardColor: const Color(0xFFFFF3E0),
+        iconColor: const Color(0xFFE65100),
       ));
     }
     if (brief.outstanding > 0) {
       nudges.add(_NudgeData(
         icon: Icons.currency_rupee_rounded,
-        title:
-            '${Money.inr(brief.outstanding)} outstanding payments',
+        title: '${Money.inr(brief.outstanding)} outstanding payments',
         subtitle: 'Collect payments now',
         onTap: () => widget.onNavigate(2),
+        cardColor: const Color(0xFFFFEBEE),
+        iconColor: const Color(0xFFC62828),
       ));
     }
     if (brief.ordersToday > 0) {
@@ -475,10 +576,13 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
         title: '${brief.ordersToday} new order(s) placed today',
         subtitle: 'View your orders',
         onTap: () => widget.onNavigate(2),
+        cardColor: const Color(0xFFE8F5E9),
+        iconColor: const Color(0xFF2E7D32),
       ));
     }
 
-    // Nudge page desync guard
+    // Nudge page desync guard + sync count for auto-advance
+    _nudgeCount = nudges.length;
     if (nudges.isNotEmpty && _nudgePage >= nudges.length) {
       _nudgePage = nudges.length - 1;
     }
@@ -533,10 +637,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
     return AppBar(
       backgroundColor: AppColors.background,
       elevation: 0,
-      leading: IconButton(
-        icon: const Icon(Icons.menu_rounded, color: AppColors.textPrimary),
-        onPressed: () {},
-      ),
+      leading: _buildProfileAvatar(),
       title: Row(
         mainAxisSize: MainAxisSize.min,
         children: const [
@@ -635,26 +736,13 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Flexible(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      'Today at a glance',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      "Here's your business snapshot for today ✨",
-                      style: TextStyle(color: Colors.white70, fontSize: 11),
-                    ),
-                  ],
+              const Text(
+                'Today at a glance',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
               Container(
@@ -683,56 +771,47 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Column(
                   children: [
-                    _StatTile(
+                    _StatRow(
                       icon: Icons.chat_bubble_outline_rounded,
-                      label: 'Follow-ups\ndue',
+                      label: 'Follow-ups due',
                       value: '${brief.dueFollowUps}',
-                      badgeText: brief.dueFollowUps > 0
-                          ? 'Needs attention'
-                          : 'All caught up',
-                      badgeColor: brief.dueFollowUps > 0
-                          ? AppColors.danger
-                          : AppColors.success,
+                      highlightColor: const Color(0xFFFF8A80),
                     ),
-                    _StatTile(
+                    Divider(color: Colors.white.withValues(alpha: 0.12), height: 1),
+                    _StatRow(
                       icon: Icons.shopping_bag_outlined,
-                      label: 'Orders\ntoday',
+                      label: 'Orders today',
                       value: '${brief.ordersToday}',
-                      badgeText: brief.ordersToday > 0 ? 'New order' : 'No orders',
-                      badgeColor: brief.ordersToday > 0
-                          ? AppColors.success
-                          : AppColors.textSecondary,
+                      highlightColor: const Color(0xFF69F0AE),
                     ),
-                    _StatTile(
+                    Divider(color: Colors.white.withValues(alpha: 0.12), height: 1),
+                    _StatRow(
                       icon: Icons.currency_rupee_rounded,
-                      label: 'Revenue\ntoday',
+                      label: 'Revenue today',
                       value: brief.revenueToday > 0
                           ? Money.inr(brief.revenueToday)
                           : '₹0',
-                      badgeText: brief.revenueToday > 0 ? 'Sales today' : 'No sales yet',
-                      badgeColor: brief.revenueToday > 0
-                          ? AppColors.success
-                          : AppColors.warning,
+                      highlightColor: const Color(0xFFFFD54F),
                     ),
-                    _StatTile(
+                    Divider(color: Colors.white.withValues(alpha: 0.12), height: 1),
+                    _StatRow(
                       icon: Icons.layers_outlined,
                       label: 'Outstanding',
                       value: Money.inr(brief.outstanding),
-                      badgeText: 'Total due',
-                      badgeColor: AppColors.info,
+                      highlightColor: const Color(0xFF82B1FF),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: AppSpacing.md),
               Image.asset(
                 'assets/robo.png',
-                width: 110,
-                height: 150,
+                width: 130,
+                height: 190,
                 fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => const SizedBox(width: 110),
+                errorBuilder: (ctx, e, stack) => const SizedBox(width: 130),
               ),
             ],
           ),
@@ -757,80 +836,105 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
   }
 
   Widget _buildNudgeCarousel(List<_NudgeData> nudges) {
+    final nudge = nudges[_nudgePage];
     return Column(
       children: [
-        SizedBox(
-          height: 88,
-          child: PageView.builder(
-            controller: _nudgePageCtrl,
-            itemCount: nudges.length,
-            onPageChanged: (i) => setState(() => _nudgePage = i),
-            itemBuilder: (_, i) {
-              final nudge = nudges[i];
-              return GestureDetector(
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          child: SizedBox(
+            height: 70,
+            width: double.infinity,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 450),
+              transitionBuilder: (child, animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0, -1),
+                      end: Offset.zero,
+                    ).animate(CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOut,
+                    )),
+                    child: child,
+                  ),
+                );
+              },
+              child: GestureDetector(
+                key: ValueKey(_nudgePage),
                 onTap: nudge.onTap,
                 child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 2),
                   decoration: BoxDecoration(
                     color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(AppRadius.md),
                     border: Border.all(color: AppColors.border),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    child: Row(
-                      children: [
-                        Icon(nudge.icon, color: AppColors.primary),
-                        const SizedBox(width: AppSpacing.md),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                nudge.title,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textPrimary,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                nudge.subtitle,
-                                style: const TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.sm,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: nudge.iconColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        const Icon(Icons.chevron_right_rounded,
-                            color: AppColors.textSecondary),
-                      ],
-                    ),
+                        child: Icon(nudge.icon, color: nudge.iconColor, size: 22),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              nudge.title,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                                fontSize: 13,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              nudge.subtitle,
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right_rounded,
+                          color: AppColors.textSecondary, size: 18),
+                    ],
                   ),
                 ),
-              );
-            },
+              ),
+            ),
           ),
         ),
         if (nudges.length > 1) ...[
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.xs),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(nudges.length, (i) {
               return AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 margin: const EdgeInsets.symmetric(horizontal: 3),
-                width: _nudgePage == i ? 16 : 6,
+                width: 6,
                 height: 6,
                 decoration: BoxDecoration(
                   color: _nudgePage == i
                       ? AppColors.primary
                       : AppColors.border,
-                  borderRadius: BorderRadius.circular(3),
+                  shape: BoxShape.circle,
                 ),
               );
             }),
@@ -872,7 +976,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
         for (final item in displayItems) ...[
           _AttentionTile(
             item: item,
-            onTap: () => widget.onNavigate(1),
+            onTap: () => _openWorkspace(item),
           ),
           const SizedBox(height: AppSpacing.sm),
         ],
@@ -920,7 +1024,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
               for (final item in displayItems)
                 _AiActionCard(
                   item: item,
-                  onTap: () => widget.onNavigate(1),
+                  onTap: () => _runCardAction(item),
                 ),
             ],
           ),
