@@ -55,7 +55,7 @@ class _StatTile extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
+              color: Colors.white.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
             child: Icon(icon, color: Colors.white, size: 20),
@@ -344,7 +344,7 @@ class _AiActionCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadius.md),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withValues(alpha: 0.06),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -357,7 +357,7 @@ class _AiActionCard extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: cfg.color.withOpacity(0.12),
+                color: cfg.color.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(AppRadius.sm),
               ),
               child: Icon(cfg.icon, color: cfg.color, size: 20),
@@ -435,22 +435,6 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
     return 'Good evening';
   }
 
-  String _timeAgo(DateTime? dt) {
-    if (dt == null) return '';
-    final now = DateTime.now();
-    final diff = now.difference(dt);
-    if (diff.inDays >= 1) return '${diff.inDays} days ago';
-    if (diff.inHours >= 1) return '${diff.inHours} hours ago';
-    return 'Today';
-  }
-
-  String _initials(String? name) {
-    if (name == null || name.isEmpty) return '?';
-    final parts = name.trim().split(' ');
-    if (parts.length == 1) return parts[0][0].toUpperCase();
-    return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-  }
-
   @override
   Widget build(BuildContext context) {
     final orders = ref.watch(ordersControllerProvider).valueOrNull ?? const [];
@@ -490,6 +474,11 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
         subtitle: 'View your orders',
         onTap: () => widget.onNavigate(2),
       ));
+    }
+
+    // Nudge page desync guard
+    if (nudges.isNotEmpty && _nudgePage >= nudges.length) {
+      _nudgePage = nudges.length - 1;
     }
 
     return Scaffold(
