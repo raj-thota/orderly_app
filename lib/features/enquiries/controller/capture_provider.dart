@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orderly_app/features/catalog/data/product.dart';
+import 'package:orderly_app/features/conversations/controller/conversation_provider.dart' show conversationsServiceProvider;
 import 'package:orderly_app/features/conversations/data/conversations_service.dart';
 import 'package:orderly_app/features/followups/data/follow_ups_service.dart';
 import 'package:orderly_app/features/quotations/data/quotation.dart';
@@ -11,9 +12,6 @@ import '../data/capture_draft.dart';
 import '../data/customers_service.dart';
 import '../data/enquiries_service.dart';
 import 'enquiries_provider.dart';
-
-final conversationsServiceProvider =
-    Provider<ConversationsService>((ref) => ConversationsService());
 
 final followUpsServiceProvider =
     Provider<FollowUpsService>((ref) => FollowUpsService());

@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:orderly_app/features/conversations/controller/conversation_provider.dart' show conversationsServiceProvider;
 import 'package:orderly_app/features/conversations/data/conversation.dart';
 import 'package:orderly_app/features/conversations/data/conversations_service.dart';
 import 'package:orderly_app/features/conversations/data/message.dart';

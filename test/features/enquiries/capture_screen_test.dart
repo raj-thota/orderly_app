@@ -6,6 +6,7 @@ import 'package:orderly_app/features/business/data/business_profile.dart';
 import 'package:orderly_app/features/catalog/controller/products_provider.dart';
 import 'package:orderly_app/features/catalog/data/product.dart';
 import 'package:orderly_app/features/catalog/data/products_service.dart';
+import 'package:orderly_app/features/conversations/controller/conversation_provider.dart' show conversationsServiceProvider;
 import 'package:orderly_app/features/enquiries/controller/capture_provider.dart';
 import 'package:orderly_app/features/enquiries/controller/enquiries_provider.dart';
 import 'package:orderly_app/features/enquiries/data/ai_parse_service.dart';

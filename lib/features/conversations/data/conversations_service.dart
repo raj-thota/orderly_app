@@ -3,10 +3,25 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'conversation.dart';
 import 'message.dart';
 
-class ConversationsService {
+abstract class ConversationsService {
+  Future<Conversation> getOrCreate(String customerId);
+  Future<Conversation?> fetchByCustomerId(String customerId);
+  Future<List<Message>> fetchMessages(String conversationId);
+  Future<Message> addMessage({
+    required String conversationId,
+    required String direction,
+    required String source,
+    required String body,
+    DateTime? sentAt,
+    Map<String, dynamic> meta,
+  });
+}
+
+class SupabaseConversationsService implements ConversationsService {
   SupabaseClient get _client => Supabase.instance.client;
   String get _userId => _client.auth.currentUser!.id;
 
+  @override
   Future<Conversation> getOrCreate(String customerId) async {
     final existing = await fetchByCustomerId(customerId);
     if (existing != null) return existing;
@@ -19,6 +34,7 @@ class ConversationsService {
     return Conversation.fromMap(row);
   }
 
+  @override
   Future<Conversation?> fetchByCustomerId(String customerId) async {
     final row = await _client
         .from('conversations')
@@ -29,6 +45,7 @@ class ConversationsService {
     return row == null ? null : Conversation.fromMap(row);
   }
 
+  @override
   Future<List<Message>> fetchMessages(String conversationId) async {
     final rows = await _client
         .from('messages')
@@ -39,6 +56,7 @@ class ConversationsService {
     return rows.map<Message>((r) => Message.fromMap(r)).toList();
   }
 
+  @override
   Future<Message> addMessage({
     required String conversationId,
     required String direction,
