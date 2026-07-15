@@ -69,3 +69,4 @@ flutter:
     - assets/env/default.env
     - assets/icons/
     - assets/logo/
+    - assets/robo.png
