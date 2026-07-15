@@ -9,6 +9,8 @@ import 'package:orderly_app/features/conversations/data/customer_summary_service
 import 'package:orderly_app/features/conversations/data/draft_reply_service.dart';
 import 'package:orderly_app/features/conversations/data/message.dart';
 import 'package:orderly_app/features/conversations/presentation/customer_workspace_screen.dart';
+import 'package:orderly_app/features/subscription/controller/subscription_provider.dart';
+import 'package:orderly_app/features/subscription/data/subscription.dart';
 
 // ─── Fakes ───────────────────────────────────────────────────────────────────
 
@@ -85,6 +87,7 @@ Widget wrap(Widget child,
       customerSummaryServiceProvider
           .overrideWithValue(summary ?? _FakeSummary()),
       draftReplyServiceProvider.overrideWithValue(draft ?? _FakeDraft()),
+      entitlementProvider.overrideWith((_) => EntitlementStatus.trialing),
     ],
     child: MaterialApp(home: child),
   );

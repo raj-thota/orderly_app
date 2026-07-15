@@ -5,6 +5,9 @@ import 'package:orderly_app/core/theme/app_colors.dart';
 import 'package:orderly_app/core/theme/app_spacing.dart';
 import 'package:orderly_app/features/conversations/controller/conversation_provider.dart';
 import 'package:orderly_app/features/conversations/data/ai_summary.dart';
+import 'package:orderly_app/features/subscription/controller/subscription_provider.dart';
+import 'package:orderly_app/features/subscription/data/subscription.dart';
+import 'package:orderly_app/features/subscription/presentation/subscription_screen.dart';
 import 'package:orderly_app/shared/widgets/ai_card.dart';
 import 'package:orderly_app/shared/widgets/chat_bubble.dart';
 
@@ -140,6 +143,9 @@ class _ChatActions extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(conversationNotifierProvider(customerId));
+    final isGated =
+        ref.watch(entitlementProvider) == EntitlementStatus.gated;
+
     return Container(
       padding: const EdgeInsets.fromLTRB(
           AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.lg),
@@ -147,26 +153,45 @@ class _ChatActions extends ConsumerWidget {
       child: Row(
         children: [
           Expanded(
-            child: OutlinedButton.icon(
-              onPressed: state.draftLoading
-                  ? null
-                  : () => ref
-                      .read(conversationNotifierProvider(customerId).notifier)
-                      .requestDraft(customerId, objective: 'reply'),
-              icon: state.draftLoading
-                  ? const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.auto_awesome_rounded, size: 16),
-              label: const Text('Draft Reply'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.primary,
-                side: const BorderSide(color: AppColors.primary),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-              ),
-            ),
+            child: isGated
+                ? OutlinedButton.icon(
+                    key: const Key('draft_reply_gated'),
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const SubscriptionScreen()),
+                    ),
+                    icon: const Icon(Icons.workspace_premium_rounded,
+                        size: 16),
+                    label: const Text('Upgrade for AI drafts'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.textSecondary,
+                      side: const BorderSide(color: AppColors.border),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                  )
+                : OutlinedButton.icon(
+                    onPressed: state.draftLoading
+                        ? null
+                        : () => ref
+                            .read(conversationNotifierProvider(customerId)
+                                .notifier)
+                            .requestDraft(customerId, objective: 'reply'),
+                    icon: state.draftLoading
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.auto_awesome_rounded, size: 16),
+                    label: const Text('Draft Reply'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: const BorderSide(color: AppColors.primary),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
           ),
         ],
       ),
@@ -309,6 +334,9 @@ class _SummaryTabState extends ConsumerState<_SummaryTab> {
       return const Center(child: CircularProgressIndicator());
     }
 
+    final isGated =
+        ref.watch(entitlementProvider) == EntitlementStatus.gated;
+
     if (_summary == null || !_summary!.hasSummary) {
       return Center(
         child: Column(
@@ -317,18 +345,36 @@ class _SummaryTabState extends ConsumerState<_SummaryTab> {
             const Text('No summary yet',
                 style: TextStyle(color: AppColors.textSecondary)),
             const SizedBox(height: AppSpacing.md),
-            FilledButton.icon(
-              onPressed: _refreshing ? null : _refresh,
-              icon: _refreshing
-                  ? const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.auto_awesome_rounded, size: 16),
-              label: const Text('Generate Summary'),
-              style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
-            ),
+            if (isGated)
+              OutlinedButton.icon(
+                key: const Key('summary_gated'),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const SubscriptionScreen()),
+                ),
+                icon:
+                    const Icon(Icons.workspace_premium_rounded, size: 16),
+                label: const Text('Upgrade for AI summaries'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.textSecondary,
+                  side: const BorderSide(color: AppColors.border),
+                ),
+              )
+            else
+              FilledButton.icon(
+                onPressed: _refreshing ? null : _refresh,
+                icon: _refreshing
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.auto_awesome_rounded, size: 16),
+                label: const Text('Generate Summary'),
+                style:
+                    FilledButton.styleFrom(backgroundColor: AppColors.primary),
+              ),
           ],
         ),
       );

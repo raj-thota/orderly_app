@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:orderly_app/core/theme/app_colors.dart';
 import 'package:orderly_app/core/theme/app_spacing.dart';
+import 'package:orderly_app/features/assistant/presentation/assistant_screen.dart';
 import 'package:orderly_app/features/catalog/presentation/catalog_screen.dart';
 import 'package:orderly_app/features/invoices/presentation/invoices_screen.dart';
 import 'package:orderly_app/features/profile/presentation/profile_screen.dart';
@@ -17,6 +18,8 @@ class BusinessHubScreen extends StatelessWidget {
         context, MaterialPageRoute(builder: (_) => screen));
 
     final tiles = [
+      (Icons.auto_awesome_rounded, 'Closr AI', 'Your AI business assistant',
+          () => push(const AssistantScreen())),
       (Icons.storefront_rounded, 'Catalog', 'Your products and pieces',
           () => push(const _CatalogPage())),
       (Icons.receipt_long_rounded, 'Invoices', 'Generated invoices',

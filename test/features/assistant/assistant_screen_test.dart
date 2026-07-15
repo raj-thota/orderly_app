@@ -7,6 +7,8 @@ import 'package:orderly_app/features/assistant/controller/assistant_chat_provide
 import 'package:orderly_app/features/assistant/data/assistant_message.dart';
 import 'package:orderly_app/features/assistant/data/assistant_service.dart';
 import 'package:orderly_app/features/assistant/presentation/assistant_screen.dart';
+import 'package:orderly_app/features/subscription/controller/subscription_provider.dart';
+import 'package:orderly_app/features/subscription/data/subscription.dart';
 
 class _FakeFast implements AssistantService {
   final AssistantResponse response;
@@ -26,7 +28,10 @@ class _FakeFast implements AssistantService {
 
 Widget _wrap(AssistantService svc) {
   return ProviderScope(
-    overrides: [assistantServiceProvider.overrideWithValue(svc)],
+    overrides: [
+      assistantServiceProvider.overrideWithValue(svc),
+      entitlementProvider.overrideWith((_) => EntitlementStatus.trialing),
+    ],
     child: const MaterialApp(home: AssistantScreen()),
   );
 }

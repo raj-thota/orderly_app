@@ -4,6 +4,9 @@ import 'package:orderly_app/core/theme/app_colors.dart';
 import 'package:orderly_app/core/theme/app_spacing.dart';
 import 'package:orderly_app/features/assistant/controller/assistant_chat_provider.dart';
 import 'package:orderly_app/features/assistant/data/assistant_message.dart';
+import 'package:orderly_app/features/subscription/controller/subscription_provider.dart';
+import 'package:orderly_app/features/subscription/data/subscription.dart';
+import 'package:orderly_app/features/subscription/presentation/subscription_screen.dart';
 
 class AssistantScreen extends ConsumerStatefulWidget {
   const AssistantScreen({super.key});
@@ -41,6 +44,8 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(assistantChatProvider);
+    final entitlement = ref.watch(entitlementProvider);
+    final isGated = entitlement == EntitlementStatus.gated;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -61,11 +66,14 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
             const _TypingIndicator(),
           if (state.error != null)
             _ErrorBanner(state.error!),
-          _InputBar(
-            controller: _ctl,
-            canSend: _canSend && !state.thinking,
-            onSend: _send,
-          ),
+          if (isGated)
+            _AiGatedBar()
+          else
+            _InputBar(
+              controller: _ctl,
+              canSend: _canSend && !state.thinking,
+              onSend: _send,
+            ),
         ],
       ),
     );
@@ -400,6 +408,49 @@ class _ErrorBanner extends StatelessWidget {
       child: Text('Error: $message',
           style: const TextStyle(
               color: AppColors.danger, fontSize: 12)),
+    );
+  }
+}
+
+class _AiGatedBar extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg, AppSpacing.md, AppSpacing.md, AppSpacing.md),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          border: Border(top: BorderSide(color: AppColors.border)),
+        ),
+        child: Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Closr AI is a Pro feature',
+                style: TextStyle(
+                    color: AppColors.textSecondary, fontSize: 13),
+              ),
+            ),
+            FilledButton(
+              key: const Key('ai_gated_upgrade'),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const SubscriptionScreen()),
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
+                textStyle: const TextStyle(
+                    fontSize: 12, fontWeight: FontWeight.w700),
+              ),
+              child: const Text('Upgrade'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
