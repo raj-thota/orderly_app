@@ -11,6 +11,8 @@ export interface ParsedEnquiry {
   follow_up_date: string | null; // ISO 8601 date (YYYY-MM-DD) or null
   type: "enquiry" | "order";
   confidence: number; // 0..1
+  budget: number | null; // customer's stated budget in rupees
+  notes: string | null; // any extra context worth surfacing (preferences, constraints)
 }
 
 // Gemini responseSchema (OpenAPI subset).
@@ -35,6 +37,8 @@ export const responseSchema = {
     follow_up_date: { type: "STRING", nullable: true },
     type: { type: "STRING", enum: ["enquiry", "order"] },
     confidence: { type: "NUMBER" },
+    budget: { type: "NUMBER", nullable: true },
+    notes: { type: "STRING", nullable: true },
   },
   required: ["items", "intent", "type", "confidence"],
 };
@@ -58,6 +62,9 @@ export function buildPrompt(text: string, todayIso: string): string {
     `- follow_up_date: absolute date (YYYY-MM-DD) resolved from today (${todayIso})`,
     "  when they mention a time like 'tomorrow'/'next week'; else null.",
     "- confidence: your overall 0..1 confidence in this extraction.",
+    "- budget: the customer's stated maximum spend in rupees as a number, or null.",
+    "- notes: any seller-useful context not captured elsewhere (e.g. colour preference,",
+    "  delivery constraint, occasion); one short sentence or null.",
     "",
     hasText ? "Message:" : "Extract from the attached screenshot.",
     hasText ? text : "",

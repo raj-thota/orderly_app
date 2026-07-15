@@ -16,6 +16,8 @@ class AiParse {
     this.intent,
     this.type,
     this.followUpDate,
+    this.budget,
+    this.notes,
     this.confidence = 0,
   });
 
@@ -25,6 +27,8 @@ class AiParse {
   final String? intent;
   final String? type;
   final DateTime? followUpDate;
+  final double? budget;
+  final String? notes;
   final double confidence;
 }
 
@@ -125,6 +129,18 @@ class AiParseService {
       return d;
     }
 
+    double? cleanBudget(dynamic v) {
+      if (v is! num) return null;
+      final d = v.toDouble();
+      if (d <= 0) return null;
+      return d > 1e7 ? 1e7 : d;
+    }
+
+    String? cleanNotes(dynamic v) {
+      final s = (v is String) ? v.trim() : '';
+      return s.isEmpty ? null : s;
+    }
+
     return AiParse(
       name: cleanName(j['customer_name']),
       phone: cleanPhone(j['phone']),
@@ -132,6 +148,8 @@ class AiParseService {
       intent: whitelist(j['intent'], _intents),
       type: whitelist(j['type'], _types),
       followUpDate: cleanDate(j['follow_up_date']),
+      budget: cleanBudget(j['budget']),
+      notes: cleanNotes(j['notes']),
       confidence: clampConfidence(j['confidence']),
     );
   }

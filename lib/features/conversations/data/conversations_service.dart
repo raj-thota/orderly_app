@@ -7,6 +7,18 @@ class ConversationsService {
   SupabaseClient get _client => Supabase.instance.client;
   String get _userId => _client.auth.currentUser!.id;
 
+  Future<Conversation> getOrCreate(String customerId) async {
+    final existing = await fetchByCustomerId(customerId);
+    if (existing != null) return existing;
+    final userId = _userId;
+    final row = await _client
+        .from('conversations')
+        .insert({'user_id': userId, 'customer_id': customerId})
+        .select('*, customers(name, phone)')
+        .single();
+    return Conversation.fromMap(row);
+  }
+
   Future<Conversation?> fetchByCustomerId(String customerId) async {
     final row = await _client
         .from('conversations')

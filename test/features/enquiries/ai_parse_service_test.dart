@@ -115,4 +115,47 @@ void main() {
     expect(image['mime'], 'image/png');
     expect(image['data'], base64Encode(bytes));
   });
+
+  test('coerces budget as positive number', () async {
+    final ai = await withJson({'budget': 10000, 'confidence': 0.8}).refine('x');
+    expect(ai!.budget, 10000.0);
+  });
+
+  test('rejects negative budget', () async {
+    final ai = await withJson({'budget': -500, 'confidence': 0.8}).refine('x');
+    expect(ai!.budget, isNull);
+  });
+
+  test('rejects zero budget', () async {
+    final ai = await withJson({'budget': 0, 'confidence': 0.8}).refine('x');
+    expect(ai!.budget, isNull);
+  });
+
+  test('caps budget at 10^7', () async {
+    final ai =
+        await withJson({'budget': 99_999_999, 'confidence': 0.8}).refine('x');
+    expect(ai!.budget, 1e7);
+  });
+
+  test('null budget passes through as null', () async {
+    final ai = await withJson({'budget': null, 'confidence': 0.8}).refine('x');
+    expect(ai!.budget, isNull);
+  });
+
+  test('coerces notes as trimmed string', () async {
+    final ai = await withJson(
+        {'notes': ' prefers evening ', 'confidence': 0.8}).refine('x');
+    expect(ai!.notes, 'prefers evening');
+  });
+
+  test('treats empty or whitespace-only notes as null', () async {
+    final ai =
+        await withJson({'notes': '   ', 'confidence': 0.8}).refine('x');
+    expect(ai!.notes, isNull);
+  });
+
+  test('null notes passes through as null', () async {
+    final ai = await withJson({'notes': null, 'confidence': 0.8}).refine('x');
+    expect(ai!.notes, isNull);
+  });
 }

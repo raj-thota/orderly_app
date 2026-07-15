@@ -18,6 +18,9 @@ class CaptureDraft {
     this.intent = 'inquiry',
     this.type = 'enquiry',
     this.followUpDate,
+    this.budget,
+    this.notes,
+    this.confidence = 0,
     this.raw = '',
   });
 
@@ -27,6 +30,9 @@ class CaptureDraft {
   final String intent; // inquiry | order | follow_up
   final String type; // enquiry | order
   final DateTime? followUpDate;
+  final double? budget;
+  final String? notes;
+  final double confidence; // 0..1 from last AI refine
   final String raw;
 
   bool get isEmpty =>
@@ -40,6 +46,11 @@ class CaptureDraft {
     String? type,
     DateTime? followUpDate,
     bool clearFollowUp = false,
+    double? budget,
+    bool clearBudget = false,
+    String? notes,
+    bool clearNotes = false,
+    double? confidence,
   }) =>
       CaptureDraft(
         name: name ?? this.name,
@@ -48,6 +59,9 @@ class CaptureDraft {
         intent: intent ?? this.intent,
         type: type ?? this.type,
         followUpDate: clearFollowUp ? null : (followUpDate ?? this.followUpDate),
+        budget: clearBudget ? null : (budget ?? this.budget),
+        notes: clearNotes ? null : (notes ?? this.notes),
+        confidence: confidence ?? this.confidence,
         raw: raw,
       );
 

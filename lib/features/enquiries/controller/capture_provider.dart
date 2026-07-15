@@ -2,6 +2,8 @@ import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orderly_app/features/catalog/data/product.dart';
+import 'package:orderly_app/features/conversations/data/conversations_service.dart';
+import 'package:orderly_app/features/followups/data/follow_ups_service.dart';
 import 'package:orderly_app/features/quotations/data/quotation.dart';
 
 import '../data/ai_parse_service.dart';
@@ -9,6 +11,12 @@ import '../data/capture_draft.dart';
 import '../data/customers_service.dart';
 import '../data/enquiries_service.dart';
 import 'enquiries_provider.dart';
+
+final conversationsServiceProvider =
+    Provider<ConversationsService>((ref) => ConversationsService());
+
+final followUpsServiceProvider =
+    Provider<FollowUpsService>((ref) => FollowUpsService());
 
 class CaptureState {
   const CaptureState({
@@ -105,16 +113,25 @@ final captureControllerProvider =
     ref.watch(customersServiceProvider),
     ref.watch(enquiriesServiceProvider),
     ref.watch(aiParseServiceProvider),
+    ref.watch(conversationsServiceProvider),
+    ref.watch(followUpsServiceProvider),
   );
 });
 
 class CaptureController extends StateNotifier<CaptureState> {
-  CaptureController(this._customers, this._enquiries, this._ai)
-      : super(const CaptureState());
+  CaptureController(
+    this._customers,
+    this._enquiries,
+    this._ai,
+    this._conversations,
+    this._followUps,
+  ) : super(const CaptureState());
 
   final CustomersService _customers;
   final EnquiriesService _enquiries;
   final AiParseService _ai;
+  final ConversationsService _conversations;
+  final FollowUpsService _followUps;
 
   int _parseToken = 0;
 
@@ -206,6 +223,9 @@ class CaptureController extends StateNotifier<CaptureState> {
         intent: intent,
         type: type,
         followUpDate: followUp,
+        budget: ai.budget,
+        notes: ai.notes,
+        confidence: ai.confidence,
       ),
       aiRefining: false,
       aiHighlight: highlight,
@@ -276,9 +296,11 @@ class CaptureController extends StateNotifier<CaptureState> {
         phone: draft.phone,
       );
 
-      final source = state.attachedProductId != null
-          ? 'product'
-          : (draft.raw.trim().isEmpty ? 'manual' : 'paste');
+      final msgSource = state.screenshotPath != null
+          ? 'screenshot'
+          : (state.attachedProductId != null
+              ? 'manual'
+              : (draft.raw.trim().isEmpty ? 'manual' : 'paste'));
 
       if (draft.type == 'order' && draft.items.isNotEmpty) {
         await _enquiries.createOrder(
@@ -292,23 +314,55 @@ class CaptureController extends StateNotifier<CaptureState> {
           ],
           notes: draft.raw.trim().isEmpty ? null : draft.raw.trim(),
         );
+        await _writeConversationMessage(
+            customerId: customer.id!, source: msgSource, body: draft.raw);
         return SaveResult(SaveKind.order, customer.name);
       }
 
-      await _enquiries.addEnquiry(
+      final enquiry = await _enquiries.addEnquiry(
         customerId: customer.id!,
         productId: state.attachedProductId,
-        source: state.screenshotPath != null ? 'screenshot' : source,
+        source: msgSource,
         message: draft.raw.trim(),
         intent: draft.intent,
         followUpDate: draft.followUpDate,
         screenshotPath: state.screenshotPath,
         quoteText: quoteText,
       );
+
+      await _writeConversationMessage(
+          customerId: customer.id!, source: msgSource, body: draft.raw);
+
+      if (draft.followUpDate != null && enquiry.id != null) {
+        await _followUps.upsertForLead(
+          customerId: customer.id!,
+          leadId: enquiry.id!,
+          dueAt: draft.followUpDate!,
+          kind: draft.intent == 'payment' ? 'payment' : 'reply',
+          note: draft.notes,
+        );
+      }
+
       return SaveResult(SaveKind.enquiry, customer.name);
     } finally {
       if (mounted) state = state.copyWith(saving: false);
     }
+  }
+
+  Future<void> _writeConversationMessage({
+    required String customerId,
+    required String source,
+    required String body,
+  }) async {
+    final conversation = await _conversations.getOrCreate(customerId);
+    final trimmed = body.trim();
+    if (trimmed.isEmpty) return;
+    await _conversations.addMessage(
+      conversationId: conversation.id,
+      direction: 'inbound',
+      source: source,
+      body: trimmed,
+    );
   }
 
   Quotation buildQuotation({

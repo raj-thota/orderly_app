@@ -2,6 +2,9 @@ import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:orderly_app/features/conversations/data/conversation.dart';
+import 'package:orderly_app/features/conversations/data/conversations_service.dart';
+import 'package:orderly_app/features/conversations/data/message.dart';
 import 'package:orderly_app/features/enquiries/controller/capture_provider.dart';
 import 'package:orderly_app/features/enquiries/controller/enquiries_provider.dart';
 import 'package:orderly_app/features/enquiries/data/ai_parse_service.dart';
@@ -10,6 +13,8 @@ import 'package:orderly_app/features/enquiries/data/customer.dart';
 import 'package:orderly_app/features/enquiries/data/customers_service.dart';
 import 'package:orderly_app/features/enquiries/data/enquiries_service.dart';
 import 'package:orderly_app/features/enquiries/data/enquiry.dart';
+import 'package:orderly_app/features/followups/data/follow_up.dart';
+import 'package:orderly_app/features/followups/data/follow_ups_service.dart';
 import 'package:orderly_app/features/catalog/data/product.dart';
 
 class FakeCustomersService implements CustomersService {
@@ -101,13 +106,88 @@ class FakeAiParseService extends AiParseService {
   }
 }
 
+class FakeConversationsService implements ConversationsService {
+  final List<Map<String, dynamic>> messages = [];
+  int getOrCreateCalls = 0;
+
+  @override
+  Future<Conversation> getOrCreate(String customerId) async {
+    getOrCreateCalls++;
+    return Conversation(id: 'cv-new', customerId: customerId);
+  }
+
+  @override
+  Future<Message> addMessage({
+    required String conversationId,
+    required String direction,
+    required String source,
+    required String body,
+    DateTime? sentAt,
+    Map<String, dynamic> meta = const {},
+  }) async {
+    messages.add({
+      'conversation_id': conversationId,
+      'direction': direction,
+      'source': source,
+      'body': body,
+    });
+    return Message(
+        id: 'm-new',
+        conversationId: conversationId,
+        direction: direction,
+        source: source,
+        body: body);
+  }
+
+  @override
+  Future<Conversation?> fetchByCustomerId(String customerId) async => null;
+  @override
+  Future<List<Message>> fetchMessages(String conversationId) async => [];
+}
+
+class FakeFollowUpsService implements FollowUpsService {
+  final List<Map<String, dynamic>> upserted = [];
+
+  @override
+  Future<FollowUp> upsertForLead({
+    required String customerId,
+    required String leadId,
+    required DateTime dueAt,
+    String kind = 'general',
+    String? note,
+  }) async {
+    upserted.add({'customer_id': customerId, 'lead_id': leadId, 'kind': kind});
+    return FollowUp(
+        id: 'fu-new',
+        customerId: customerId,
+        dueAt: dueAt,
+        kind: kind,
+        status: 'pending');
+  }
+
+  @override
+  Future<List<FollowUp>> fetchPending() async => [];
+  @override
+  Future<List<FollowUp>> fetchForWeek(DateTime weekStart) async => [];
+  @override
+  Future<void> markDone(String id) async {}
+  @override
+  Future<void> markSkipped(String id) async {}
+}
+
 ProviderContainer makeContainer(
     FakeCustomersService customers, FakeEnquiriesService enquiries,
-    {AiParseService? ai}) {
+    {AiParseService? ai,
+    FakeConversationsService? conversations,
+    FakeFollowUpsService? followUps}) {
   final container = ProviderContainer(overrides: [
     customersServiceProvider.overrideWithValue(customers),
     enquiriesServiceProvider.overrideWithValue(enquiries),
     aiParseServiceProvider.overrideWithValue(ai ?? FakeAiParseService(null)),
+    conversationsServiceProvider
+        .overrideWithValue(conversations ?? FakeConversationsService()),
+    followUpsServiceProvider
+        .overrideWithValue(followUps ?? FakeFollowUpsService()),
   ]);
   addTearDown(container.dispose);
   // Keep the autoDispose controller alive across async gaps, as a listening
@@ -401,5 +481,92 @@ void main() {
     expect(quote.message, contains('Rekha Boutique'));
     expect(quote.message, contains('Silk Saree x 2'));
     expect(quote.message, contains('₹5,000'));
+  });
+
+  // M2: conversations + follow_ups writes
+  test('save writes a conversation and inbound message for an enquiry', () async {
+    final conversations = FakeConversationsService();
+    final c = makeContainer(
+      FakeCustomersService(),
+      FakeEnquiriesService(),
+      conversations: conversations,
+    );
+    final controller = c.read(captureControllerProvider.notifier);
+
+    controller.setText('Priya 9876543210 want 2 sarees');
+    await controller.save();
+
+    expect(conversations.getOrCreateCalls, 1);
+    expect(conversations.messages, hasLength(1));
+    expect(conversations.messages.single['direction'], 'inbound');
+    expect(conversations.messages.single['source'], 'paste');
+  });
+
+  test('save skips message when raw text is empty', () async {
+    final conversations = FakeConversationsService();
+    final c = makeContainer(
+      FakeCustomersService(),
+      FakeEnquiriesService(),
+      conversations: conversations,
+    );
+    final controller = c.read(captureControllerProvider.notifier);
+
+    controller.setName('Priya');
+    await controller.save();
+
+    expect(conversations.getOrCreateCalls, 1);
+    expect(conversations.messages, isEmpty);
+  });
+
+  test('save writes follow_up when intent is follow_up and date is set', () async {
+    final followUps = FakeFollowUpsService();
+    final c = makeContainer(
+      FakeCustomersService(),
+      FakeEnquiriesService(),
+      followUps: followUps,
+    );
+    final controller = c.read(captureControllerProvider.notifier);
+
+    controller.setText('Priya will confirm tomorrow');
+    await controller.save();
+
+    expect(followUps.upserted, hasLength(1));
+    expect(followUps.upserted.single['customer_id'], 'c-new');
+    expect(followUps.upserted.single['lead_id'], 'e-new');
+  });
+
+  test('save does not write follow_up when no follow-up date', () async {
+    final followUps = FakeFollowUpsService();
+    final c = makeContainer(
+      FakeCustomersService(),
+      FakeEnquiriesService(),
+      followUps: followUps,
+    );
+    final controller = c.read(captureControllerProvider.notifier);
+
+    controller.setText('Priya want 2 sarees');
+    await controller.save();
+
+    expect(followUps.upserted, isEmpty);
+  });
+
+  test('AI refine propagates budget and notes into draft', () async {
+    final ai = FakeAiParseService(const AiParse(
+      name: 'Priya',
+      confidence: 0.9,
+      budget: 8000,
+      notes: 'prefers evening',
+    ));
+    final c = makeContainer(FakeCustomersService(), FakeEnquiriesService(),
+        ai: ai);
+    final controller = c.read(captureControllerProvider.notifier);
+
+    controller.setText('want 2 sarees my budget is 8k');
+    await Future<void>.delayed(Duration.zero);
+
+    final state = c.read(captureControllerProvider);
+    expect(state.draft.budget, 8000);
+    expect(state.draft.notes, 'prefers evening');
+    expect(state.draft.confidence, 0.9);
   });
 }

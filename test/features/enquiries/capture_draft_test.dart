@@ -75,4 +75,21 @@ void main() {
     expect(draft.intent, 'inquiry');
     expect(draft.followUpDate, isNull);
   });
+
+  test('budget and notes default to null', () {
+    final d = CaptureDraft.fromText('want 2 sarees');
+    expect(d.budget, isNull);
+    expect(d.notes, isNull);
+  });
+
+  test('copyWith preserves budget and notes', () {
+    const d = CaptureDraft(budget: 5000, notes: 'evening only');
+    final d2 = d.copyWith(name: 'Priya');
+    expect(d2.budget, 5000);
+    expect(d2.notes, 'evening only');
+  });
+
+  test('confidence defaults to zero', () {
+    expect(const CaptureDraft().confidence, 0);
+  });
 }
