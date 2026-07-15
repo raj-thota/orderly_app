@@ -49,55 +49,52 @@ class _StatTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Expanded(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(AppRadius.sm),
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: Colors.white, size: 20),
+            child: Icon(icon, color: Colors.white, size: 18),
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
             label,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 10,
-            ),
+            style: const TextStyle(color: Colors.white70, fontSize: 9.5),
+            textAlign: TextAlign.center,
             maxLines: 2,
           ),
           const SizedBox(height: 2),
           FittedBox(
             fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
             child: Text(
               value,
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
-                fontSize: 13,
+                fontSize: 14,
               ),
             ),
           ),
           const SizedBox(height: AppSpacing.xs),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
             decoration: BoxDecoration(
-              color: badgeColor,
+              color: badgeColor.withValues(alpha: 0.25),
               borderRadius: BorderRadius.circular(AppRadius.pill),
             ),
             child: Text(
               badgeText,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 9,
+              style: TextStyle(
+                color: badgeColor,
+                fontSize: 8,
                 fontWeight: FontWeight.w600,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              maxLines: 2,
             ),
           ),
         ],
@@ -211,14 +208,15 @@ class _AttentionTile extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: _priorityColor(item.priority),
+                          color: _priorityColor(item.priority)
+                              .withValues(alpha: 0.15),
                           borderRadius:
                               BorderRadius.circular(AppRadius.pill),
                         ),
                         child: Text(
                           _priorityLabel(item.priority),
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: _priorityColor(item.priority),
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
                           ),
@@ -457,7 +455,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
       nudges.add(_NudgeData(
         icon: Icons.schedule_rounded,
         title:
-            '${brief.dueFollowUps} follow-up(s) need your attention',
+            '${brief.dueFollowUps} follow-up${brief.dueFollowUps == 1 ? '' : 's'} need your attention',
         subtitle: 'Review and take action',
         onTap: () => widget.onNavigate(1),
       ));
@@ -637,63 +635,60 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
             style: TextStyle(color: Colors.white70, fontSize: 13),
           ),
           const SizedBox(height: AppSpacing.md),
-          Stack(
-            clipBehavior: Clip.none,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Row(
-                children: [
-                  _StatTile(
-                    icon: Icons.chat_bubble_outline_rounded,
-                    label: 'Follow-ups\ndue',
-                    value: '${brief.dueFollowUps}',
-                    badgeText: brief.dueFollowUps > 0
-                        ? 'Needs attention'
-                        : 'All caught up',
-                    badgeColor: brief.dueFollowUps > 0
-                        ? AppColors.danger
-                        : AppColors.success,
-                  ),
-                  _StatTile(
-                    icon: Icons.shopping_bag_outlined,
-                    label: 'Orders\ntoday',
-                    value: '${brief.ordersToday}',
-                    badgeText:
-                        brief.ordersToday > 0 ? 'New order' : 'No orders',
-                    badgeColor: brief.ordersToday > 0
-                        ? AppColors.success
-                        : AppColors.textSecondary,
-                  ),
-                  _StatTile(
-                    icon: Icons.currency_rupee_rounded,
-                    label: 'Revenue\ntoday',
-                    value: brief.revenueToday > 0
-                        ? Money.inr(brief.revenueToday)
-                        : '₹0',
-                    badgeText: brief.revenueToday > 0
-                        ? 'Sales today'
-                        : 'No sales yet',
-                    badgeColor: brief.revenueToday > 0
-                        ? AppColors.success
-                        : AppColors.warning,
-                  ),
-                  _StatTile(
-                    icon: Icons.layers_outlined,
-                    label: 'Outstanding',
-                    value: Money.inr(brief.outstanding),
-                    badgeText: 'Total due',
-                    badgeColor: AppColors.info,
-                  ),
-                ],
-              ),
-              Positioned(
-                top: -8,
-                right: -8,
-                child: Image.asset(
-                  'assets/robo.png',
-                  width: 100,
-                  height: 100,
-                  errorBuilder: (_, __, ___) => const SizedBox(width: 100),
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _StatTile(
+                      icon: Icons.chat_bubble_outline_rounded,
+                      label: 'Follow-ups\ndue',
+                      value: '${brief.dueFollowUps}',
+                      badgeText: brief.dueFollowUps > 0
+                          ? 'Needs attention'
+                          : 'All caught up',
+                      badgeColor: brief.dueFollowUps > 0
+                          ? AppColors.danger
+                          : AppColors.success,
+                    ),
+                    _StatTile(
+                      icon: Icons.shopping_bag_outlined,
+                      label: 'Orders\ntoday',
+                      value: '${brief.ordersToday}',
+                      badgeText: brief.ordersToday > 0 ? 'New order' : 'No orders',
+                      badgeColor: brief.ordersToday > 0
+                          ? AppColors.success
+                          : AppColors.textSecondary,
+                    ),
+                    _StatTile(
+                      icon: Icons.currency_rupee_rounded,
+                      label: 'Revenue\ntoday',
+                      value: brief.revenueToday > 0
+                          ? Money.inr(brief.revenueToday)
+                          : '₹0',
+                      badgeText: brief.revenueToday > 0 ? 'Sales today' : 'No sales yet',
+                      badgeColor: brief.revenueToday > 0
+                          ? AppColors.success
+                          : AppColors.warning,
+                    ),
+                    _StatTile(
+                      icon: Icons.layers_outlined,
+                      label: 'Outstanding',
+                      value: Money.inr(brief.outstanding),
+                      badgeText: 'Total due',
+                      badgeColor: AppColors.info,
+                    ),
+                  ],
                 ),
+              ),
+              Image.asset(
+                'assets/robo.png',
+                width: 90,
+                height: 120,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const SizedBox(width: 90),
               ),
             ],
           ),
