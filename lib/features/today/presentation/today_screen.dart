@@ -70,12 +70,16 @@ class _StatTile extends StatelessWidget {
             maxLines: 2,
           ),
           const SizedBox(height: 2),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 13,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.xs),
@@ -92,6 +96,8 @@ class _StatTile extends StatelessWidget {
                 fontSize: 9,
                 fontWeight: FontWeight.w600,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -292,40 +298,38 @@ class _AiActionCard extends StatelessWidget {
   final VoidCallback onTap;
 
   _CardConfig _config(AiWorkItem item) {
-    final fullName = item.customerName ?? 'customer';
-    // Use first name only in card descriptions to keep text concise and unique.
-    final firstName = fullName.split(' ').first;
+    final name = item.customerName ?? 'customer';
     switch (item.kind) {
       case 'payment_reminder':
       case 'overdue_payment':
         return _CardConfig(
           icon: Icons.chat_rounded,
           color: const Color(0xFF25D366),
-          desc: 'Send price to $firstName',
-          cta: 'Send Now',
+          desc: 'Send price to $name',
+          cta: 'Send Now →',
         );
       case 'follow_up':
       case 'call':
         return _CardConfig(
           icon: Icons.phone_outlined,
           color: AppColors.primary,
-          desc: 'Call follow-up for $fullName',
-          cta: 'Call Now',
+          desc: 'Call follow-up for $name',
+          cta: 'Call Now →',
         );
       case 'share_catalog':
       case 'offer':
         return _CardConfig(
           icon: Icons.card_giftcard_outlined,
           color: AppColors.warning,
-          desc: 'Offer discount to $firstName',
-          cta: 'Create Offer',
+          desc: 'Offer discount to $name',
+          cta: 'Create Offer →',
         );
       default:
         return _CardConfig(
           icon: Icons.message_outlined,
           color: AppColors.aiAccent,
-          desc: 'Message $firstName',
-          cta: 'Message',
+          desc: 'Message $name',
+          cta: 'Message →',
         );
     }
   }
@@ -634,6 +638,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
           ),
           const SizedBox(height: AppSpacing.md),
           Stack(
+            clipBehavior: Clip.none,
             children: [
               Row(
                 children: [
@@ -678,17 +683,16 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                     badgeText: 'Total due',
                     badgeColor: AppColors.info,
                   ),
-                  const SizedBox(width: 80),
                 ],
               ),
               Positioned(
-                top: 0,
-                right: 0,
+                top: -8,
+                right: -8,
                 child: Image.asset(
                   'assets/robo.png',
-                  width: 72,
-                  height: 72,
-                  errorBuilder: (_, __, ___) => const SizedBox(width: 72),
+                  width: 100,
+                  height: 100,
+                  errorBuilder: (_, __, ___) => const SizedBox(width: 100),
                 ),
               ),
             ],

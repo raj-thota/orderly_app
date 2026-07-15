@@ -158,7 +158,7 @@ void main() {
     await t.pumpWidget(_harness(workItems: svc));
     await t.pumpAndSettle();
 
-    expect(find.textContaining('Rekha Joshi'), findsOneWidget);
+    expect(find.textContaining('Rekha Joshi'), findsAtLeastNWidgets(1));
     expect(find.text('High'), findsOneWidget);
   });
 
