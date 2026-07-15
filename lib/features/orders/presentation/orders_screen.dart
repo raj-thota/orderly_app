@@ -4,6 +4,7 @@ import 'package:orderly_app/core/theme/app_colors.dart';
 import 'package:orderly_app/core/theme/app_spacing.dart';
 
 import '../controller/orders_provider.dart';
+import '../data/order.dart';
 import '../widgets/order_card.dart';
 import 'order_detail_screen.dart';
 
@@ -16,6 +17,23 @@ class OrdersScreen extends ConsumerStatefulWidget {
 
 class _OrdersScreenState extends ConsumerState<OrdersScreen> {
   OrderFilter _filter = OrderFilter.active;
+  String _search = '';
+  final _searchCtl = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchCtl.dispose();
+    super.dispose();
+  }
+
+  List<Order> _applySearch(List<Order> orders) {
+    final q = _search.trim().toLowerCase();
+    if (q.isEmpty) return orders;
+    return orders.where((o) {
+      return (o.customerName ?? '').toLowerCase().contains(q) ||
+          (o.orderNumber?.toString() ?? '').contains(q);
+    }).toList();
+  }
 
   static const _chips = [
     (OrderFilter.active, 'Active'),
@@ -36,14 +54,39 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
                   AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.sm),
-              child: Text('Orders',
-                  style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Orders',
+                      style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary)),
+                  const SizedBox(height: AppSpacing.sm),
+                  TextField(
+                    controller: _searchCtl,
+                    decoration: InputDecoration(
+                      hintText: 'Search by customer or order #',
+                      prefixIcon: const Icon(Icons.search, size: 18),
+                      suffixIcon: _search.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, size: 18),
+                              onPressed: () {
+                                _searchCtl.clear();
+                                setState(() => _search = '');
+                              })
+                          : null,
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                    ),
+                    onChanged: (v) => setState(() => _search = v),
+                  ),
+                ],
+              ),
             ),
             SizedBox(
               height: 44,
@@ -88,7 +131,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                   ),
                 ),
                 data: (orders) {
-                  final filtered = filterOrders(orders, _filter);
+                  final filtered = _applySearch(filterOrders(orders, _filter));
                   if (filtered.isEmpty) {
                     return const Center(
                       child: Text(

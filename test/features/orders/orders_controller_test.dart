@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orderly_app/features/orders/controller/orders_provider.dart';
+import 'package:orderly_app/features/orders/data/create_order_draft.dart';
 import 'package:orderly_app/features/orders/data/order.dart';
 import 'package:orderly_app/features/orders/data/orders_service.dart';
 
@@ -26,6 +27,16 @@ class FakeOrdersService implements OrdersService {
   Future<void> markDelivered(String id) async => delivered.add(id);
   @override
   Future<void> cancelOrder(String id) async => cancelled.add(id);
+  @override
+  Future<String> createOrder({
+    required String customerId,
+    String? leadId,
+    required List<CreateOrderItem> items,
+    double discount = 0,
+    double shippingFee = 0,
+    DateTime? expectedDate,
+    String? notes,
+  }) async => '';
 }
 
 void main() {

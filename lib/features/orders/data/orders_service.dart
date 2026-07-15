@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'create_order_draft.dart';
 import 'order.dart';
 
 const _selectWithJoins = '*, customers(name, phone), order_items(*), payments(*)';
@@ -41,5 +42,34 @@ class OrdersService {
 
   Future<void> cancelOrder(String id) async {
     await _client.rpc('cancel_order', params: {'p_order_id': id});
+  }
+
+  Future<String> createOrder({
+    required String customerId,
+    String? leadId,
+    required List<CreateOrderItem> items,
+    double discount = 0,
+    double shippingFee = 0,
+    DateTime? expectedDate,
+    String? notes,
+  }) async {
+    final payload = items
+        .map((i) => {
+              'name': i.name,
+              'qty': i.qty,
+              'unit_price': i.unitPrice,
+              if (i.productId != null) 'product_id': i.productId,
+            })
+        .toList();
+    final orderId = await _client.rpc('create_order_with_items', params: {
+      'p_customer_id': customerId,
+      'p_lead_id': leadId,
+      'p_items': payload,
+      'p_discount': discount,
+      'p_shipping_fee': shippingFee,
+      'p_expected_date': expectedDate?.toIso8601String().substring(0, 10),
+      'p_notes': notes,
+    });
+    return orderId.toString();
   }
 }
