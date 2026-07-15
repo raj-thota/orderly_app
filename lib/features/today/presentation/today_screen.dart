@@ -44,6 +44,39 @@ class _NudgeData {
   final Color iconColor;
 }
 
+// ─── Pressable (scale-on-tap) ─────────────────────────────────────────────────
+
+/// Wraps a card in a subtle press-scale animation without changing its layout.
+class _Pressable extends StatefulWidget {
+  const _Pressable({super.key, required this.onTap, required this.child});
+
+  final VoidCallback onTap;
+  final Widget child;
+
+  @override
+  State<_Pressable> createState() => _PressableState();
+}
+
+class _PressableState extends State<_Pressable> {
+  bool _down = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _down = true),
+      onTapUp: (_) => setState(() => _down = false),
+      onTapCancel: () => setState(() => _down = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _down ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: widget.child,
+      ),
+    );
+  }
+}
+
 // ─── Stat tile ───────────────────────────────────────────────────────────────
 
 class _StatRow extends StatelessWidget {
@@ -62,7 +95,7 @@ class _StatRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 9),
+      padding: const EdgeInsets.symmetric(vertical: 11),
       child: Row(
         children: [
           Icon(icon, color: Colors.white70, size: 15),
@@ -78,10 +111,12 @@ class _StatRow extends StatelessWidget {
             ),
           ),
           Container(
+            alignment: Alignment.center,
+            constraints: const BoxConstraints(minWidth: 64),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
               color: highlightColor.withValues(alpha: 0.22),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
             child: Text(
               value,
@@ -136,6 +171,23 @@ class _AttentionTile extends StatelessWidget {
     }
   }
 
+  /// Action-first headline so the user reads WHAT to do before WHO it's for.
+  String _actionHeadline(String kind) {
+    switch (kind) {
+      case 'payment_reminder':
+      case 'overdue_payment':
+        return 'Collect Payment';
+      case 'follow_up':
+      case 'call':
+        return 'Follow Up';
+      case 'share_catalog':
+      case 'offer':
+        return 'Share Offer';
+      default:
+        return 'Send Update';
+    }
+  }
+
   String _initials(String? name) {
     if (name == null || name.isEmpty) return '?';
     final parts = name.trim().split(' ');
@@ -167,7 +219,7 @@ class _AttentionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return _Pressable(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.md),
@@ -199,7 +251,7 @@ class _AttentionTile extends StatelessWidget {
                     children: [
                       Flexible(
                         child: Text(
-                          item.customerName ?? '—',
+                          _actionHeadline(item.kind),
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
@@ -230,10 +282,11 @@ class _AttentionTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    item.title,
+                    item.customerName ?? '—',
                     style: const TextStyle(
-                      color: Color(0xFF374151),
-                      fontSize: 12,
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -303,37 +356,37 @@ class _AiActionCard extends StatelessWidget {
   final VoidCallback onTap;
 
   _CardConfig _config(AiWorkItem item) {
-    final name = item.customerName ?? 'customer';
+    final name = item.customerName ?? 'this customer';
     switch (item.kind) {
       case 'payment_reminder':
       case 'overdue_payment':
         return _CardConfig(
-          icon: Icons.chat_rounded,
-          color: const Color(0xFF25D366),
-          desc: 'Send price to $name',
-          cta: 'Send Now →',
+          icon: Icons.currency_rupee_rounded,
+          color: AppColors.danger,
+          desc: '$name has a pending payment. Send a gentle nudge.',
+          cta: 'Send Reminder →',
         );
       case 'follow_up':
       case 'call':
         return _CardConfig(
           icon: Icons.phone_outlined,
           color: AppColors.primary,
-          desc: 'Call follow-up for $name',
-          cta: 'Call Now →',
+          desc: '$name is waiting to hear back. Follow up now.',
+          cta: 'Follow Up →',
         );
       case 'share_catalog':
       case 'offer':
         return _CardConfig(
           icon: Icons.card_giftcard_outlined,
           color: AppColors.warning,
-          desc: 'Offer discount to $name',
-          cta: 'Create Offer →',
+          desc: 'Win $name back with a quick offer.',
+          cta: 'Share Offer →',
         );
       default:
         return _CardConfig(
           icon: Icons.message_outlined,
           color: AppColors.aiAccent,
-          desc: 'Message $name',
+          desc: 'Reach out to $name before they go quiet.',
           cta: 'Message →',
         );
     }
@@ -342,7 +395,7 @@ class _AiActionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cfg = _config(item);
-    return GestureDetector(
+    return _Pressable(
       onTap: onTap,
       child: Container(
         width: 160,
@@ -350,7 +403,7 @@ class _AiActionCard extends StatelessWidget {
         padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppRadius.sm),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.06),
@@ -370,7 +423,7 @@ class _AiActionCard extends StatelessWidget {
                   height: 34,
                   decoration: BoxDecoration(
                     color: cfg.color.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(cfg.icon, color: cfg.color, size: 18),
                 ),
@@ -554,7 +607,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
         icon: Icons.schedule_rounded,
         title:
             '${brief.dueFollowUps} follow-up${brief.dueFollowUps == 1 ? '' : 's'} need your attention',
-        subtitle: 'Review and take action',
+        subtitle: 'Reply before they lose interest',
         onTap: () => widget.onNavigate(1),
         cardColor: const Color(0xFFFFF3E0),
         iconColor: const Color(0xFFE65100),
@@ -564,7 +617,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
       nudges.add(_NudgeData(
         icon: Icons.currency_rupee_rounded,
         title: '${Money.inr(brief.outstanding)} outstanding payments',
-        subtitle: 'Collect payments now',
+        subtitle: 'Send reminders and get paid',
         onTap: () => widget.onNavigate(2),
         cardColor: const Color(0xFFFFEBEE),
         iconColor: const Color(0xFFC62828),
@@ -574,7 +627,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
       nudges.add(_NudgeData(
         icon: Icons.shopping_bag_outlined,
         title: '${brief.ordersToday} new order(s) placed today',
-        subtitle: 'View your orders',
+        subtitle: 'Review and confirm them',
         onTap: () => widget.onNavigate(2),
         cardColor: const Color(0xFFE8F5E9),
         iconColor: const Color(0xFF2E7D32),
@@ -607,7 +660,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                 const SizedBox(height: AppSpacing.lg),
 
                 // Glance card
-                _buildGlanceCard(brief),
+                _buildGlanceCard(brief, workState.pendingCount),
                 const SizedBox(height: AppSpacing.lg),
 
                 // Nudge carousel
@@ -720,7 +773,10 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
     );
   }
 
-  Widget _buildGlanceCard(TodayBrief brief) {
+  Widget _buildGlanceCard(TodayBrief brief, int pendingCount) {
+    final briefLine = pendingCount > 0
+        ? '🤖 You have $pendingCount task${pendingCount == 1 ? '' : 's'} waiting today.'
+        : '🤖 All caught up — nothing needs you right now.';
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
@@ -741,7 +797,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                 'Today at a glance',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 18,
+                  fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -765,6 +821,15 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            briefLine,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.88),
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
           ),
           const SizedBox(height: AppSpacing.lg),
           Row(
@@ -808,10 +873,10 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
               const SizedBox(width: AppSpacing.md),
               Image.asset(
                 'assets/robo.png',
-                width: 130,
-                height: 190,
+                width: 104,
+                height: 150,
                 fit: BoxFit.contain,
-                errorBuilder: (ctx, e, stack) => const SizedBox(width: 130),
+                errorBuilder: (ctx, e, stack) => const SizedBox(width: 104),
               ),
             ],
           ),
@@ -825,7 +890,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
               ),
               onPressed: () => widget.onNavigate(1),
               child: const Text(
-                'Start My Work →',
+                "Start Today's Tasks →",
                 style: TextStyle(fontWeight: FontWeight.w700),
               ),
             ),
@@ -861,12 +926,13 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                   ),
                 );
               },
-              child: GestureDetector(
+              child: _Pressable(
                 key: ValueKey(_nudgePage),
                 onTap: nudge.onTap,
                 child: Container(
                   decoration: BoxDecoration(
                     color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
                     border: Border.all(color: AppColors.border),
                   ),
                   padding: const EdgeInsets.symmetric(

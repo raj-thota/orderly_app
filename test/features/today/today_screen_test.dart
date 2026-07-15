@@ -161,15 +161,15 @@ void main() {
     expect(find.text('₹12,000'), findsOneWidget);
     expect(find.text('₹9,500'), findsOneWidget);
     expect(find.textContaining('Raj'), findsOneWidget);
-    expect(find.textContaining('Start My Work'), findsOneWidget);
+    expect(find.textContaining('Start Today'), findsOneWidget);
   });
 
-  testWidgets('Start My Work button navigates to tab 1', (t) async {
+  testWidgets('Start Today button navigates to tab 1', (t) async {
     int? navigated;
     await t.pumpWidget(_harness(onNavigate: (i) => navigated = i));
     await t.pumpAndSettle();
 
-    await t.tap(find.textContaining('Start My Work'));
+    await t.tap(find.textContaining('Start Today'));
     expect(navigated, 1);
   });
 
@@ -241,7 +241,7 @@ void main() {
     await t.pumpAndSettle();
 
     expect(find.textContaining('AI suggested actions'), findsOneWidget);
-    expect(find.textContaining('Call follow-up for Deepika'), findsOneWidget);
+    expect(find.textContaining('waiting to hear back'), findsOneWidget);
   });
 
   testWidgets('nudge section hidden when brief has no items', (t) async {
@@ -304,6 +304,7 @@ void main() {
     await t.pumpWidget(_harness(workItems: svc, onNavigate: (i) => navigated = i));
     await t.pumpAndSettle();
 
+    await t.ensureVisible(find.text('Priya'));
     await t.tap(find.text('Priya'));
     await t.pumpAndSettle();
 
@@ -319,8 +320,8 @@ void main() {
     await t.pumpWidget(_harness(workItems: svc));
     await t.pumpAndSettle();
 
-    await t.ensureVisible(find.textContaining('Send price to Priya'));
-    await t.tap(find.textContaining('Send price to Priya'));
+    await t.ensureVisible(find.textContaining('pending payment'));
+    await t.tap(find.textContaining('pending payment'));
     await t.pumpAndSettle();
 
     expect(find.text('Chat'), findsOneWidget);
