@@ -6,6 +6,7 @@ import 'package:timezone/timezone.dart' as tz;
 
 import 'package:orderly_app/core/services/lead_navigation_service.dart';
 import 'package:orderly_app/features/enquiries/data/enquiries_service.dart';
+import 'package:orderly_app/features/followups/data/follow_ups_service.dart';
 import 'package:orderly_app/main.dart';
 
 class NotificationBuckets {
@@ -358,8 +359,15 @@ class NotificationService {
 
   /// 🧠 SMART REMINDERS
   static Future<void> checkAndTriggerSmartReminders() async {
-    final leads = await EnquiriesService().fetchLegacyMaps();
-    await syncLeadNotifications(leads: leads);
+    try {
+      final followUps = await FollowUpsService().fetchPending();
+      final maps = followUps.map((f) => f.toNotificationMap()).toList();
+      await syncLeadNotifications(leads: maps);
+    } catch (_) {
+      // Fall back to legacy leads query if follow_ups is unavailable.
+      final leads = await EnquiriesService().fetchLegacyMaps();
+      await syncLeadNotifications(leads: leads);
+    }
   }
 
   static Future<void> syncLeadNotifications({
