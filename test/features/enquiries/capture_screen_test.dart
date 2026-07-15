@@ -12,7 +12,12 @@ import 'package:orderly_app/features/enquiries/data/ai_parse_service.dart';
 import 'package:orderly_app/features/enquiries/presentation/capture_screen.dart';
 
 import 'capture_controller_test.dart'
-    show FakeAiParseService, FakeCustomersService, FakeEnquiriesService;
+    show
+        FakeAiParseService,
+        FakeConversationsService,
+        FakeCustomersService,
+        FakeEnquiriesService,
+        FakeFollowUpsService;
 
 class _StubProductsService implements ProductsService {
   @override
@@ -42,6 +47,9 @@ Widget wrap(Widget child, FakeEnquiriesService enquiries, {AiParseService? ai}) 
       productsServiceProvider.overrideWithValue(_StubProductsService()),
       businessProfileProvider.overrideWith(
           (ref) async => const BusinessProfile(name: 'Rekha Boutique')),
+      conversationsServiceProvider
+          .overrideWithValue(FakeConversationsService()),
+      followUpsServiceProvider.overrideWithValue(FakeFollowUpsService()),
     ],
     child: MaterialApp(home: child),
   );

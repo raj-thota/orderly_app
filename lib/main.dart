@@ -16,8 +16,8 @@ import 'features/business/presentation/business_hub_screen.dart';
 import 'features/leads/controller/leads_controller.dart';
 import 'features/today/presentation/today_screen.dart';
 import 'package:orderly_app/features/enquiries/controller/enquiries_provider.dart';
+import 'package:orderly_app/features/capture/presentation/capture_sheet.dart';
 import 'package:orderly_app/features/enquiries/presentation/enquiries_screen.dart';
-import 'package:orderly_app/features/enquiries/presentation/capture_screen.dart';
 import 'features/orders/presentation/orders_screen.dart';
 import 'features/orders/controller/orders_provider.dart';
 
@@ -115,12 +115,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.primary,
         shape: const CircleBorder(),
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const CaptureScreen()),
-          );
-        },
+        onPressed: () => CaptureSheet.show(context),
         child: const Icon(Icons.add, color: Colors.white),
       ),
       bottomNavigationBar: AppBottomNav(
