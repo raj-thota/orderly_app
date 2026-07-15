@@ -1,340 +1,335 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:orderly_app/core/services/lead_navigation_service.dart';
-import 'package:orderly_app/core/services/notification_service.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:orderly_app/features/leads/controller/leads_controller.dart';
+import 'package:orderly_app/core/theme/app_colors.dart';
+import 'package:orderly_app/core/theme/app_spacing.dart';
+import 'package:orderly_app/core/utils/money.dart';
+import 'package:orderly_app/features/conversations/presentation/customer_workspace_screen.dart';
+import 'package:orderly_app/features/today/data/ai_card_action.dart';
+import 'package:orderly_app/features/work/controller/work_items_provider.dart';
+import 'package:orderly_app/features/work/data/ai_work_item.dart';
 
-class NotificationsScreen extends ConsumerWidget {
+/// In-app notifications: the same AI work items that drive the bell badge,
+/// so the count and the list always agree.
+class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final leads = ref.watch(leadsControllerProvider);
-    final buckets = NotificationService.buildBuckets(leads);
-    final today = buckets.today;
-    final overdue = buckets.overdue;
-    final suggestions = NotificationService.buildSuggestions(leads);
-    final hasData = buckets.hasItems;
+  ConsumerState<NotificationsScreen> createState() =>
+      _NotificationsScreenState();
+}
 
-    return Scaffold(
-      appBar: AppBar(title: const Text("Notifications")),
-      backgroundColor: Colors.grey.shade50,
-      body: Column(
-        children: [
-          /// 🔄 SYNC
-          if (hasData)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () async {
-                    await NotificationService.syncLeadNotifications(
-                      leads: leads,
-                    );
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Notifications synced")),
-                    );
-                  },
-                  child: const Text("Sync now"),
-                ),
-              ),
-            ),
-
-          /// 🔥 CONTENT
-          Expanded(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              child: ListView(
-                key: ValueKey(today.length + overdue.length),
-                padding: const EdgeInsets.all(16),
-                children: [
-                  /// 🔥 URGENT
-                  if (overdue.isNotEmpty) ...[
-                    _title("🔥 Urgent"),
-                    const SizedBox(height: 10),
-
-                    ...overdue.map(
-                      (lead) => _card(
-                        context,
-                        ref,
-                        lead,
-                        color: Colors.red,
-                        label: "Missed follow-up",
-                        action: "Call",
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-                  ],
-
-                  /// 🟡 TODAY
-                  if (today.isNotEmpty) ...[
-                    _title("Today"),
-                    const SizedBox(height: 10),
-
-                    ...today.map(
-                      (lead) => _card(
-                        context,
-                        ref,
-                        lead,
-                        color: Colors.orange,
-                        label: "Follow-up today",
-                        action: "Message",
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-                  ],
-
-                  /// 🧠 AI
-                  _title("AI Suggestions"),
-                  const SizedBox(height: 10),
-
-                  ...suggestions.map(
-                    (suggestion) =>
-                        _aiCard(context, ref, suggestion: suggestion),
-                  ),
-
-                  if (!hasData) _emptyState(),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(workItemsProvider.notifier).load();
+    });
   }
 
-  /// 🔔 CARD (UPGRADED)
-  Widget _card(
-    BuildContext context,
-    WidgetRef ref,
-    Map<String, dynamic> lead, {
-    required Color color,
-    required String label,
-    required String action,
-  }) {
-    final phone = lead["phone"] ?? "";
-    final name = lead["name"] ?? "";
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          Navigator.of(
-            context,
-          ).push(LeadNavigationService.leadDetailRoute(lead));
-        },
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 10,
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              /// ICON
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.notifications, color: color, size: 18),
-              ),
-
-              const SizedBox(width: 12),
-
-              /// TEXT
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      label,
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              /// ACTIONS
-              Row(
-                children: [
-                  _actionBtn(color, action, () async {
-                    try {
-                      final url = action == "Call"
-                          ? Uri.parse("tel:$phone")
-                          : Uri.parse("https://wa.me/$phone");
-
-                      await launchUrl(
-                        url,
-                        mode: LaunchMode.externalApplication,
-                      );
-                    } catch (_) {}
-                  }),
-
-                  const SizedBox(width: 6),
-
-                  _actionBtn(Colors.green, "Done", () {
-                    ref.read(leadsControllerProvider.notifier).markDone(lead);
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("$name marked done ✅")),
-                    );
-                  }),
-                ],
-              ),
-            ],
-          ),
+  void _open(AiWorkItem item) {
+    if (item.customerId == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CustomerWorkspaceScreen(
+          customerId: item.customerId!,
+          customerName: item.customerName ?? 'Customer',
+          phone: item.phone,
         ),
       ),
     );
   }
 
-  /// 🧠 AI CARD
-  Widget _aiCard(
-    BuildContext context,
-    WidgetRef ref, {
-    required NotificationSuggestion suggestion,
-  }) {
-    final color = _suggestionColor(suggestion.kind);
-    final lead = suggestion.lead;
+  Future<void> _runAction(AiWorkItem item) async {
+    final action = resolveAiCardAction(item);
+    if (action.type == AiCardActionType.workspace) {
+      _open(item);
+      return;
+    }
+    try {
+      final launched =
+          await launchUrl(action.uri!, mode: LaunchMode.externalApplication);
+      if (!launched && mounted) _open(item);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open that app')),
+        );
+      }
+    }
+  }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.18)),
+  void _done(AiWorkItem item) {
+    ref.read(workItemsProvider.notifier).markDone(item.id);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${item.customerName ?? 'Item'} marked done ✅')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(workItemsProvider);
+    final high = state.highItems;
+    final others = [...state.mediumItems, ...state.lowItems];
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text('Notifications'),
+        backgroundColor: AppColors.surface,
+        foregroundColor: AppColors.textPrimary,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            onPressed: () => ref.read(workItemsProvider.notifier).load(),
+          ),
+        ],
       ),
-      child: Row(
-        children: [
-          Icon(Icons.auto_awesome, color: color),
-          const SizedBox(width: 10),
+      body: state.items.isEmpty
+          ? _emptyState()
+          : RefreshIndicator(
+              onRefresh: () => ref.read(workItemsProvider.notifier).load(),
+              child: ListView(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                children: [
+                  if (high.isNotEmpty) ...[
+                    const _SectionTitle('🔥 Urgent'),
+                    const SizedBox(height: AppSpacing.sm),
+                    for (final item in high)
+                      _NotificationTile(
+                        item: item,
+                        onTap: () => _open(item),
+                        onAction: () => _runAction(item),
+                        onDone: () => _done(item),
+                      ),
+                    const SizedBox(height: AppSpacing.md),
+                  ],
+                  if (others.isNotEmpty) ...[
+                    const _SectionTitle('Needs attention'),
+                    const SizedBox(height: AppSpacing.sm),
+                    for (final item in others)
+                      _NotificationTile(
+                        item: item,
+                        onTap: () => _open(item),
+                        onAction: () => _runAction(item),
+                        onDone: () => _done(item),
+                      ),
+                  ],
+                ],
+              ),
+            ),
+    );
+  }
 
-          Expanded(
-            child: Column(
+  Widget _emptyState() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.notifications_none, size: 50, color: Colors.grey.shade400),
+          const SizedBox(height: 10),
+          const Text(
+            'All caught up 🎉',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'No pending work right now',
+            style: TextStyle(color: Colors.grey.shade600),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: const TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w700,
+        color: AppColors.textPrimary,
+      ),
+    );
+  }
+}
+
+class _NotificationTile extends StatelessWidget {
+  const _NotificationTile({
+    required this.item,
+    required this.onTap,
+    required this.onAction,
+    required this.onDone,
+  });
+
+  final AiWorkItem item;
+  final VoidCallback onTap;
+  final VoidCallback onAction;
+  final VoidCallback onDone;
+
+  Color get _priorityColor {
+    if (item.isHigh) return AppColors.danger;
+    if (item.isMedium) return AppColors.warning;
+    return AppColors.textSecondary;
+  }
+
+  String get _actionLabel {
+    switch (resolveAiCardAction(item).type) {
+      case AiCardActionType.call:
+        return 'Call';
+      case AiCardActionType.whatsapp:
+        return 'Message';
+      case AiCardActionType.workspace:
+        return 'Open';
+    }
+  }
+
+  String _initials(String? name) {
+    if (name == null || name.trim().isEmpty) return '?';
+    return name.trim()[0].toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Material(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  suggestion.title,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: _priorityColor.withValues(alpha: 0.12),
+                  child: Text(
+                    _initials(item.customerName),
+                    style: TextStyle(
+                      color: _priorityColor,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  suggestion.subtitle,
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.customerName ?? 'Customer',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        item.title,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      if (item.context != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          item.context!,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                      if (item.amount != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          Money.inr(item.amount!),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Column(
+                  children: [
+                    _MiniButton(
+                      key: Key('notif_action_${item.id}'),
+                      color: AppColors.primary,
+                      label: _actionLabel,
+                      onTap: onAction,
+                    ),
+                    const SizedBox(height: 6),
+                    _MiniButton(
+                      key: Key('notif_done_${item.id}'),
+                      color: AppColors.success,
+                      label: 'Done',
+                      onTap: onDone,
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-
-          _actionBtn(
-            color,
-            suggestion.actionLabel,
-            lead == null
-                ? () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("No action needed right now"),
-                      ),
-                    );
-                  }
-                : () {
-                    Navigator.of(
-                      context,
-                    ).push(LeadNavigationService.leadDetailRoute(lead));
-                  },
-          ),
-        ],
+        ),
       ),
     );
   }
+}
 
-  Color _suggestionColor(String kind) {
-    switch (kind) {
-      case 'overdue':
-        return Colors.red;
-      case 'hot':
-        return Colors.deepPurple;
-      case 'today':
-        return Colors.orange;
-      default:
-        return Colors.green;
-    }
-  }
+class _MiniButton extends StatelessWidget {
+  const _MiniButton({
+    super.key,
+    required this.color,
+    required this.label,
+    required this.onTap,
+  });
 
-  /// 🔘 PREMIUM BUTTON
-  Widget _actionBtn(Color color, String text, VoidCallback onTap) {
+  final Color color;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(8),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Text(
-          text,
+          label,
           style: TextStyle(
             color: color,
             fontSize: 11,
             fontWeight: FontWeight.w600,
           ),
         ),
-      ),
-    );
-  }
-
-  /// TITLE
-  Widget _title(String text) {
-    return Text(
-      text,
-      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-    );
-  }
-
-  /// EMPTY
-  Widget _emptyState() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 60),
-      child: Column(
-        children: [
-          Icon(Icons.notifications_none, size: 50, color: Colors.grey.shade400),
-          const SizedBox(height: 10),
-          const Text(
-            "All caught up 🎉",
-            style: TextStyle(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            "No pending follow-ups",
-            style: TextStyle(color: Colors.grey.shade600),
-          ),
-        ],
       ),
     );
   }
