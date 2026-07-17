@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orderly_app/core/theme/app_colors.dart';
 import 'package:orderly_app/core/theme/app_spacing.dart';
 import 'package:orderly_app/features/conversations/presentation/customer_workspace_screen.dart';
+import 'package:orderly_app/features/focus/presentation/focus_mode_route.dart';
 import 'package:orderly_app/features/work/controller/work_items_provider.dart';
 import 'package:orderly_app/features/work/data/ai_work_item.dart';
 import 'package:orderly_app/shared/widgets/approval_tile.dart';
@@ -51,6 +52,26 @@ class _MyWorkScreenState extends ConsumerState<MyWorkScreen>
               color: AppColors.textPrimary),
         ),
         actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md, vertical: 0),
+                minimumSize: const Size(0, 36),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: () => FocusMode.start(context),
+              child: const Text(
+                'Start My Work',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
           if (state.loading)
             const Padding(
               padding: EdgeInsets.only(right: 16),

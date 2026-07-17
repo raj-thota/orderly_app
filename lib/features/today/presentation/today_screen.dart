@@ -18,6 +18,7 @@ import 'package:orderly_app/features/today/data/brief_narrative.dart';
 import 'package:orderly_app/features/today/data/home_insight.dart';
 import 'package:orderly_app/features/today/data/recent_activity.dart';
 import 'package:orderly_app/features/today/data/today_brief.dart';
+import 'package:orderly_app/features/focus/presentation/focus_mode_route.dart';
 import 'package:orderly_app/features/work/controller/work_items_provider.dart';
 import 'package:orderly_app/features/work/data/ai_work_item.dart';
 
@@ -848,7 +849,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                       borderRadius: BorderRadius.circular(AppRadius.sm),
                     ),
                   ),
-                  onPressed: () => widget.onNavigate(1),
+                  onPressed: () => FocusMode.start(context),
                   child: const Text(
                     'Start My Work →',
                     style: TextStyle(

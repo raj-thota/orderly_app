@@ -23,8 +23,19 @@ import 'package:orderly_app/features/subscription/data/subscription.dart';
 import 'package:orderly_app/features/today/presentation/today_screen.dart';
 import 'package:orderly_app/features/work/controller/work_items_provider.dart';
 import 'package:orderly_app/features/work/data/ai_work_item.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../work/work_items_provider_test.dart' show FakeAiWorkItemsService;
+
+class _RouteObserver extends NavigatorObserver {
+  _RouteObserver({required this.onPush});
+  final void Function(Route<dynamic>) onPush;
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    onPush(route);
+  }
+}
 
 // ─── Workspace fakes (so tapping a card can push CustomerWorkspaceScreen) ──────
 
@@ -177,13 +188,45 @@ void main() {
     expect(find.textContaining('Start My Work'), findsOneWidget);
   });
 
-  testWidgets('Start My Work button navigates to tab 1', (t) async {
-    int? navigated;
-    await t.pumpWidget(_harness(onNavigate: (i) => navigated = i));
+  testWidgets('Start My Work button launches Focus Mode', (t) async {
+    SharedPreferences.setMockInitialValues({});
+    final svc = FakeAiWorkItemsService([_workItem(customerName: 'Priya')]);
+
+    // Track pushes via a NavigatorObserver spy.
+    final pushed = <Route<dynamic>>[];
+    final observer = _RouteObserver(onPush: pushed.add);
+
+    await t.pumpWidget(ProviderScope(
+      overrides: [
+        ordersControllerProvider.overrideWith((ref) => _FixedOrders([])),
+        enquiriesControllerProvider
+            .overrideWith((ref) => _FixedEnquiries([])),
+        userProfileProvider
+            .overrideWith((ref) async => {'business_name': 'Raj'}),
+        eventServiceProvider.overrideWithValue(EventService(
+          sink: (row) async {},
+          currentUserId: () => 'u1',
+        )),
+        aiWorkItemsServiceProvider.overrideWithValue(svc),
+        conversationsServiceProvider.overrideWithValue(_FakeConv()),
+        customerSummaryServiceProvider.overrideWithValue(_FakeSummary()),
+        draftReplyServiceProvider.overrideWithValue(_FakeDraft()),
+        entitlementProvider.overrideWith((_) => EntitlementStatus.trialing),
+      ],
+      child: MaterialApp(
+        navigatorObservers: [observer],
+        home: TodayScreen(onNavigate: (_) {}),
+      ),
+    ));
     await t.pumpAndSettle();
 
-    await t.tap(find.textContaining('Start My Work'));
-    expect(navigated, 1);
+    await t.tap(find.text('Start My Work →'));
+    // Pump one frame so Navigator processes the push without running
+    // the Orbit animation loop (pumpAndSettle would time out).
+    await t.pump();
+
+    expect(pushed, isNotEmpty,
+        reason: 'FocusMode.start should have pushed a route');
   });
 
   testWidgets('tracks brief_view once on open', (t) async {
