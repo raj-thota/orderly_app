@@ -1,6 +1,7 @@
 import 'package:orderly_app/features/today/data/brief_narrative.dart'
     show estimatedMinutesFor;
 import 'package:orderly_app/features/work/data/ai_work_item.dart';
+import 'package:orderly_app/features/work/data/work_item_kinds.dart';
 
 /// Immutable snapshot of a guided Focus Mode run. Pure — no Flutter, no I/O.
 class FocusSession {
@@ -94,4 +95,48 @@ class FocusSession {
         startedAt: startedAt,
         batchId: batchId,
       );
+
+  FocusSummary summary() {
+    var payments = 0, replies = 0, offers = 0;
+    var amount = 0.0;
+    for (final i in completed) {
+      switch (workItemGroup(i.kind)) {
+        case WorkItemGroup.collect:
+          payments++;
+          amount += i.amount ?? 0;
+          break;
+        case WorkItemGroup.reply:
+          replies++;
+          break;
+        case WorkItemGroup.offer:
+          offers++;
+          break;
+        case WorkItemGroup.other:
+          break;
+      }
+    }
+    return FocusSummary(
+      tasksCompleted: completed.length,
+      paymentsFollowedUp: payments,
+      amountFollowedUp: (amount * 100).round() / 100,
+      repliesSent: replies,
+      offersSent: offers,
+    );
+  }
+}
+
+/// Immutable tally shown on the finish screen.
+class FocusSummary {
+  const FocusSummary({
+    required this.tasksCompleted,
+    required this.paymentsFollowedUp,
+    required this.amountFollowedUp,
+    required this.repliesSent,
+    required this.offersSent,
+  });
+  final int tasksCompleted;
+  final int paymentsFollowedUp;
+  final double amountFollowedUp;
+  final int repliesSent;
+  final int offersSent;
 }
