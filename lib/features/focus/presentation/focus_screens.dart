@@ -354,7 +354,7 @@ class _FocusSuccessOverlayState extends State<FocusSuccessOverlay>
         });
       }
     } else {
-      _ctrl.forward();
+      if (_ctrl.status == AnimationStatus.dismissed) _ctrl.forward();
     }
   }
 
