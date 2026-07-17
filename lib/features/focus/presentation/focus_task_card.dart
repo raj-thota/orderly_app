@@ -212,7 +212,7 @@ class _CustomerChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = item.customerName ?? 'Customer';
+    final name = (item.customerName?.trim().isNotEmpty == true) ? item.customerName! : 'Customer';
     final initials = _initials(name);
 
     return Container(
@@ -265,7 +265,7 @@ class _CustomerChip extends StatelessWidget {
   }
 
   String _initials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+'));
+    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
     if (parts.isEmpty) return '?';
     if (parts.length == 1) return parts[0][0].toUpperCase();
     return (parts[0][0] + parts[1][0]).toUpperCase();
@@ -309,12 +309,12 @@ class _DraftBlock extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.sm - 1),
+          const SizedBox(height: AppSpacing.sm),
           Text(
             message,
             style: const TextStyle(
               fontSize: 12.5,
-              color: Color(0xFF3B3A52),
+              color: AppColors.textSecondary,
               height: 1.5,
             ),
           ),
