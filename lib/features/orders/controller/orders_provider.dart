@@ -53,7 +53,9 @@ class OrdersController extends StateNotifier<AsyncValue<List<Order>>> {
   final OrdersService _service;
 
   Future<void> load() async {
-    state = await AsyncValue.guard(_service.fetchOrders);
+    final next = await AsyncValue.guard(_service.fetchOrders);
+    if (!mounted) return; // disposed mid-fetch by an auth-driven rebuild
+    state = next;
   }
 
   Future<void> advanceTo(

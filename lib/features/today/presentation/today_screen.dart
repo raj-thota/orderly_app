@@ -1,19 +1,22 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:orderly_app/core/services/event_service.dart';
 import 'package:orderly_app/core/theme/app_colors.dart';
 import 'package:orderly_app/core/theme/app_spacing.dart';
 import 'package:orderly_app/core/utils/money.dart';
 import 'package:orderly_app/features/auth/controller/user_provider.dart';
+import 'package:orderly_app/features/capture/presentation/capture_sheet.dart';
+import 'package:orderly_app/features/catalog/presentation/catalog_screen.dart';
 import 'package:orderly_app/features/conversations/presentation/customer_workspace_screen.dart';
 import 'package:orderly_app/features/enquiries/controller/enquiries_provider.dart';
+import 'package:orderly_app/features/invoices/presentation/invoices_screen.dart';
 import 'package:orderly_app/features/notifications/presentation/notifications_screen.dart';
 import 'package:orderly_app/features/orders/controller/orders_provider.dart';
+import 'package:orderly_app/features/orders/presentation/order_detail_screen.dart';
 import 'package:orderly_app/features/profile/presentation/profile_screen.dart';
-import 'package:orderly_app/features/today/data/ai_card_action.dart';
+import 'package:orderly_app/features/today/data/brief_narrative.dart';
+import 'package:orderly_app/features/today/data/home_insight.dart';
+import 'package:orderly_app/features/today/data/recent_activity.dart';
 import 'package:orderly_app/features/today/data/today_brief.dart';
 import 'package:orderly_app/features/work/controller/work_items_provider.dart';
 import 'package:orderly_app/features/work/data/ai_work_item.dart';
@@ -24,31 +27,29 @@ ImageProvider? profileAvatarImage(String? avatarUrl) {
   return NetworkImage(avatarUrl);
 }
 
-// ─── Nudge data ──────────────────────────────────────────────────────────────
+/// Soft elevation for cards — replaces hairline borders for a calmer surface.
+const List<BoxShadow> _cardShadow = [
+  BoxShadow(
+    color: Color(0x0D000000), // black at 5%
+    blurRadius: 14,
+    offset: Offset(0, 4),
+  ),
+];
 
-class _NudgeData {
-  const _NudgeData({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-    required this.cardColor,
-    required this.iconColor,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-  final Color cardColor;
-  final Color iconColor;
+String _timeAgo(DateTime? dt) {
+  if (dt == null) return '';
+  final diff = DateTime.now().difference(dt);
+  if (diff.inDays >= 1) return '${diff.inDays}d ago';
+  if (diff.inHours >= 1) return '${diff.inHours}h ago';
+  if (diff.inMinutes >= 1) return '${diff.inMinutes}m ago';
+  return 'Just now';
 }
 
 // ─── Pressable (scale-on-tap) ─────────────────────────────────────────────────
 
 /// Wraps a card in a subtle press-scale animation without changing its layout.
 class _Pressable extends StatefulWidget {
-  const _Pressable({super.key, required this.onTap, required this.child});
+  const _Pressable({required this.onTap, required this.child});
 
   final VoidCallback onTap;
   final Widget child;
@@ -77,69 +78,105 @@ class _PressableState extends State<_Pressable> {
   }
 }
 
-// ─── Stat tile ───────────────────────────────────────────────────────────────
+// ─── Brief check-list item ────────────────────────────────────────────────────
 
-class _StatRow extends StatelessWidget {
-  const _StatRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.highlightColor,
-  });
+/// One line of the AI brief: a small circular check chip + the task text,
+/// rendered on the gradient hero card.
+class _BriefCheckItem extends StatelessWidget {
+  const _BriefCheckItem({required this.text});
 
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color highlightColor;
+  final String text;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 11),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.white70, size: 15),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 20,
+          height: 20,
+          margin: const EdgeInsets.only(top: 1),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.18),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.check_rounded, size: 13, color: Colors.white),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              height: 1.3,
             ),
           ),
-          Container(
-            alignment: Alignment.center,
-            constraints: const BoxConstraints(minWidth: 64),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: highlightColor.withValues(alpha: 0.22),
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-            ),
-            child: Text(
-              value,
-              style: TextStyle(
-                color: highlightColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
-// ─── Attention tile ───────────────────────────────────────────────────────────
+// ─── Section header ───────────────────────────────────────────────────────────
 
-class _AttentionTile extends StatelessWidget {
-  const _AttentionTile({
-    required this.item,
-    required this.onTap,
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({
+    required this.title,
+    this.icon,
+    this.trailingLabel,
+    this.onTrailingTap,
   });
+
+  final String title;
+  final IconData? icon;
+  final String? trailingLabel;
+  final VoidCallback? onTrailingTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 14, color: AppColors.primary),
+              const SizedBox(width: AppSpacing.xs),
+            ],
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ],
+        ),
+        if (trailingLabel != null)
+          TextButton(
+            onPressed: onTrailingTap,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text(
+              trailingLabel!,
+              style: const TextStyle(color: AppColors.primary, fontSize: 13),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+// ─── Work row (compact task) ──────────────────────────────────────────────────
+
+class _WorkRow extends StatelessWidget {
+  const _WorkRow({required this.item, required this.onTap});
 
   final AiWorkItem item;
   final VoidCallback onTap;
@@ -153,190 +190,136 @@ class _AttentionTile extends StatelessWidget {
     }
   }
 
-  String _priorityLabel(String priority) {
-    if (priority.isEmpty) return priority;
-    return priority[0].toUpperCase() + priority.substring(1);
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.md,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: _priorityColor(item.priority),
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Text(
+                focusLabel(item),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Text(
+              '${estimatedMinutesFor(item)} min',
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            const Icon(Icons.chevron_right_rounded,
+                color: AppColors.textSecondary, size: 16),
+          ],
+        ),
+      ),
+    );
   }
+}
 
-  String _actionLabel(String kind) {
+// ─── Insight card ─────────────────────────────────────────────────────────────
+
+class _InsightCard extends StatelessWidget {
+  const _InsightCard({required this.insight, required this.onTap});
+
+  final HomeInsight insight;
+  final VoidCallback onTap;
+
+  (IconData, Color) _style(HomeInsightKind kind) {
     switch (kind) {
-      case 'payment_reminder':
-      case 'overdue_payment':
-        return 'Send Reminder';
-      case 'follow_up':
-      case 'call':
-        return 'Follow Up';
-      default:
-        return 'Message';
+      case HomeInsightKind.collectPayments:
+        return (Icons.currency_rupee_rounded, AppColors.danger);
+      case HomeInsightKind.followUpsDue:
+        return (Icons.schedule_rounded, AppColors.warning);
+      case HomeInsightKind.newOrders:
+        return (Icons.shopping_bag_outlined, AppColors.success);
     }
-  }
-
-  /// Action-first headline so the user reads WHAT to do before WHO it's for.
-  String _actionHeadline(String kind) {
-    switch (kind) {
-      case 'payment_reminder':
-      case 'overdue_payment':
-        return 'Collect Payment';
-      case 'follow_up':
-      case 'call':
-        return 'Follow Up';
-      case 'share_catalog':
-      case 'offer':
-        return 'Share Offer';
-      default:
-        return 'Send Update';
-    }
-  }
-
-  String _initials(String? name) {
-    if (name == null || name.isEmpty) return '?';
-    final parts = name.trim().split(' ');
-    if (parts.length == 1) return parts[0][0].toUpperCase();
-    return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-  }
-
-  String _timeAgo(DateTime? dt) {
-    if (dt == null) return '';
-    final diff = DateTime.now().difference(dt);
-    if (diff.inDays >= 1) return '${diff.inDays} days ago';
-    if (diff.inHours >= 1) return '${diff.inHours} hours ago';
-    return 'Today';
-  }
-
-  String _subtitle() {
-    final time = _timeAgo(item.createdAt);
-    final String? prefix;
-    if (item.orderId != null) {
-      prefix = 'Order #${item.orderId}';
-    } else if (item.leadId != null) {
-      prefix = 'Hot lead';
-    } else {
-      prefix = null;
-    }
-    if (prefix != null && time.isNotEmpty) return '$prefix • $time';
-    return prefix ?? time;
   }
 
   @override
   Widget build(BuildContext context) {
+    final (icon, color) = _style(insight.kind);
     return _Pressable(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: AppColors.aiSurface,
           borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(color: AppColors.border),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            CircleAvatar(
-              radius: 22,
-              backgroundColor: AppColors.aiSurface,
-              child: Text(
-                _initials(item.customerName),
-                style: const TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(10),
               ),
+              child: Icon(icon, color: color, size: 20),
             ),
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          _actionHeadline(item.kind),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                            color: AppColors.textPrimary,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.xs),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: _priorityColor(item.priority)
-                              .withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(AppRadius.pill),
-                        ),
-                        child: Text(
-                          _priorityLabel(item.priority),
-                          style: TextStyle(
-                            color: _priorityColor(item.priority),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 3),
                   Text(
-                    item.customerName ?? '—',
+                    insight.title,
                     style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    _subtitle(),
+                    insight.evidence,
                     style: const TextStyle(
+                      fontSize: 12,
                       color: AppColors.textSecondary,
-                      fontSize: 11,
+                      height: 1.35,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    '${insight.cta} →',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: AppSpacing.sm),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                if (item.amount != null)
-                  Text(
-                    Money.inr(item.amount!),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                const SizedBox(height: AppSpacing.xs),
-                OutlinedButton(
-                  onPressed: onTap,
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 4),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    side: const BorderSide(color: AppColors.primary),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    foregroundColor: AppColors.primary,
-                    textStyle: const TextStyle(fontSize: 11),
-                  ),
-                  child: Text(_actionLabel(item.kind)),
-                ),
-              ],
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            const Icon(Icons.chevron_right_rounded,
-                color: AppColors.textSecondary, size: 18),
           ],
         ),
       ),
@@ -344,134 +327,112 @@ class _AttentionTile extends StatelessWidget {
   }
 }
 
-// ─── AI action card ───────────────────────────────────────────────────────────
+// ─── Snapshot tile ────────────────────────────────────────────────────────────
 
-class _AiActionCard extends StatelessWidget {
-  const _AiActionCard({
-    required this.item,
-    required this.onTap,
+class _SnapshotTile extends StatelessWidget {
+  const _SnapshotTile({
+    super.key,
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    required this.value,
   });
 
-  final AiWorkItem item;
-  final VoidCallback onTap;
-
-  _CardConfig _config(AiWorkItem item) {
-    final name = item.customerName ?? 'this customer';
-    switch (item.kind) {
-      case 'payment_reminder':
-      case 'overdue_payment':
-        return _CardConfig(
-          icon: Icons.currency_rupee_rounded,
-          color: AppColors.danger,
-          desc: '$name has a pending payment. Send a gentle nudge.',
-          cta: 'Send Reminder →',
-        );
-      case 'follow_up':
-      case 'call':
-        return _CardConfig(
-          icon: Icons.phone_outlined,
-          color: AppColors.primary,
-          desc: '$name is waiting to hear back. Follow up now.',
-          cta: 'Follow Up →',
-        );
-      case 'share_catalog':
-      case 'offer':
-        return _CardConfig(
-          icon: Icons.card_giftcard_outlined,
-          color: AppColors.warning,
-          desc: 'Win $name back with a quick offer.',
-          cta: 'Share Offer →',
-        );
-      default:
-        return _CardConfig(
-          icon: Icons.message_outlined,
-          color: AppColors.aiAccent,
-          desc: 'Reach out to $name before they go quiet.',
-          cta: 'Message →',
-        );
-    }
-  }
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
-    final cfg = _config(item);
-    return _Pressable(
-      onTap: onTap,
-      child: Container(
-        width: 160,
-        margin: const EdgeInsets.only(right: AppSpacing.sm),
-        padding: const EdgeInsets.all(AppSpacing.md),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(AppRadius.sm),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: cfg.color.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        boxShadow: _cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 15, color: iconColor),
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
                   ),
-                  child: Icon(cfg.icon, color: cfg.color, size: 18),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Text(
-                    cfg.desc,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Align(
-              alignment: Alignment.centerRight,
-              child: Text(
-                cfg.cta,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.primary,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _CardConfig {
-  const _CardConfig({
+// ─── Quick action button ──────────────────────────────────────────────────────
+
+class _QuickAction extends StatelessWidget {
+  const _QuickAction({
     required this.icon,
-    required this.color,
-    required this.desc,
-    required this.cta,
+    required this.label,
+    required this.onTap,
   });
+
   final IconData icon;
-  final Color color;
-  final String desc;
-  final String cta;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return _Pressable(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              boxShadow: _cardShadow,
+            ),
+            child: Icon(icon, color: AppColors.primary, size: 22),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // ─── Today screen ─────────────────────────────────────────────────────────────
@@ -486,10 +447,6 @@ class TodayScreen extends ConsumerStatefulWidget {
 }
 
 class _TodayScreenState extends ConsumerState<TodayScreen> {
-  int _nudgePage = 0;
-  int _nudgeCount = 0;
-  Timer? _nudgeTimer;
-
   @override
   void initState() {
     super.initState();
@@ -497,19 +454,6 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
       ref.read(eventServiceProvider).track('brief_view');
       ref.read(workItemsProvider.notifier).load();
     });
-    _nudgeTimer = Timer.periodic(const Duration(seconds: 4), (_) {
-      if (_nudgeCount > 1 && mounted) {
-        setState(() {
-          _nudgePage = (_nudgePage + 1) % _nudgeCount;
-        });
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _nudgeTimer?.cancel();
-    super.dispose();
   }
 
   String _greeting(DateTime now) {
@@ -517,6 +461,18 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
     if (now.hour < 17) return 'Good afternoon';
     return 'Good evening';
   }
+
+  static const _weekdays = [
+    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday',
+  ];
+  static const _months = [
+    'January', 'February', 'March', 'April', 'May', 'June', 'July',
+    'August', 'September', 'October', 'November', 'December',
+  ];
+
+  String _dateEyebrow(DateTime now) =>
+      '${_weekdays[now.weekday - 1]}, ${now.day} ${_months[now.month - 1]}'
+          .toUpperCase();
 
   String _initialLetter(String name) {
     final trimmed = name.trim();
@@ -538,51 +494,73 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
     );
   }
 
-  /// Runs the direct CTA action for an AI card (call / WhatsApp / workspace).
-  Future<void> _runCardAction(AiWorkItem item) async {
-    final action = resolveAiCardAction(item);
-    if (action.type == AiCardActionType.workspace) {
-      _openWorkspace(item);
-      return;
-    }
-    try {
-      final launched =
-          await launchUrl(action.uri!, mode: LaunchMode.externalApplication);
-      if (!launched && mounted) _openWorkspace(item);
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open that app')),
-        );
-      }
-    }
-  }
-
   Widget _buildProfileAvatar() {
     final profile = ref.watch(userProfileProvider).valueOrNull;
     final avatarUrl = profile?['avatar_url'] as String?;
     final name = (profile?['business_name'] as String?) ?? '';
     final image = profileAvatarImage(avatarUrl);
     return Center(
-      child: GestureDetector(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const ProfileScreen()),
-        ),
-        child: CircleAvatar(
-          key: const Key('today_profile_avatar'),
-          radius: 16,
-          backgroundColor: AppColors.aiSurface,
-          backgroundImage: image,
-          child: image != null
-              ? null
-              : Text(
-                  _initialLetter(name),
-                  style: const TextStyle(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
+      child: Padding(
+        padding: const EdgeInsets.only(left: AppSpacing.sm),
+        child: GestureDetector(
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const ProfileScreen()),
+          ),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              // Soft brand ring + shadow lifts the avatar off the bar.
+              Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(
+                    colors: [AppColors.aiAccent, AppColors.primary],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.28),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: CircleAvatar(
+                  key: const Key('today_profile_avatar'),
+                  radius: 15,
+                  backgroundColor: AppColors.surface,
+                  backgroundImage: image,
+                  child: image != null
+                      ? null
+                      : Text(
+                          _initialLetter(name),
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                ),
+              ),
+              // Business "online" status dot.
+              Positioned(
+                right: -1,
+                bottom: -1,
+                child: Container(
+                  width: 11,
+                  height: 11,
+                  decoration: BoxDecoration(
+                    color: AppColors.success,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.background, width: 2),
                   ),
                 ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -599,46 +577,8 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
     final brief =
         buildTodayBrief(orders: orders, enquiries: enquiries, now: now);
     final workState = ref.watch(workItemsProvider);
-
-    // Build nudges
-    final nudges = <_NudgeData>[];
-    if (brief.dueFollowUps > 0) {
-      nudges.add(_NudgeData(
-        icon: Icons.schedule_rounded,
-        title:
-            '${brief.dueFollowUps} follow-up${brief.dueFollowUps == 1 ? '' : 's'} need your attention',
-        subtitle: 'Reply before they lose interest',
-        onTap: () => widget.onNavigate(1),
-        cardColor: const Color(0xFFFFF3E0),
-        iconColor: const Color(0xFFE65100),
-      ));
-    }
-    if (brief.outstanding > 0) {
-      nudges.add(_NudgeData(
-        icon: Icons.currency_rupee_rounded,
-        title: '${Money.inr(brief.outstanding)} outstanding payments',
-        subtitle: 'Send reminders and get paid',
-        onTap: () => widget.onNavigate(2),
-        cardColor: const Color(0xFFFFEBEE),
-        iconColor: const Color(0xFFC62828),
-      ));
-    }
-    if (brief.ordersToday > 0) {
-      nudges.add(_NudgeData(
-        icon: Icons.shopping_bag_outlined,
-        title: '${brief.ordersToday} new order(s) placed today',
-        subtitle: 'Review and confirm them',
-        onTap: () => widget.onNavigate(2),
-        cardColor: const Color(0xFFE8F5E9),
-        iconColor: const Color(0xFF2E7D32),
-      ));
-    }
-
-    // Nudge page desync guard + sync count for auto-advance
-    _nudgeCount = nudges.length;
-    if (nudges.isNotEmpty && _nudgePage >= nudges.length) {
-      _nudgePage = nudges.length - 1;
-    }
+    final insights = buildHomeInsights(brief, now: now);
+    final activity = buildRecentActivity(orders);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -651,33 +591,46 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
             await ref.read(workItemsProvider.notifier).load();
           },
           child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(AppSpacing.lg),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Greeting
+                // 1 — Greeting
                 _buildGreeting(name, now),
                 const SizedBox(height: AppSpacing.lg),
 
-                // Glance card
-                _buildGlanceCard(brief, workState.pendingCount),
-                const SizedBox(height: AppSpacing.lg),
+                // 2 — AI brief (hero)
+                _buildHeroBrief(brief, workState, now),
 
-                // Nudge carousel
-                if (nudges.isNotEmpty) ...[
-                  _buildNudgeCarousel(nudges),
-                  const SizedBox(height: AppSpacing.lg),
-                ],
-
-                // Needs your attention
+                // 3 — Today's work queue
                 if (workState.items.isNotEmpty) ...[
-                  _buildAttentionSection(workState),
-                  const SizedBox(height: AppSpacing.lg),
-
-                  // AI suggested actions
-                  _buildAiActionsSection(workState),
-                  const SizedBox(height: AppSpacing.lg),
+                  const SizedBox(height: AppSpacing.xl),
+                  _buildWorkQueue(workState),
                 ],
+
+                // 4 — AI insights
+                if (insights.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.xl),
+                  _buildInsights(insights),
+                ],
+
+                // 5 — Business snapshot
+                const SizedBox(height: AppSpacing.xl),
+                _buildSnapshot(brief),
+
+                // 6 — Recent activity
+                if (activity.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.xl),
+                  _buildActivity(activity),
+                ],
+
+                // 7 — Quick actions
+                const SizedBox(height: AppSpacing.xl),
+                _buildQuickActions(),
+
+                // Clearance for the docked FAB.
+                const SizedBox(height: AppSpacing.xxl * 2),
               ],
             ),
           ),
@@ -728,7 +681,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                   width: 16,
                   height: 16,
                   decoration: const BoxDecoration(
-                    color: Colors.red,
+                    color: AppColors.danger,
                     shape: BoxShape.circle,
                   ),
                   child: Center(
@@ -754,29 +707,59 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '${_greeting(now)}, $name 👋',
+          _dateEyebrow(now),
           style: const TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 1.2,
+            color: AppColors.textSecondary,
           ),
         ),
         const SizedBox(height: AppSpacing.xs),
-        const Text(
-          "Here's what's happening with your business today.",
-          style: TextStyle(
-            fontSize: 13,
-            color: AppColors.textSecondary,
-          ),
+        // "Good afternoon 👋," stays put; only the business name ellipsises,
+        // so the whole greeting holds one line.
+        Row(
+          children: [
+            Text(
+              name.isEmpty ? '${_greeting(now)} 👋' : '${_greeting(now)} 👋,',
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            if (name.isNotEmpty) ...[
+              const SizedBox(width: AppSpacing.xs),
+              Flexible(
+                child: Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
       ],
     );
   }
 
-  Widget _buildGlanceCard(TodayBrief brief, int pendingCount) {
-    final briefLine = pendingCount > 0
-        ? '🤖 You have $pendingCount task${pendingCount == 1 ? '' : 's'} waiting today.'
-        : '🤖 All caught up — nothing needs you right now.';
+  Widget _buildHeroBrief(TodayBrief brief, WorkItemsState workState, DateTime now) {
+    final narrative = buildBriefNarrative(
+      brief: brief,
+      items: workState.items,
+      now: now,
+    );
+    final body = workState.loading && workState.items.isEmpty
+        ? 'Pulling together your day…'
+        : narrative.body;
+    final hasChecklist = narrative.bullets.isNotEmpty;
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
@@ -786,314 +769,411 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(AppRadius.lg),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x335B4FE9), // brand glow, 20%
+            blurRadius: 24,
+            offset: Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Today at a glance',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Today',
-                      style: TextStyle(color: Colors.white, fontSize: 12),
-                    ),
-                    SizedBox(width: 2),
-                    Icon(Icons.keyboard_arrow_down,
-                        color: Colors.white, size: 16),
-                  ],
+              const Icon(Icons.auto_awesome, size: 13, color: Colors.white70),
+              const SizedBox(width: AppSpacing.xs),
+              Text(
+                narrative.eyebrow,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.3,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            briefLine,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.88),
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
+          if (hasChecklist) ...[
+            const SizedBox(height: AppSpacing.md),
+            for (var i = 0; i < narrative.bullets.length; i++) ...[
+              if (i > 0) const SizedBox(height: 10),
+              _BriefCheckItem(text: narrative.bullets[i]),
+            ],
+            const SizedBox(height: AppSpacing.md),
+          ] else ...[
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              body,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                height: 1.45,
+              ),
             ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.md),
+          ],
+          if (workState.items.isNotEmpty) ...[
+            Row(
+              children: [
+                const Icon(Icons.schedule_rounded,
+                    size: 13, color: Colors.white70),
+                const SizedBox(width: AppSpacing.xs),
+                Text(
+                  '${workState.items.length} task${workState.items.length == 1 ? '' : 's'} · about ${estimatedMinutes(workState.items)} min',
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+          // CTA and the friendly companion share one line: the button takes
+          // the width it needs, the robot sits just after it.
           Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Expanded(
-                child: Column(
-                  children: [
-                    _StatRow(
-                      icon: Icons.chat_bubble_outline_rounded,
-                      label: 'Follow-ups due',
-                      value: '${brief.dueFollowUps}',
-                      highlightColor: const Color(0xFFFF8A80),
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: AppColors.primary,
+                    padding:
+                        const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
                     ),
-                    Divider(color: Colors.white.withValues(alpha: 0.12), height: 1),
-                    _StatRow(
-                      icon: Icons.shopping_bag_outlined,
-                      label: 'Orders today',
-                      value: '${brief.ordersToday}',
-                      highlightColor: const Color(0xFF69F0AE),
+                  ),
+                  onPressed: () => widget.onNavigate(1),
+                  child: const Text(
+                    'Start My Work →',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
                     ),
-                    Divider(color: Colors.white.withValues(alpha: 0.12), height: 1),
-                    _StatRow(
-                      icon: Icons.currency_rupee_rounded,
-                      label: 'Revenue today',
-                      value: brief.revenueToday > 0
-                          ? Money.inr(brief.revenueToday)
-                          : '₹0',
-                      highlightColor: const Color(0xFFFFD54F),
-                    ),
-                    Divider(color: Colors.white.withValues(alpha: 0.12), height: 1),
-                    _StatRow(
-                      icon: Icons.layers_outlined,
-                      label: 'Outstanding',
-                      value: Money.inr(brief.outstanding),
-                      highlightColor: const Color(0xFF82B1FF),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-              const SizedBox(width: AppSpacing.md),
+              const SizedBox(width: AppSpacing.sm),
               Image.asset(
                 'assets/robo.png',
-                width: 104,
-                height: 150,
+                width: 60,
+                height: 72,
                 fit: BoxFit.contain,
-                errorBuilder: (ctx, e, stack) => const SizedBox(width: 104),
+                errorBuilder: (ctx, e, stack) => const SizedBox.shrink(),
               ),
             ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: AppColors.primary,
-              ),
-              onPressed: () => widget.onNavigate(1),
-              child: const Text(
-                "Start Today's Tasks →",
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildNudgeCarousel(List<_NudgeData> nudges) {
-    final nudge = nudges[_nudgePage];
-    return Column(
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          child: SizedBox(
-            height: 70,
-            width: double.infinity,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 450),
-              transitionBuilder: (child, animation) {
-                return FadeTransition(
-                  opacity: animation,
-                  child: SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(0, -1),
-                      end: Offset.zero,
-                    ).animate(CurvedAnimation(
-                      parent: animation,
-                      curve: Curves.easeOut,
-                    )),
-                    child: child,
-                  ),
-                );
-              },
-              child: _Pressable(
-                key: ValueKey(_nudgePage),
-                onTap: nudge.onTap,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: AppSpacing.sm,
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: nudge.iconColor.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(nudge.icon, color: nudge.iconColor, size: 22),
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              nudge.title,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textPrimary,
-                                fontSize: 13,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              nudge.subtitle,
-                              style: const TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(Icons.chevron_right_rounded,
-                          color: AppColors.textSecondary, size: 18),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-        if (nudges.length > 1) ...[
-          const SizedBox(height: AppSpacing.xs),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(nudges.length, (i) {
-              return AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                margin: const EdgeInsets.symmetric(horizontal: 3),
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: _nudgePage == i
-                      ? AppColors.primary
-                      : AppColors.border,
-                  shape: BoxShape.circle,
-                ),
-              );
-            }),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildAttentionSection(WorkItemsState workState) {
-    final displayItems = workState.items.take(3).toList();
+  Widget _buildWorkQueue(WorkItemsState workState) {
+    final displayItems = workState.items.take(4).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Needs your attention',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            TextButton(
-              onPressed: () => widget.onNavigate(1),
-              child: Text(
-                'View all (${workState.pendingCount})',
-                style: const TextStyle(
-                  color: AppColors.primary,
-                  fontSize: 13,
-                ),
-              ),
-            ),
-          ],
+        _SectionHeader(
+          title: "Today's Work",
+          icon: Icons.auto_awesome,
+          trailingLabel: 'View all (${workState.pendingCount})',
+          onTrailingTap: () => widget.onNavigate(1),
         ),
         const SizedBox(height: AppSpacing.sm),
-        for (final item in displayItems) ...[
-          _AttentionTile(
-            item: item,
-            onTap: () => _openWorkspace(item),
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            boxShadow: _cardShadow,
           ),
-          const SizedBox(height: AppSpacing.sm),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildAiActionsSection(WorkItemsState workState) {
-    final displayItems = workState.items.take(3).toList();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: const [
-                Icon(Icons.auto_awesome,
-                    size: 14, color: AppColors.primary),
-                SizedBox(width: AppSpacing.xs),
-                Text(
-                  'AI suggested actions',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
+          clipBehavior: Clip.antiAlias,
+          child: Material(
+            type: MaterialType.transparency,
+            child: Column(
+              children: [
+                for (var i = 0; i < displayItems.length; i++) ...[
+                  if (i > 0)
+                    const Divider(
+                        height: 1,
+                        indent: AppSpacing.lg,
+                        color: AppColors.border),
+                  _WorkRow(
+                    item: displayItems[i],
+                    onTap: () => _openWorkspace(displayItems[i]),
                   ),
-                ),
+                ],
               ],
             ),
-            TextButton(
-              onPressed: () => widget.onNavigate(1),
-              child: const Text(
-                'View all',
-                style: TextStyle(color: AppColors.primary, fontSize: 13),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                // Whole pending queue, matching the hero meta and "View all".
+                '🕒 About ${estimatedMinutes(workState.items)} min',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              Text(
+                '✓ ${workState.completedCount} / ${workState.totalCount} completed',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInsights(List<HomeInsight> insights) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionHeader(title: 'AI insights', icon: Icons.auto_awesome),
+        const SizedBox(height: AppSpacing.sm),
+        for (var i = 0; i < insights.length; i++) ...[
+          if (i > 0) const SizedBox(height: AppSpacing.sm),
+          _InsightCard(
+            insight: insights[i],
+            onTap: () => widget.onNavigate(insights[i].targetTab),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSnapshot(TodayBrief brief) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionHeader(title: 'Business snapshot'),
+        const SizedBox(height: AppSpacing.sm),
+        Row(
+          children: [
+            Expanded(
+              child: _SnapshotTile(
+                key: const Key('snap_orders'),
+                icon: Icons.shopping_bag_outlined,
+                iconColor: AppColors.info,
+                label: 'Orders today',
+                value: '${brief.ordersToday}',
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: _SnapshotTile(
+                key: const Key('snap_revenue'),
+                icon: Icons.currency_rupee_rounded,
+                iconColor: AppColors.success,
+                label: 'Revenue today',
+                value: Money.inr(brief.revenueToday),
               ),
             ),
           ],
         ),
         const SizedBox(height: AppSpacing.sm),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              for (final item in displayItems)
-                _AiActionCard(
-                  item: item,
-                  onTap: () => _runCardAction(item),
-                ),
-            ],
+        Row(
+          children: [
+            Expanded(
+              child: _SnapshotTile(
+                key: const Key('snap_outstanding'),
+                icon: Icons.hourglass_bottom_rounded,
+                iconColor: AppColors.danger,
+                label: 'Outstanding',
+                value: Money.inr(brief.outstanding),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: _SnapshotTile(
+                key: const Key('snap_followups'),
+                icon: Icons.chat_bubble_outline_rounded,
+                iconColor: AppColors.warning,
+                label: 'Follow-ups due',
+                value: '${brief.dueFollowUps}',
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActivity(List<ActivityEntry> activity) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionHeader(title: 'Recent activity'),
+        const SizedBox(height: AppSpacing.sm),
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            boxShadow: _cardShadow,
           ),
+          clipBehavior: Clip.antiAlias,
+          child: Material(
+            type: MaterialType.transparency,
+            child: Column(
+              children: [
+                for (var i = 0; i < activity.length; i++) ...[
+                  if (i > 0)
+                    const Divider(
+                        height: 1,
+                        indent: AppSpacing.lg,
+                        color: AppColors.border),
+                  _buildActivityRow(activity[i]),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActivityRow(ActivityEntry entry) {
+    final isPayment = entry.kind == ActivityKind.paymentReceived;
+    final who = entry.order.customerName ??
+        (entry.order.orderNumber != null
+            ? 'Order #${entry.order.orderNumber}'
+            : 'Customer');
+    return InkWell(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => OrderDetailScreen(order: entry.order),
+          ),
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.md,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: (isPayment ? AppColors.success : AppColors.info)
+                    .withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                isPayment
+                    ? Icons.check_circle_outline_rounded
+                    : Icons.shopping_bag_outlined,
+                color: isPayment ? AppColors.success : AppColors.info,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isPayment ? 'Payment received' : 'New order',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '$who · ${_timeAgo(entry.at)}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            if (entry.amount != null)
+              Text(
+                isPayment
+                    ? '+${Money.inr(entry.amount!)}'
+                    : Money.inr(entry.amount!),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color:
+                      isPayment ? AppColors.success : AppColors.textPrimary,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActions() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionHeader(title: 'Quick actions'),
+        const SizedBox(height: AppSpacing.sm),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: _QuickAction(
+                icon: Icons.add_shopping_cart_rounded,
+                label: 'New sale',
+                onTap: () => CaptureSheet.show(context),
+              ),
+            ),
+            Expanded(
+              child: _QuickAction(
+                icon: Icons.currency_rupee_rounded,
+                label: 'Payments',
+                onTap: () => widget.onNavigate(2),
+              ),
+            ),
+            Expanded(
+              child: _QuickAction(
+                icon: Icons.grid_view_rounded,
+                label: 'Catalog',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const CatalogScreen()),
+                ),
+              ),
+            ),
+            Expanded(
+              child: _QuickAction(
+                icon: Icons.receipt_long_outlined,
+                label: 'Invoices',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const InvoicesScreen()),
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );

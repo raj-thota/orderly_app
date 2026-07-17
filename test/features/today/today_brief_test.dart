@@ -49,6 +49,62 @@ void main() {
       expect(b.ordersToday, 2);
     });
 
+    test('cancelled orders do not count toward outstanding or orders today',
+        () {
+      final orders = [
+        Order(
+            grandTotal: 1890,
+            status: 'cancelled',
+            createdAt: DateTime(2026, 7, 11, 9)), // today
+        const Order(grandTotal: 500), // live, unpaid
+        // Money already received on a cancelled order still counts as revenue.
+        Order(grandTotal: 700, status: 'cancelled', payments: [
+          Payment(amount: 200, paidAt: DateTime(2026, 7, 11, 8)),
+        ]),
+      ];
+      final b = buildTodayBrief(orders: orders, enquiries: [], now: now);
+      expect(b.outstanding, 500);
+      expect(b.outstandingCount, 1);
+      expect(b.ordersToday, 0);
+      expect(b.revenueToday, 200);
+    });
+
+    test('outstandingCount counts only orders with dues', () {
+      final orders = [
+        Order(grandTotal: 1000, payments: [Payment(amount: 400)]),
+        const Order(grandTotal: 500),
+        Order(grandTotal: 300, payments: [Payment(amount: 300)]),
+      ];
+      final b = buildTodayBrief(orders: orders, enquiries: [], now: now);
+      expect(b.outstandingCount, 2);
+    });
+
+    test('dueName/dueSince track the longest-waiting due follow-up', () {
+      final enquiries = [
+        Enquiry(
+            status: 'follow',
+            followUpDate: DateTime(2026, 7, 10, 9),
+            customerName: 'Asha'),
+        Enquiry(
+            status: 'follow',
+            followUpDate: DateTime(2026, 7, 9, 9),
+            customerName: 'Meera'),
+        Enquiry(
+            status: 'follow',
+            followUpDate: DateTime(2026, 7, 20),
+            customerName: 'Later'), // upcoming — ignored
+      ];
+      final b = buildTodayBrief(orders: [], enquiries: enquiries, now: now);
+      expect(b.dueName, 'Meera');
+      expect(b.dueSince, DateTime(2026, 7, 9, 9));
+    });
+
+    test('dueName is null when nothing is due', () {
+      final b = buildTodayBrief(orders: [], enquiries: [], now: now);
+      expect(b.dueName, isNull);
+      expect(b.dueSince, isNull);
+    });
+
     test('revenueToday sums payments received today across orders', () {
       final orders = [
         Order(grandTotal: 5000, payments: [

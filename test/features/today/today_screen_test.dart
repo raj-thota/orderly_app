@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orderly_app/core/services/event_service.dart';
+import 'package:orderly_app/core/theme/app_colors.dart';
 import 'package:orderly_app/features/auth/controller/user_provider.dart';
 import 'package:orderly_app/features/conversations/controller/conversation_provider.dart';
 import 'package:orderly_app/features/conversations/data/ai_summary.dart';
@@ -147,7 +148,7 @@ AiWorkItem _workItem({
     );
 
 void main() {
-  testWidgets('renders brief stat tile values from orders and enquiries',
+  testWidgets('snapshot tiles show outstanding and revenue from orders',
       (t) async {
     final orders = [
       Order(grandTotal: 9500, payments: [
@@ -158,18 +159,30 @@ void main() {
     await t.pumpWidget(_harness(orders: orders, enquiries: [_dueEnquiry]));
     await t.pumpAndSettle();
 
-    expect(find.text('₹12,000'), findsOneWidget);
-    expect(find.text('₹9,500'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('snap_outstanding')),
+        matching: find.text('₹12,000'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('snap_revenue')),
+        matching: find.text('₹9,500'),
+      ),
+      findsOneWidget,
+    );
     expect(find.textContaining('Raj'), findsOneWidget);
-    expect(find.textContaining('Start Today'), findsOneWidget);
+    expect(find.textContaining('Start My Work'), findsOneWidget);
   });
 
-  testWidgets('Start Today button navigates to tab 1', (t) async {
+  testWidgets('Start My Work button navigates to tab 1', (t) async {
     int? navigated;
     await t.pumpWidget(_harness(onNavigate: (i) => navigated = i));
     await t.pumpAndSettle();
 
-    await t.tap(find.textContaining('Start Today'));
+    await t.tap(find.textContaining('Start My Work'));
     expect(navigated, 1);
   });
 
@@ -180,24 +193,119 @@ void main() {
     expect(events, ['brief_view']);
   });
 
-  testWidgets('due nudge tap navigates to tab 1', (t) async {
+  testWidgets('hero brief lists pending work as a check-list', (t) async {
+    final svc = FakeAiWorkItemsService([
+      _workItem(customerName: 'Priya', amount: 3360),
+      _workItem(id: '2', kind: 'follow_up', customerName: 'Aman'),
+    ]);
+    await t.pumpWidget(_harness(workItems: svc));
+    await t.pumpAndSettle();
+
+    expect(find.textContaining('Collect ₹3,360 from 1 customer'),
+        findsOneWidget);
+    expect(find.textContaining('Reply to 1 waiting customer'), findsOneWidget);
+    // One circular check icon per task, replacing the old bullets.
+    expect(find.byIcon(Icons.check_rounded), findsNWidgets(2));
+  });
+
+  testWidgets('brief goes straight to the check-list, no intro line',
+      (t) async {
+    final svc = FakeAiWorkItemsService([
+      _workItem(customerName: 'Priya', amount: 3360),
+    ]);
+    await t.pumpWidget(_harness(workItems: svc));
+    await t.pumpAndSettle();
+
+    expect(find.text("Here's what I'd focus on today:"), findsNothing);
+    expect(find.byIcon(Icons.check_rounded), findsOneWidget);
+  });
+
+  testWidgets('no check-list when the day is all clear', (t) async {
+    await t.pumpWidget(_harness());
+    await t.pumpAndSettle();
+
+    expect(find.byIcon(Icons.check_rounded), findsNothing);
+  });
+
+  testWidgets('hero shows all-clear brief when nothing is pending', (t) async {
+    await t.pumpWidget(_harness());
+    await t.pumpAndSettle();
+
+    expect(find.textContaining('All clear'), findsOneWidget);
+  });
+
+  testWidgets('hero shows session length and work list shows progress',
+      (t) async {
+    final svc = FakeAiWorkItemsService([
+      _workItem(customerName: 'Priya', amount: 3360),
+    ]);
+    await t.pumpWidget(_harness(workItems: svc));
+    await t.pumpAndSettle();
+
+    expect(find.text('1 task · about 2 min'), findsOneWidget);
+    expect(find.text('🕒 About 2 min'), findsOneWidget);
+    expect(find.text('✓ 0 / 1 completed'), findsOneWidget);
+    // Completion count carries the Closr purple accent, not muted gray.
+    final count = t.widget<Text>(find.text('✓ 0 / 1 completed'));
+    expect(count.style?.color, AppColors.primary);
+  });
+
+  testWidgets('work progress updates as tasks complete', (t) async {
+    final svc = FakeAiWorkItemsService([
+      _workItem(id: '1', customerName: 'Priya', amount: 3360),
+      _workItem(id: '2', kind: 'follow_up', customerName: 'Aman'),
+    ]);
+    await t.pumpWidget(_harness(workItems: svc));
+    await t.pumpAndSettle();
+
+    expect(find.text('🕒 About 5 min'), findsOneWidget);
+    expect(find.text('✓ 0 / 2 completed'), findsOneWidget);
+
+    final container = ProviderScope.containerOf(
+        t.element(find.byType(TodayScreen)));
+    await container.read(workItemsProvider.notifier).markDone('1');
+    await t.pump();
+
+    expect(find.text('🕒 About 3 min'), findsOneWidget);
+    expect(find.text('✓ 1 / 2 completed'), findsOneWidget);
+  });
+
+  testWidgets('follow-up insight is an action card naming the customer',
+      (t) async {
     int? navigated;
     await t.pumpWidget(_harness(
         enquiries: [_dueEnquiry],
         onNavigate: (i) => navigated = i));
     await t.pumpAndSettle();
 
-    await t.tap(find.textContaining('need your attention'));
+    await t.ensureVisible(find.text('Reply to an interested customer'));
+    expect(find.textContaining('Meena has been waiting'), findsOneWidget);
+    expect(find.text('Reply now →'), findsOneWidget);
+
+    await t.tap(find.text('Reply to an interested customer'));
     expect(navigated, 1);
   });
 
-  testWidgets('shows Needs your attention section when work items exist',
-      (t) async {
+  testWidgets('outstanding insight tap navigates to Orders tab', (t) async {
+    int? navigated;
+    await t.pumpWidget(_harness(
+        orders: [const Order(grandTotal: 12000)],
+        onNavigate: (i) => navigated = i));
+    await t.pumpAndSettle();
+
+    await t.ensureVisible(find.text('Collect outstanding payments'));
+    expect(find.text('₹12,000 is pending across 1 order.'), findsOneWidget);
+
+    await t.tap(find.text('Collect outstanding payments'));
+    expect(navigated, 2);
+  });
+
+  testWidgets("shows Today's work queue when work items exist", (t) async {
     final svc = FakeAiWorkItemsService([_workItem(customerName: 'Priya')]);
     await t.pumpWidget(_harness(workItems: svc));
     await t.pumpAndSettle();
 
-    expect(find.text('Needs your attention'), findsOneWidget);
+    expect(find.text("Today's Work"), findsOneWidget);
   });
 
   testWidgets('bell badge shows pending work item count', (t) async {
@@ -211,55 +319,80 @@ void main() {
     expect(find.text('2'), findsOneWidget);
   });
 
-  testWidgets('attention tile shows customer name and priority badge', (t) async {
-    final svc = FakeAiWorkItemsService([
-      _workItem(customerName: 'Rekha Joshi', priority: 'high'),
-    ]);
-    await t.pumpWidget(_harness(workItems: svc));
-    await t.pumpAndSettle();
-
-    expect(find.textContaining('Rekha Joshi'), findsAtLeastNWidgets(1));
-    expect(find.text('High'), findsOneWidget);
-  });
-
-  testWidgets('attention tile shows formatted amount', (t) async {
-    final svc = FakeAiWorkItemsService([
-      _workItem(customerName: 'Aman', amount: 3360),
-    ]);
-    await t.pumpWidget(_harness(workItems: svc));
-    await t.pumpAndSettle();
-
-    expect(find.textContaining('₹3,360'), findsOneWidget);
-  });
-
-  testWidgets('AI suggested actions section visible when work items exist',
+  testWidgets('work row states the task with customer name and time',
       (t) async {
     final svc = FakeAiWorkItemsService([
-      _workItem(customerName: 'Deepika', kind: 'follow_up'),
+      _workItem(customerName: 'Rekha Joshi', amount: 3360),
     ]);
     await t.pumpWidget(_harness(workItems: svc));
     await t.pumpAndSettle();
 
-    expect(find.textContaining('AI suggested actions'), findsOneWidget);
-    expect(find.textContaining('waiting to hear back'), findsOneWidget);
+    expect(find.text('Collect ₹3,360 from Rekha Joshi'), findsOneWidget);
+    expect(find.text('2 min'), findsOneWidget);
   });
 
-  testWidgets('nudge section hidden when brief has no items', (t) async {
+  testWidgets('insights hidden when brief has no items', (t) async {
     await t.pumpWidget(_harness());
     await t.pumpAndSettle();
 
-    expect(find.textContaining('need your attention'), findsNothing);
-    expect(find.textContaining('outstanding'), findsNothing);
+    expect(find.text('AI insights'), findsNothing);
+    expect(find.text('Collect outstanding payments'), findsNothing);
   });
 
-  testWidgets('glance card shows all 4 stat tile labels', (t) async {
+  testWidgets('snapshot shows all 4 metric labels', (t) async {
     await t.pumpWidget(_harness());
     await t.pumpAndSettle();
 
-    expect(find.textContaining('Follow-ups'), findsOneWidget);
-    expect(find.textContaining('Orders'), findsOneWidget);
-    expect(find.textContaining('Revenue'), findsOneWidget);
-    expect(find.textContaining('Outstanding'), findsOneWidget);
+    expect(find.text('Orders today'), findsOneWidget);
+    expect(find.text('Revenue today'), findsOneWidget);
+    expect(find.text('Outstanding'), findsOneWidget);
+    expect(find.text('Follow-ups due'), findsOneWidget);
+  });
+
+  testWidgets('recent activity lists payments and orders', (t) async {
+    final orders = [
+      Order(
+        customerName: 'Meena',
+        grandTotal: 9500,
+        createdAt: DateTime.now().subtract(const Duration(hours: 3)),
+        payments: [
+          Payment(
+              amount: 9500,
+              paidAt: DateTime.now().subtract(const Duration(hours: 1))),
+        ],
+      ),
+    ];
+    await t.pumpWidget(_harness(orders: orders));
+    await t.pumpAndSettle();
+
+    await t.ensureVisible(find.text('Recent activity'));
+    expect(find.text('Payment received'), findsOneWidget);
+    expect(find.text('New order'), findsOneWidget);
+    expect(find.text('+₹9,500'), findsOneWidget);
+    expect(find.textContaining('Meena ·'), findsNWidgets(2));
+  });
+
+  testWidgets('recent activity hidden when there are no orders', (t) async {
+    await t.pumpWidget(_harness());
+    await t.pumpAndSettle();
+
+    expect(find.text('Recent activity'), findsNothing);
+  });
+
+  testWidgets('quick actions render and Payments navigates to Orders tab',
+      (t) async {
+    int? navigated;
+    await t.pumpWidget(_harness(onNavigate: (i) => navigated = i));
+    await t.pumpAndSettle();
+
+    await t.ensureVisible(find.text('Quick actions'));
+    expect(find.text('New sale'), findsOneWidget);
+    expect(find.text('Catalog'), findsOneWidget);
+    expect(find.text('Invoices'), findsOneWidget);
+    expect(find.text('Payments'), findsOneWidget);
+
+    await t.tap(find.text('Payments'));
+    expect(navigated, 2);
   });
 
   testWidgets('app bar shows a profile avatar, not a hamburger menu',
@@ -295,8 +428,7 @@ void main() {
     expect((image as NetworkImage).url, 'https://example.com/me.png');
   });
 
-  testWidgets('tapping an attention tile opens the customer workspace',
-      (t) async {
+  testWidgets('tapping a work row opens the customer workspace', (t) async {
     int? navigated;
     final svc = FakeAiWorkItemsService([
       _workItem(customerName: 'Priya', kind: 'reply'),
@@ -304,26 +436,12 @@ void main() {
     await t.pumpWidget(_harness(workItems: svc, onNavigate: (i) => navigated = i));
     await t.pumpAndSettle();
 
-    await t.ensureVisible(find.text('Priya'));
-    await t.tap(find.text('Priya'));
+    await t.ensureVisible(find.text('Reply to Priya'));
+    await t.tap(find.text('Reply to Priya'));
     await t.pumpAndSettle();
 
     // Workspace screen is unique: it has a Chat tab.
     expect(find.text('Chat'), findsOneWidget);
     expect(navigated, isNull);
-  });
-
-  testWidgets('AI action card with no phone opens the workspace', (t) async {
-    final svc = FakeAiWorkItemsService([
-      _workItem(customerName: 'Priya', kind: 'payment_reminder'),
-    ]);
-    await t.pumpWidget(_harness(workItems: svc));
-    await t.pumpAndSettle();
-
-    await t.ensureVisible(find.textContaining('pending payment'));
-    await t.tap(find.textContaining('pending payment'));
-    await t.pumpAndSettle();
-
-    expect(find.text('Chat'), findsOneWidget);
   });
 }

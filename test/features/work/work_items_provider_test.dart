@@ -148,6 +148,49 @@ void main() {
     expect(c.read(workItemsProvider).pendingCount, 2);
   });
 
+  test('markDone and approve count as completed; total holds steady', () async {
+    final svc = FakeAiWorkItemsService([_item('1'), _item('2'), _item('3')]);
+    final c = makeContainer(svc);
+    addTearDown(c.dispose);
+    await c.read(workItemsProvider.notifier).load();
+
+    expect(c.read(workItemsProvider).completedCount, 0);
+    expect(c.read(workItemsProvider).totalCount, 3);
+
+    await c.read(workItemsProvider.notifier).markDone('1');
+    expect(c.read(workItemsProvider).completedCount, 1);
+    expect(c.read(workItemsProvider).totalCount, 3);
+
+    await c.read(workItemsProvider.notifier).approve('2');
+    expect(c.read(workItemsProvider).completedCount, 2);
+    expect(c.read(workItemsProvider).totalCount, 3);
+  });
+
+  test('dismiss is skipped work, not completed work', () async {
+    final svc = FakeAiWorkItemsService([_item('1'), _item('2')]);
+    final c = makeContainer(svc);
+    addTearDown(c.dispose);
+    await c.read(workItemsProvider.notifier).load();
+
+    await c.read(workItemsProvider.notifier).dismiss('1');
+
+    expect(c.read(workItemsProvider).completedCount, 0);
+    expect(c.read(workItemsProvider).totalCount, 1);
+  });
+
+  test('completedCount rolls back on approve failure', () async {
+    final svc =
+        FakeAiWorkItemsService([_item('1'), _item('2')], throwOnApprove: true);
+    final c = makeContainer(svc);
+    addTearDown(c.dispose);
+    await c.read(workItemsProvider.notifier).load();
+
+    await c.read(workItemsProvider.notifier).approve('1');
+
+    expect(c.read(workItemsProvider).completedCount, 0);
+    expect(c.read(workItemsProvider).totalCount, 2);
+  });
+
   test('rollback restores item list on approve failure', () async {
     final svc =
         FakeAiWorkItemsService([_item('1'), _item('2')], throwOnApprove: true);

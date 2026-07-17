@@ -27,7 +27,9 @@ class EnquiriesController extends StateNotifier<AsyncValue<List<Enquiry>>> {
   final EnquiriesService _service;
 
   Future<void> load() async {
-    state = await AsyncValue.guard(_service.fetchEnquiries);
+    final next = await AsyncValue.guard(_service.fetchEnquiries);
+    if (!mounted) return; // disposed mid-fetch by an auth-driven rebuild
+    state = next;
   }
 
   Future<void> reschedule(String id, DateTime date, {String? note}) async {

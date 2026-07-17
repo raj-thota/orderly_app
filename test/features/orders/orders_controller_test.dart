@@ -39,6 +39,15 @@ class FakeOrdersService implements OrdersService {
   }) async => '';
 }
 
+/// Fetch that never resolves until [gate] is completed, so a test can dispose
+/// the controller while a load is mid-flight.
+class GatedOrdersService extends FakeOrdersService {
+  GatedOrdersService(this.gate) : super(const []);
+  final Completer<List<Order>> gate;
+  @override
+  Future<List<Order>> fetchOrders() => gate.future;
+}
+
 void main() {
   test('nextOrderStatus advances linearly and stops at delivered', () {
     expect(nextOrderStatus('confirmed'), 'packed');
@@ -109,6 +118,17 @@ void main() {
     await controller.markDelivered(const Order(id: 'o1', status: 'shipped'));
     expect(fake.delivered, ['o1']);
     expect(fake.updates, isEmpty);
+  });
+
+  test('load does not throw when disposed mid-fetch', () async {
+    // An auth change rebuilds the service provider, disposing this controller
+    // while its constructor-kicked load() is still awaiting the server.
+    final gate = Completer<List<Order>>();
+    final controller = OrdersController(GatedOrdersService(gate));
+    final loadFuture = controller.load();
+    controller.dispose();
+    gate.complete(const [Order(id: 'o1')]);
+    await expectLater(loadFuture, completes);
   });
 
   test('state resets when the signed-in user changes', () async {

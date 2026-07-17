@@ -15,26 +15,34 @@ class WorkItemsState {
     this.items = const [],
     this.loading = false,
     this.error,
+    this.completedCount = 0,
   });
 
   final List<AiWorkItem> items;
   final bool loading;
   final String? error;
 
+  /// Tasks finished this session (approved or marked done) — dismissals
+  /// don't count. Drives the "✓ 1 / 5 completed" progress copy.
+  final int completedCount;
+
   List<AiWorkItem> get highItems => items.where((i) => i.isHigh).toList();
   List<AiWorkItem> get mediumItems => items.where((i) => i.isMedium).toList();
   List<AiWorkItem> get lowItems => items.where((i) => i.isLow).toList();
   int get pendingCount => items.length;
+  int get totalCount => items.length + completedCount;
 
   WorkItemsState copyWith({
     List<AiWorkItem>? items,
     bool? loading,
     String? Function()? error,
+    int? completedCount,
   }) =>
       WorkItemsState(
         items: items ?? this.items,
         loading: loading ?? this.loading,
         error: error != null ? error() : this.error,
+        completedCount: completedCount ?? this.completedCount,
       );
 }
 
@@ -57,15 +65,17 @@ class WorkItemsNotifier extends StateNotifier<WorkItemsState> {
   }
 
   Future<void> approve(String id) async {
-    final prev = state.items;
-    // Optimistic removal.
+    final prev = state;
+    // Optimistic removal; approving finishes the task, so it counts.
     state = state.copyWith(
-        items: prev.where((i) => i.id != id).toList());
+        items: prev.items.where((i) => i.id != id).toList(),
+        completedCount: prev.completedCount + 1);
     try {
       await _svc.approve(id);
     } catch (_) {
       // Rollback.
-      state = state.copyWith(items: prev);
+      state = state.copyWith(
+          items: prev.items, completedCount: prev.completedCount);
     }
   }
 
@@ -81,13 +91,15 @@ class WorkItemsNotifier extends StateNotifier<WorkItemsState> {
   }
 
   Future<void> markDone(String id) async {
-    final prev = state.items;
+    final prev = state;
     state = state.copyWith(
-        items: prev.where((i) => i.id != id).toList());
+        items: prev.items.where((i) => i.id != id).toList(),
+        completedCount: prev.completedCount + 1);
     try {
       await _svc.markDone(id);
     } catch (_) {
-      state = state.copyWith(items: prev);
+      state = state.copyWith(
+          items: prev.items, completedCount: prev.completedCount);
     }
   }
 
