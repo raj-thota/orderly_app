@@ -9,3 +9,6 @@ build/
 .env
 coverage/
 supabase/.temp/
+
+# Superpowers brainstorm mockups
+.superpowers/
