@@ -3,6 +3,9 @@ import 'package:orderly_app/core/theme/app_colors.dart';
 import 'package:orderly_app/core/theme/app_spacing.dart';
 import 'package:orderly_app/features/focus/presentation/orbit.dart';
 
+// Grip handle width (per design: 38dp)
+const double _kGripWidth = 38;
+
 // ---------------------------------------------------------------------------
 // Exit Dialog
 // ---------------------------------------------------------------------------
@@ -25,7 +28,8 @@ Future<bool> showFocusExitDialog(
 }
 
 class _FocusExitDialog extends StatelessWidget {
-  const _FocusExitDialog({required this.done, required this.total});
+  const _FocusExitDialog({required this.done, required this.total})
+      : assert(done <= total, 'done ($done) must not exceed total ($total)');
 
   final int done;
   final int total;
@@ -57,7 +61,8 @@ class _FocusExitDialog extends StatelessWidget {
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w800,
                     color: AppColors.textPrimary,
-                    letterSpacing: -0.02,
+                    // letterSpacing in logical px; -0.44 ≈ -0.02 × 22sp (titleLarge)
+                    letterSpacing: -0.44,
                   ),
               textAlign: TextAlign.center,
             ),
@@ -78,7 +83,7 @@ class _FocusExitDialog extends StatelessWidget {
                     onPressed: () => Navigator.of(context).pop(true),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.textPrimary,
-                      side: BorderSide(
+                      side: const BorderSide(
                         color: AppColors.border,
                         width: 1.5,
                       ),
@@ -153,17 +158,23 @@ class _FocusSkipSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // viewInsets.bottom accounts for the soft keyboard pushing sheet content up.
+    final keyboardBottom = MediaQuery.of(context).viewInsets.bottom;
+    final safeBottom = MediaQuery.of(context).padding.bottom;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.lg + AppSpacing.xs,
-        vertical: AppSpacing.xl,
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.lg + AppSpacing.xs,
+        AppSpacing.xl,
+        AppSpacing.lg + AppSpacing.xs,
+        AppSpacing.xl + keyboardBottom + safeBottom,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           // Grip handle
           Container(
-            width: 38,
+            width: _kGripWidth,
             height: 5,
             decoration: BoxDecoration(
               color: AppColors.border,
@@ -181,7 +192,7 @@ class _FocusSkipSheet extends StatelessWidget {
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w800,
                   color: AppColors.textPrimary,
-                  letterSpacing: -0.02,
+                  letterSpacing: -0.44,
                 ),
             textAlign: TextAlign.center,
           ),
@@ -202,7 +213,7 @@ class _FocusSkipSheet extends StatelessWidget {
                   onPressed: () => Navigator.of(context).pop(false),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.textPrimary,
-                    side: BorderSide(
+                    side: const BorderSide(
                       color: AppColors.border,
                       width: 1.5,
                     ),
@@ -237,8 +248,6 @@ class _FocusSkipSheet extends StatelessWidget {
               ),
             ],
           ),
-          // Extra bottom padding for home indicator / safe area
-          SizedBox(height: MediaQuery.of(context).padding.bottom),
         ],
       ),
     );
@@ -253,15 +262,12 @@ class _FocusSkipSheet extends StatelessWidget {
 ///
 /// This is a pure widget — no navigation or dialogs. The route is responsible
 /// for placing it in the widget tree (e.g. inside a Stack above the task card).
-Widget focusErrorToast({
-  required String customerName,
-  required VoidCallback onRetry,
-}) {
-  return _FocusErrorToast(customerName: customerName, onRetry: onRetry);
-}
-
-class _FocusErrorToast extends StatelessWidget {
-  const _FocusErrorToast({
+///
+/// Also exported as a top-level function [focusErrorToast] for callers that
+/// prefer a function-call API.
+class FocusErrorToast extends StatelessWidget {
+  const FocusErrorToast({
+    super.key,
     required this.customerName,
     required this.onRetry,
   });
@@ -277,7 +283,7 @@ class _FocusErrorToast extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border(
+          border: const Border(
             left: BorderSide(color: AppColors.danger, width: 4),
           ),
           boxShadow: [
@@ -354,3 +360,12 @@ class _FocusErrorToast extends StatelessWidget {
     );
   }
 }
+
+/// Convenience function that returns a [FocusErrorToast] widget.
+///
+/// Kept for callers that use the function-call style from the spec API.
+Widget focusErrorToast({
+  required String customerName,
+  required VoidCallback onRetry,
+}) =>
+    FocusErrorToast(customerName: customerName, onRetry: onRetry);
