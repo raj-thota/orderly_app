@@ -1,6 +1,7 @@
 import 'package:orderly_app/core/utils/money.dart';
 import 'package:orderly_app/features/today/data/today_brief.dart';
 import 'package:orderly_app/features/work/data/ai_work_item.dart';
+import 'package:orderly_app/features/work/data/work_item_kinds.dart';
 
 /// Time-of-day flavor for the hero brief.
 enum BriefDaypart { morning, afternoon, evening }
@@ -30,14 +31,6 @@ class BriefNarrative {
   /// non-empty the UI renders these instead of [body].
   final List<String> bullets;
 }
-
-bool _isCollectKind(String kind) =>
-    kind == 'payment_reminder' || kind == 'overdue_payment';
-
-bool _isReplyKind(String kind) =>
-    kind == 'follow_up' || kind == 'call' || kind == 'reply';
-
-bool _isOfferKind(String kind) => kind == 'share_catalog' || kind == 'offer';
 
 BriefNarrative buildBriefNarrative({
   required TodayBrief brief,
@@ -77,12 +70,12 @@ BriefNarrative buildBriefNarrative({
   var replyCount = 0;
   var offerCount = 0;
   for (final item in items) {
-    if (_isCollectKind(item.kind)) {
+    if (isCollectKind(item.kind)) {
       collectCount++;
       collectAmount += item.amount ?? 0;
-    } else if (_isReplyKind(item.kind)) {
+    } else if (isReplyKind(item.kind)) {
       replyCount++;
-    } else if (_isOfferKind(item.kind)) {
+    } else if (isOfferKind(item.kind)) {
       offerCount++;
     }
   }
@@ -148,9 +141,9 @@ String _capitalize(String s) =>
 /// Rough effort per task, so the brief can promise a session length.
 /// Heuristic by kind: reminders are one WhatsApp tap, replies take a moment.
 int estimatedMinutesFor(AiWorkItem item) {
-  if (_isCollectKind(item.kind)) return 2;
-  if (_isReplyKind(item.kind)) return 3;
-  if (_isOfferKind(item.kind)) return 3;
+  if (isCollectKind(item.kind)) return 2;
+  if (isReplyKind(item.kind)) return 3;
+  if (isOfferKind(item.kind)) return 3;
   return 2;
 }
 
@@ -160,7 +153,7 @@ int estimatedMinutes(List<AiWorkItem> items) =>
 /// One-line task label ("Collect ₹3,360 from Priya") for the work list.
 String focusLabel(AiWorkItem item) {
   final name = item.customerName ?? 'a customer';
-  if (_isCollectKind(item.kind)) {
+  if (isCollectKind(item.kind)) {
     return item.amount != null
         ? 'Collect ${Money.inr(item.amount!)} from $name'
         : 'Collect payment from $name';
