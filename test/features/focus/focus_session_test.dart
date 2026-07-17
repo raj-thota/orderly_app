@@ -1,0 +1,35 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:orderly_app/features/focus/data/focus_session.dart';
+import 'package:orderly_app/features/work/data/ai_work_item.dart';
+
+AiWorkItem _item(String id, {String kind = 'payment_reminder', int score = 0, double? amount}) =>
+    AiWorkItem(
+      id: id, kind: kind, priority: 'high', score: score, title: 't',
+      status: 'pending', batchId: 'b1', amount: amount,
+    );
+
+void main() {
+  final now = DateTime(2026, 7, 17, 9);
+
+  test('start freezes total and orders by score desc', () {
+    final s = FocusSession.start(
+      [_item('a', score: 1), _item('b', score: 5), _item('c', score: 3)],
+      now: now, batchId: 'b1',
+    );
+    expect(s.sessionTotal, 3);
+    expect(s.queue.map((i) => i.id).toList(), ['b', 'c', 'a']);
+    expect(s.current!.id, 'b');
+    expect(s.completedCount, 0);
+    expect(s.progress, 0);
+    expect(s.position, 1);
+    expect(s.isEmpty, isFalse);
+    expect(s.isFinished, isFalse);
+  });
+
+  test('empty session', () {
+    final s = FocusSession.start([], now: now, batchId: 'b1');
+    expect(s.isEmpty, isTrue);
+    expect(s.current, isNull);
+    expect(s.progress, 0);
+  });
+}
