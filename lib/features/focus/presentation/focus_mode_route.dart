@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../controller/focus_session_provider.dart';
 import '../data/focus_copy.dart';
+import '../data/focus_session.dart';
 import '../data/focus_session_store.dart';
 import '../data/focus_snapshot.dart';
 import '../../work/controller/work_items_provider.dart';
@@ -52,7 +53,7 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
   _PrePhase _prePhase = _PrePhase.loading;
   int _resumeLeft = 0;
 
-  late FocusSessionStore _store;
+  FocusSessionStore? _store;
 
   // First name, sourced from Supabase auth metadata.
   // Falls back to 'there' — never blocks the flow.
@@ -77,7 +78,7 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
     // ── SharedPreferences + snapshot ────────────────────────────────────────
     final prefs = await SharedPreferences.getInstance();
     _store = FocusSessionStore(prefs);
-    final snapshot = await _store.read();
+    final snapshot = await _store!.read();
 
     // ── Decide phase ────────────────────────────────────────────────────────
     if (!mounted) return;
@@ -134,6 +135,11 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
 
     // Build WhatsApp URL.
     final phone = item.phone?.replaceAll(RegExp(r'[^\d]'), '') ?? '';
+    if (phone.isEmpty) {
+      ref.read(focusSessionProvider.notifier).clearError();
+      // No phone on file — cannot send; leave the task for manual handling.
+      return;
+    }
     final base = 'https://wa.me/91$phone';
     final draft = item.draftMessage;
     final url = (draft != null && draft.isNotEmpty)
@@ -217,16 +223,17 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
   // ── Finish ─────────────────────────────────────────────────────────────────
 
   Future<void> _finishAndClose() async {
-    await _store.clear();
+    await _store?.clear();
     if (mounted) Navigator.of(context).pop();
   }
 
   // ── Persist snapshot ────────────────────────────────────────────────────────
 
   Future<void> _persist() async {
+    if (_store == null) return;
     final s = ref.read(focusSessionProvider).session;
     if (s == null) return;
-    await _store.save(FocusSnapshot(
+    await _store!.save(FocusSnapshot(
       batchId: s.batchId,
       orderedIds: s.queue.map((i) => i.id).toList(),
       completedIds: s.completed.map((i) => i.id).toList(),
@@ -255,7 +262,10 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
           status == FocusStatus.finished ||
           status == FocusStatus.empty,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && sessionStarted && status == FocusStatus.active) {
+        if (!didPop &&
+            sessionStarted &&
+            (status == FocusStatus.active ||
+                status == FocusStatus.celebrating)) {
           _confirmExit();
         }
       },
@@ -269,7 +279,7 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
   Widget _buildForState(
     FocusModeState state,
     FocusStatus status,
-    dynamic s, // FocusSession?
+    FocusSession? s,
     bool sessionStarted,
   ) {
     // Pre-start phases.
@@ -317,7 +327,7 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
             // After advance, if the session is finished, clear the store.
             final newStatus = ref.read(focusSessionProvider).status;
             if (newStatus == FocusStatus.finished) {
-              _store.clear();
+              _store?.clear();
             }
           },
         );
@@ -359,7 +369,7 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
     );
   }
 
-  Widget _buildActiveScreen(FocusModeState state, dynamic s) {
+  Widget _buildActiveScreen(FocusModeState state, FocusSession? s) {
     if (s == null || s.current == null) {
       return const Scaffold(
         key: ValueKey('active_empty'),

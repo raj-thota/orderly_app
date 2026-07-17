@@ -5,6 +5,23 @@ import 'package:orderly_app/features/work/controller/work_items_provider.dart';
 import 'package:orderly_app/features/work/data/ai_work_item.dart';
 import 'package:orderly_app/features/work/data/ai_work_items_service.dart';
 
+class _ThrowingSvc implements AiWorkItemsService {
+  _ThrowingSvc(this._items);
+  final List<AiWorkItem> _items;
+  @override
+  Future<List<AiWorkItem>> fetchPending() async => _items;
+  @override
+  Future<void> approve(String id) async => throw Exception('network');
+  @override
+  Future<void> markDone(String id) async => throw Exception('network');
+  @override
+  Future<void> dismiss(String id) async {}
+  @override
+  Future<void> updateStatus(String id, String s) async {}
+  @override
+  Future<void> triggerGenerate() async {}
+}
+
 class _FakeSvc implements AiWorkItemsService {
   _FakeSvc(this._items);
   final List<AiWorkItem> _items;
@@ -69,5 +86,21 @@ void main() {
     await c.read(workItemsProvider.notifier).load();
     await c.read(focusSessionProvider.notifier).start(now: DateTime(2026, 7, 17));
     expect(c.read(focusSessionProvider).status, FocusStatus.empty);
+  });
+
+  test('completeCurrent surfaces error and stays on task when sync fails', () async {
+    final svc = _ThrowingSvc([_i('a', 2)]);
+    final c = ProviderContainer(overrides: [
+      aiWorkItemsServiceProvider.overrideWithValue(svc),
+    ]);
+    addTearDown(c.dispose);
+    await c.read(workItemsProvider.notifier).load();
+    await c.read(focusSessionProvider.notifier).start(now: DateTime(2026, 7, 17));
+    await c.read(focusSessionProvider.notifier).completeCurrent();
+
+    final st = c.read(focusSessionProvider);
+    expect(st.actionError, isNotNull);
+    expect(st.status, FocusStatus.active); // NOT celebrating
+    expect(st.session!.current!.id, 'a'); // still on the same task
   });
 }

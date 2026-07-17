@@ -51,16 +51,18 @@ class FocusSessionNotifier extends StateNotifier<FocusModeState> {
     if (s?.current == null) return;
     final id = s!.current!.id;
     state = state.copyWith(sending: true, actionError: () => null);
-    try {
-      final work = _ref.read(workItemsProvider.notifier);
-      markDone ? await work.markDone(id) : await work.approve(id);
+    final work = _ref.read(workItemsProvider.notifier);
+    markDone ? await work.markDone(id) : await work.approve(id);
+    // approve/markDone swallow errors and roll the item back on failure, so the
+    // item is still pending iff the sync did not succeed.
+    final failed = _ref.read(workItemsProvider).items.any((i) => i.id == id);
+    if (failed) {
       state = state.copyWith(
-          session: s.complete(),
-          status: FocusStatus.celebrating,
-          sending: false);
-    } catch (e) {
-      state = state.copyWith(sending: false, actionError: () => e.toString());
+          sending: false, actionError: () => "Couldn't sync — please retry.");
+      return;
     }
+    state = state.copyWith(
+        session: s.complete(), status: FocusStatus.celebrating, sending: false);
   }
 
   /// Called by the UI after the success animation to reveal the next task.
