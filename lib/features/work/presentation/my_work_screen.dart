@@ -62,7 +62,7 @@ class _MyWorkScreenState extends ConsumerState<MyWorkScreen>
                     horizontal: AppSpacing.md, vertical: 0),
                 minimumSize: const Size(0, 36),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
               ),
               onPressed: () => FocusMode.start(context),
