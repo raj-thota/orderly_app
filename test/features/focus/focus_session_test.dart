@@ -32,4 +32,38 @@ void main() {
     expect(s.current, isNull);
     expect(s.progress, 0);
   });
+
+  test('complete moves current to completed and advances', () {
+    var s = FocusSession.start(
+      [_item('a', score: 3), _item('b', score: 2)], now: now, batchId: 'b1');
+    s = s.complete();
+    expect(s.completedCount, 1);
+    expect(s.current!.id, 'b');
+    expect(s.progress, 0.5);
+    expect(s.position, 2);
+    s = s.complete();
+    expect(s.isFinished, isTrue);
+    expect(s.current, isNull);
+    expect(s.progress, 1);
+  });
+
+  test('skip requeues current to tail and can only skip once', () {
+    var s = FocusSession.start(
+      [_item('a', score: 3), _item('b', score: 2)], now: now, batchId: 'b1');
+    expect(s.canSkip, isTrue);
+    s = s.skip();
+    expect(s.current!.id, 'b');
+    expect(s.queue.map((i) => i.id).toList(), ['b', 'a']);
+    expect(s.skippedIds, contains('a'));
+    s = s.complete(); // finish b
+    expect(s.current!.id, 'a');
+    expect(s.canSkip, isFalse); // already skipped + last item
+  });
+
+  test('remaining minutes sums per-kind estimate over the queue', () {
+    final s = FocusSession.start(
+      [_item('a', kind: 'payment_reminder'), _item('b', kind: 'reply')],
+      now: now, batchId: 'b1'); // 2 + 3
+    expect(s.remainingMinutes, 5);
+  });
 }

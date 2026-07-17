@@ -1,3 +1,5 @@
+import 'package:orderly_app/features/today/data/brief_narrative.dart'
+    show estimatedMinutesFor;
 import 'package:orderly_app/features/work/data/ai_work_item.dart';
 
 /// Immutable snapshot of a guided Focus Mode run. Pure — no Flutter, no I/O.
@@ -22,7 +24,11 @@ class FocusSession {
 
   /// Denominator for progress — frozen at start so it never shifts.
   final int sessionTotal;
+
+  /// When this session began.
   final DateTime startedAt;
+
+  /// The work-item batch this session was built from.
   final String batchId;
 
   factory FocusSession.start(
@@ -49,6 +55,31 @@ class FocusSession {
   int get position => completedCount + 1;
   bool get isEmpty => sessionTotal == 0;
   bool get isFinished => sessionTotal > 0 && queue.isEmpty;
+
+  /// A task can be skipped only if it is not the last one and has not been
+  /// skipped before — so a skipped task always resurfaces and must be handled.
+  bool get canSkip =>
+      queue.length > 1 && current != null && !skippedIds.contains(current!.id);
+
+  int get remainingMinutes =>
+      queue.fold(0, (sum, i) => sum + estimatedMinutesFor(i));
+
+  FocusSession complete() {
+    if (current == null) return this;
+    return copyWith(
+      queue: queue.sublist(1),
+      completed: [...completed, current!],
+    );
+  }
+
+  FocusSession skip() {
+    if (!canSkip) return this;
+    final head = queue.first;
+    return copyWith(
+      queue: [...queue.sublist(1), head],
+      skippedIds: {...skippedIds, head.id},
+    );
+  }
 
   FocusSession copyWith({
     List<AiWorkItem>? queue,
