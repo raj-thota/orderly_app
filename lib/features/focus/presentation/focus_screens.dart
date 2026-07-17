@@ -336,7 +336,7 @@ class _FocusSuccessOverlayState extends State<FocusSuccessOverlay>
     _ctrl.addStatusListener((status) {
       if (status == AnimationStatus.completed && !_doneFired) {
         _doneFired = true;
-        widget.onDone();
+        if (mounted) widget.onDone();
       }
     });
   }

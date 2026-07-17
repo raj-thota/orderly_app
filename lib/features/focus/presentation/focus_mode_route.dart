@@ -6,10 +6,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../controller/focus_session_provider.dart';
+import '../data/focus_action.dart';
 import '../data/focus_copy.dart';
 import '../data/focus_session.dart';
 import '../data/focus_session_store.dart';
 import '../data/focus_snapshot.dart';
+import '../../conversations/presentation/customer_workspace_screen.dart';
+import '../../today/data/brief_narrative.dart' show estimatedMinutes;
 import '../../work/controller/work_items_provider.dart';
 import 'focus_overlays.dart';
 import 'focus_screens.dart';
@@ -133,13 +136,27 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
     // Clear any prior error so UI doesn't show stale toast.
     ref.read(focusSessionProvider.notifier).clearError();
 
-    // Build WhatsApp URL.
-    final phone = item.phone?.replaceAll(RegExp(r'[^\d]'), '') ?? '';
-    if (phone.isEmpty) {
-      ref.read(focusSessionProvider.notifier).clearError();
-      // No phone on file — cannot send; leave the task for manual handling.
+    // Resolve action kind and phone. For workspace-only actions or items with
+    // no phone on file, open the customer workspace instead of a dead end.
+    final action = resolveFocusAction(item.kind);
+    final phone = (item.phone ?? '').replaceAll(RegExp(r'[^\d]'), '');
+    if (action == FocusActionKind.openWorkspace || phone.isEmpty) {
+      if (item.customerId != null) {
+        Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => CustomerWorkspaceScreen(
+            customerId: item.customerId!,
+            customerName: item.customerName ?? 'Customer',
+          ),
+        ));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('No contact on file for this task.')));
+      }
+      // Do NOT mark the task done — the user handles it in the workspace.
       return;
     }
+
+    // Build WhatsApp URL.
     final base = 'https://wa.me/91$phone';
     final draft = item.draftMessage;
     final url = (draft != null && draft.isNotEmpty)
@@ -153,29 +170,13 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
       await _persist();
       HapticFeedback.mediumImpact();
     } catch (_) {
-      // completeCurrent not called → provider error stays null.
-      // Force an error so the toast shows via a fire-and-catch on complete.
-      // Simplest approach: call completeCurrent anyway so its catch sets
-      // actionError — but that would mark the item done. Instead we set
-      // a deliberate error by invoking completeCurrent on a guard that
-      // throws: we use the notifier's own completeCurrent which wraps in
-      // try/catch and sets actionError if approve throws.
-      // For launch failure we simply show a local error via the provider by
-      // surfacing it through a synthetic error string on the provider.
-      // Cleanest: call completeCurrent with a wrapped service that has already
-      // thrown — instead, just call the public clearError/set path if we had
-      // it. We don't have a setError method, so use a minimal workaround:
-      // call completeCurrent — if it succeeds it advances, if it throws it
-      // sets actionError. But launch failure (not approve failure) means the
-      // service call never ran. For V1, treat a launch failure as a
-      // non-critical no-op and rely on the error UI only when approve fails.
-      // No additional state needed: the toast is driven by actionError which
-      // is only set by completeCurrent's catch. We do nothing here so the
-      // user can retry by tapping the primary button again.
-      //
-      // This is the cleanest correct behaviour: url_launcher failure on most
-      // devices means WhatsApp isn't installed; showing the task again lets
-      // the user tap Mark done manually.
+      // WhatsApp launch failed (e.g. app not installed). Show a visible,
+      // non-blocking message and leave the task on screen so the user can
+      // retry or mark it done manually.
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text("Couldn't open WhatsApp — your draft is saved.")));
+      }
     }
   }
 
@@ -349,14 +350,7 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
   Widget _entryScreen({Key? key, int? resumeLeft}) {
     final items = ref.read(workItemsProvider).items;
     final taskCount = items.length;
-    final minutes = items.fold<int>(
-      0,
-      (sum, item) {
-        // Rough estimate: 2 min per task; this mirrors FocusSession.remainingMinutes
-        // but we don't have a session yet, so approximate here.
-        return sum + 2;
-      },
-    );
+    final minutes = estimatedMinutes(items);
 
     return FocusEntryScreen(
       key: key,
