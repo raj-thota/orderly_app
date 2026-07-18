@@ -6,6 +6,7 @@ import 'package:orderly_app/shared/widgets/status_pill.dart';
 
 import '../data/product.dart';
 import 'product_image.dart';
+import 'type_badge.dart';
 
 class ProductTile extends StatelessWidget {
   const ProductTile({super.key, required this.product, required this.onTap});
@@ -37,11 +38,21 @@ class ProductTile extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  ProductImage(path: product.coverImage, cacheWidth: 600),
-                  if (product.isUnique)
+                  ProductImage(
+                    path: product.coverImage,
+                    cacheWidth: 600,
+                    type: product.itemType,
+                    name: product.name,
+                  ),
+                  Positioned(
+                    top: AppSpacing.sm,
+                    left: AppSpacing.sm,
+                    child: TypeBadge(type: product.itemType),
+                  ),
+                  if (product.type == 'product' && product.isUnique)
                     Positioned(
                       top: AppSpacing.sm,
-                      left: AppSpacing.sm,
+                      right: AppSpacing.sm,
                       child: StatusPill(status: product.pieceStatus),
                     ),
                 ],
@@ -76,7 +87,7 @@ class ProductTile extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (!product.isUnique)
+                      if (product.type == 'product' && !product.isUnique)
                         Text(
                           product.qtyOnHand > 0
                               ? '${product.qtyOnHand} in stock'

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:orderly_app/features/catalog/data/item_type.dart';
 import 'package:orderly_app/features/catalog/data/product.dart';
 import 'package:orderly_app/features/catalog/widgets/product_tile.dart';
 
@@ -48,12 +49,28 @@ void main() {
     expect(find.text('Out of stock'), findsOneWidget);
   });
 
-  testWidgets('shows placeholder when the product has no photo',
-      (tester) async {
+  testWidgets('imageless product shows the type placeholder', (tester) async {
     await tester.pumpWidget(_wrap(ProductTile(
       product: Product(name: 'Cotton Kurti', price: 799),
       onTap: () {},
     )));
-    expect(find.byIcon(Icons.photo_outlined), findsOneWidget);
+    expect(find.text('C'), findsOneWidget); // first-letter placeholder
+    expect(find.byIcon(Icons.photo_outlined), findsNothing);
+  });
+
+  testWidgets('shows the type badge', (tester) async {
+    await tester.pumpWidget(_wrap(ProductTile(
+      product: Product(name: 'Haircut', price: 300, type: 'service'),
+      onTap: () {},
+    )));
+    expect(find.text('Service'), findsOneWidget);
+  });
+
+  testWidgets('non-product type hides stock text', (tester) async {
+    await tester.pumpWidget(_wrap(ProductTile(
+      product: Product(name: 'E-book', price: 199, type: 'digital', qtyOnHand: 0),
+      onTap: () {},
+    )));
+    expect(find.text('Out of stock'), findsNothing);
   });
 }
