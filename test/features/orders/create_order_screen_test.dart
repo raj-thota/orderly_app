@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:orderly_app/features/catalog/controller/products_provider.dart';
+import 'package:orderly_app/features/catalog/data/product.dart';
+import 'package:orderly_app/features/catalog/data/products_service.dart';
 import 'package:orderly_app/features/orders/controller/orders_provider.dart';
 import 'package:orderly_app/features/orders/data/create_order_draft.dart';
 import 'package:orderly_app/features/orders/presentation/create_order_screen.dart';
@@ -22,10 +25,32 @@ class _ScreenFakeOrders extends FakeOrdersService {
   }) async => 'created-id';
 }
 
+/// Stub so the order builder screen can open the picker sheet in tests
+/// without hitting Supabase.
+class _StubProductsService implements ProductsService {
+  @override
+  Future<List<Product>> fetchProducts() async => const [];
+  @override
+  Future<Product> addProduct(Product product) async => product;
+  @override
+  Future<Product> updateProduct(String id, Map<String, dynamic> changes) async =>
+      Product(id: id, name: '');
+  @override
+  Future<void> archiveProduct(String id) async {}
+  @override
+  Future<String> uploadImage(String localPath) async => '';
+  @override
+  Future<void> removeImages(List<String> paths) async {}
+  @override
+  Future<String> signedUrl(String path) async => '';
+}
+
 Widget _wrap({String customerId = 'c1', String customerName = 'Priya'}) {
   return ProviderScope(
     overrides: [
       ordersServiceProvider.overrideWithValue(_ScreenFakeOrders()),
+      // Stub the catalog so tests don't hit Supabase.
+      productsServiceProvider.overrideWithValue(_StubProductsService()),
     ],
     child: MaterialApp(
       home: CreateOrderScreen(
@@ -63,12 +88,16 @@ void main() {
     expect(widget.onPressed, isNull);
   });
 
-  testWidgets('Add Item button adds a row', (t) async {
+  testWidgets('Add Item button adds a row via custom item dialog', (t) async {
     await t.pumpWidget(_wrap());
     await t.pumpAndSettle();
+    // Opens the picker sheet.
     await t.tap(find.text('Add Item'));
     await t.pumpAndSettle();
-    // Type item name in dialog.
+    // Choose custom item escape hatch.
+    await t.tap(find.text('Custom item'));
+    await t.pumpAndSettle();
+    // Type item name in custom-item dialog.
     await t.enterText(
         find.widgetWithText(TextField, 'Item name'), 'Test Ring');
     await t.tap(find.text('Add'));

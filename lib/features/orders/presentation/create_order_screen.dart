@@ -4,9 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orderly_app/core/theme/app_colors.dart';
 import 'package:orderly_app/core/theme/app_spacing.dart';
 import 'package:orderly_app/core/utils/money.dart';
+import 'package:orderly_app/features/catalog/controller/products_provider.dart';
+import 'package:orderly_app/features/catalog/data/item_type.dart';
+import 'package:orderly_app/features/catalog/data/product.dart';
 import 'package:orderly_app/features/orders/controller/create_order_provider.dart';
 import 'package:orderly_app/features/orders/controller/orders_provider.dart';
 import 'package:orderly_app/features/orders/data/create_order_draft.dart';
+import 'package:orderly_app/features/orders/widgets/item_picker_sheet.dart';
+import 'package:orderly_app/features/orders/widgets/order_item_row_card.dart';
 
 class CreateOrderScreen extends ConsumerStatefulWidget {
   const CreateOrderScreen({
@@ -88,6 +93,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(createOrderProvider(_key));
     final draft = state.draft;
+    final products =
+        ref.watch(productsControllerProvider).valueOrNull ?? const [];
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -116,7 +123,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
           _Section(
             title: 'Items',
             trailing: TextButton.icon(
-              onPressed: () => _addItemDialog(context),
+              onPressed: () => _openPicker(context, products),
               icon: const Icon(Icons.add, size: 16),
               label: const Text('Add Item'),
             ),
@@ -129,9 +136,16 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 : Column(
                     children: [
                       for (var i = 0; i < draft.items.length; i++)
-                        _ItemRow(
+                        OrderItemRowCard(
                           key: Key('item_row_$i'),
-                          item: draft.items[i],
+                          name: draft.items[i].name,
+                          type: ItemType.fromId(draft.items[i].type),
+                          imagePath: draft.items[i].imageUrl,
+                          unitPrice: draft.items[i].unitPrice,
+                          qty: draft.items[i].qty,
+                          onQtyChanged: (v) => ref
+                              .read(createOrderProvider(_key).notifier)
+                              .setQty(i, v),
                           onRemove: () => ref
                               .read(createOrderProvider(_key).notifier)
                               .removeItem(i),
@@ -236,7 +250,40 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     );
   }
 
-  void _addItemDialog(BuildContext context) {
+  void _openPicker(BuildContext context, List<Product> products) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.background,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+      ),
+      builder: (ctx) => FractionallySizedBox(
+        heightFactor: 0.9,
+        child: ItemPickerSheet(
+          products: products,
+          onPick: (p) {
+            ref.read(createOrderProvider(_key).notifier).addItem(
+                  CreateOrderItem(
+                    name: p.name,
+                    unitPrice: p.price,
+                    productId: p.id,
+                    type: p.type,
+                    imageUrl: p.coverImage,
+                  ),
+                );
+            Navigator.pop(ctx);
+          },
+          onCustom: () {
+            Navigator.pop(ctx);
+            _addCustomItemDialog(context);
+          },
+        ),
+      ),
+    );
+  }
+
+  void _addCustomItemDialog(BuildContext context) {
     final nameCtl = TextEditingController();
     final priceCtl = TextEditingController();
     final qtyCtl = TextEditingController(text: '1');
@@ -244,7 +291,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Add Item'),
+        title: const Text('Custom item'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -267,7 +314,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                 Expanded(
                   child: TextField(
                     controller: priceCtl,
-                    decoration: const InputDecoration(labelText: 'Unit price ₹'),
+                    decoration:
+                        const InputDecoration(labelText: 'Unit price ₹'),
                     keyboardType:
                         const TextInputType.numberWithOptions(decimal: true),
                   ),
@@ -287,7 +335,8 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               final qty = int.tryParse(qtyCtl.text) ?? 1;
               final price = double.tryParse(priceCtl.text) ?? 0;
               ref.read(createOrderProvider(_key).notifier).addItem(
-                    CreateOrderItem(name: name, qty: qty, unitPrice: price),
+                    CreateOrderItem(
+                        name: name, qty: qty, unitPrice: price, type: 'other'),
                   );
               Navigator.pop(ctx);
             },
@@ -330,38 +379,6 @@ class _Section extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           child,
-        ],
-      ),
-    );
-  }
-}
-
-class _ItemRow extends StatelessWidget {
-  const _ItemRow({super.key, required this.item, required this.onRemove});
-  final CreateOrderItem item;
-  final VoidCallback onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              '${item.qty} × ${item.name}',
-              style: const TextStyle(color: AppColors.textPrimary),
-            ),
-          ),
-          Text(Money.inr(item.lineTotal),
-              style: const TextStyle(color: AppColors.textSecondary)),
-          IconButton(
-            icon: const Icon(Icons.close, size: 16),
-            color: AppColors.textSecondary,
-            onPressed: onRemove,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-          ),
         ],
       ),
     );
