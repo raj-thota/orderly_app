@@ -55,7 +55,7 @@ pw.Document classicDoc(InvoiceData d, Uint8List? qr) {
             data: [
               for (final l in d.lines)
                 [
-                  l.name,
+                  l.displayName,
                   '${l.qty}',
                   pdfMoney(l.unitPrice),
                   pdfMoney(l.lineTotal),

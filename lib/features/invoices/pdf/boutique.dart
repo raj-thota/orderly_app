@@ -55,7 +55,7 @@ pw.Document boutiqueDoc(InvoiceData d, Uint8List? qr) {
                     child: pw.Row(
                       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                       children: [
-                        pw.Expanded(child: pw.Text('${l.name}  x${l.qty}')),
+                        pw.Expanded(child: pw.Text('${l.displayName}  x${l.qty}')),
                         pw.Text(pdfMoney(l.lineTotal)),
                       ],
                     ),

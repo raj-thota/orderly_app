@@ -50,4 +50,15 @@ void main() {
     expect(d.customerName, 'Priya');
     expect(d.upiUri, contains('pa=shop@upi'));
   });
+
+  test('InvoiceLine.displayName appends label for non-product types', () {
+    const product = InvoiceLine(
+        name: 'Saree', qty: 1, unitPrice: 100, gstRate: 0, lineTotal: 100,
+        type: 'product');
+    const service = InvoiceLine(
+        name: 'Haircut', qty: 1, unitPrice: 300, gstRate: 0, lineTotal: 300,
+        type: 'service');
+    expect(product.displayName, 'Saree');
+    expect(service.displayName, 'Haircut · Service');
+  });
 }

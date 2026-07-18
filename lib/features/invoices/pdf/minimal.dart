@@ -37,7 +37,7 @@ pw.Document minimalDoc(InvoiceData d, Uint8List? qr) {
               child: pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Expanded(child: pw.Text('${l.name}   ${l.qty} x ${pdfMoney(l.unitPrice)}')),
+                  pw.Expanded(child: pw.Text('${l.displayName}   ${l.qty} x ${pdfMoney(l.unitPrice)}')),
                   pw.Text(pdfMoney(l.lineTotal)),
                 ],
               ),

@@ -1,5 +1,6 @@
 import 'package:orderly_app/core/utils/money.dart';
 import 'package:orderly_app/features/business/data/business_profile.dart';
+import 'package:orderly_app/features/catalog/data/item_type.dart';
 import 'package:orderly_app/features/orders/data/order.dart';
 import 'package:orderly_app/features/payments/data/upi.dart';
 
@@ -23,6 +24,7 @@ class InvoiceLine {
     required this.unitPrice,
     required this.gstRate,
     required this.lineTotal,
+    this.type = 'product',
   });
 
   final String name;
@@ -30,6 +32,11 @@ class InvoiceLine {
   final double unitPrice;
   final double gstRate;
   final double lineTotal;
+  final String type;
+
+  /// Name with a type suffix for non-product lines (products need no label).
+  String get displayName =>
+      type == 'product' ? name : '$name · ${ItemType.fromId(type).label}';
 }
 
 class InvoiceData {
@@ -102,6 +109,7 @@ class InvoiceData {
         unitPrice: it.unitPrice,
         gstRate: it.gstRate,
         lineTotal: lt,
+        type: it.type,
       ));
     }
 
