@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:orderly_app/features/catalog/data/item_type.dart';
 import 'package:orderly_app/features/catalog/data/product.dart';
 
 void main() {
@@ -65,6 +66,28 @@ void main() {
     test('coverImage is first image or null', () {
       expect(Product(name: 'A', images: ['u/a.jpg']).coverImage, 'u/a.jpg');
       expect(Product(name: 'A').coverImage, isNull);
+    });
+
+    test('round-trips type + per-type fields', () {
+      final original = Product(
+        name: 'Home Cleaning',
+        price: 899,
+        type: 'service',
+        category: 'Housekeeping',
+        duration: '90 min',
+        deliveryMethod: null,
+      );
+      final restored = Product.fromMap(original.toMap());
+      expect(restored.type, 'service');
+      expect(restored.category, 'Housekeeping');
+      expect(restored.duration, '90 min');
+      expect(restored.itemType, ItemType.service);
+    });
+
+    test('defaults type to product when absent', () {
+      final p = Product.fromMap({'name': 'X'});
+      expect(p.type, 'product');
+      expect(p.itemType, ItemType.product);
     });
   });
 }

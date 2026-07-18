@@ -1,3 +1,5 @@
+import 'item_type.dart';
+
 /// A catalog product. `isUnique` pieces track availability via [pieceStatus]
 /// (available/booked/sold); stocked items track [qtyOnHand].
 class Product {
@@ -15,6 +17,10 @@ class Product {
     this.qtyOnHand = 0,
     this.active = true,
     this.createdAt,
+    this.type = 'product',
+    this.category,
+    this.duration,
+    this.deliveryMethod,
   });
 
   final String? id;
@@ -30,12 +36,25 @@ class Product {
   final int qtyOnHand;
   final bool active;
   final DateTime? createdAt;
+  final String type;
+  final String? category;
+  final String? duration;
+  final String? deliveryMethod;
+
+  ItemType get itemType => ItemType.fromId(type);
 
   bool get isAvailable => isUnique ? pieceStatus == 'available' : qtyOnHand > 0;
 
   String? get coverImage => images.isEmpty ? null : images.first;
 
-  Product copyWith({int? qtyOnHand, String? pieceStatus}) {
+  Product copyWith({
+    int? qtyOnHand,
+    String? pieceStatus,
+    String? type,
+    String? category,
+    String? duration,
+    String? deliveryMethod,
+  }) {
     return Product(
       id: id,
       name: name,
@@ -50,6 +69,10 @@ class Product {
       qtyOnHand: qtyOnHand ?? this.qtyOnHand,
       active: active,
       createdAt: createdAt,
+      type: type ?? this.type,
+      category: category ?? this.category,
+      duration: duration ?? this.duration,
+      deliveryMethod: deliveryMethod ?? this.deliveryMethod,
     );
   }
 
@@ -80,6 +103,10 @@ class Product {
       qtyOnHand: _asInt(map['qty_on_hand'], 0),
       active: map['active'] != false,
       createdAt: DateTime.tryParse(map['created_at']?.toString() ?? ''),
+      type: (map['type'] ?? 'product').toString(),
+      category: map['category']?.toString(),
+      duration: map['duration']?.toString(),
+      deliveryMethod: map['delivery_method']?.toString(),
     );
   }
 
@@ -96,5 +123,9 @@ class Product {
         'piece_status': pieceStatus,
         'qty_on_hand': qtyOnHand,
         'active': active,
+        'type': type,
+        'category': category,
+        'duration': duration,
+        'delivery_method': deliveryMethod,
       };
 }
