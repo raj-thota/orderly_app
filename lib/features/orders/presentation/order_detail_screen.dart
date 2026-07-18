@@ -17,6 +17,7 @@ import 'package:orderly_app/features/invoices/presentation/invoice_share_screen.
 
 import '../controller/orders_provider.dart';
 import '../data/order.dart';
+import '../widgets/order_item_row_card.dart';
 
 class OrderDetailScreen extends ConsumerStatefulWidget {
   const OrderDetailScreen({super.key, required this.order});
@@ -276,20 +277,12 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 for (final it in order.items)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text('${it.qty} × ${it.name}',
-                              style:
-                                  const TextStyle(color: AppColors.textPrimary)),
-                        ),
-                        Text(Money.inr(it.lineTotal),
-                            style: const TextStyle(
-                                color: AppColors.textSecondary)),
-                      ],
-                    ),
+                  OrderItemRowCard(
+                    name: it.name,
+                    type: it.itemType,
+                    imagePath: it.imageUrl,
+                    unitPrice: it.unitPrice,
+                    qty: it.qty,
                   ),
                 const Divider(),
                 Row(
