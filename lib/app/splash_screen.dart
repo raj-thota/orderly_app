@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:orderly_app/app/app_intro_screen.dart';
-import 'package:orderly_app/core/services/auth_service.dart';
-import 'package:orderly_app/features/business/presentation/business_setup_screen.dart';
+import 'package:orderly_app/app/root_gate.dart';
 import 'package:orderly_app/features/auth/controller/auth_controller.dart';
-import 'package:orderly_app/main.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -51,36 +48,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
     await authController.checkAuth();
 
-    final isLoggedIn = ref.read(authProvider).isAuthenticated;
-
-    if (isLoggedIn) {
-      _setLoadingText("Loading your shop…");
-      final hasProfile = await AuthService().hasBusinessProfile();
-
-      if (!mounted) return;
-      if (!hasProfile) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => BusinessSetupScreen(
-              onDone: () => Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (_) => const MainScreen()),
-              ),
-            ),
-          ),
-        );
-        return;
-      }
-
-    }
-
     if (!mounted) return;
-
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(
-        builder: (_) =>
-            isLoggedIn ? const MainScreen() : const AppIntroScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const RootGate()),
     );
   }
 
