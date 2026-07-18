@@ -26,6 +26,6 @@ void main() {
     expect(find.text('Invoice Settings'), findsWidgets);
     expect(find.text('Invoice Prefix'), findsOneWidget);
     expect(find.text('Preview'), findsOneWidget);
-    expect(find.textContaining('INV-42'), findsWidgets);
+    expect(find.textContaining('INV-0042'), findsWidgets);
   });
 }

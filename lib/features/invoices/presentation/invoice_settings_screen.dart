@@ -56,10 +56,16 @@ class _State extends ConsumerState<InvoiceSettingsScreen> {
         invoiceFooter: _footer.text.trim(),
         gstEnabled: _gst,
       ));
+      // The counter may only move forward: setting it below the current value
+      // would regenerate already-issued invoice numbers (orders.invoice_number
+      // has no unique constraint), silently creating duplicates.
+      final parsedNext = int.tryParse(_startNo.text.trim());
       await service.updateInvoiceNumbering(
         prefix:
             _prefix.text.trim().isEmpty ? null : _prefix.text.trim(),
-        nextNumber: int.tryParse(_startNo.text.trim()),
+        nextNumber: parsedNext == null
+            ? null
+            : (parsedNext < p.nextInvoiceNumber ? p.nextInvoiceNumber : parsedNext),
       );
       ref.invalidate(businessProfileProvider);
       if (!mounted) return;
@@ -219,7 +225,8 @@ class InvoiceSettingsPreview extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('$prefix$number',
+          // Mirror the DB's assign_invoice_number formatting: prefix + 4-digit pad.
+          Text('$prefix${number.toString().padLeft(4, '0')}',
               style: const TextStyle(
                   fontSize: 18, fontWeight: FontWeight.w800)),
           const SizedBox(height: AppSpacing.xs),

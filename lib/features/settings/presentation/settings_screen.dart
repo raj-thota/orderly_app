@@ -25,7 +25,12 @@ class SettingsScreen extends ConsumerWidget {
     Future<void> mail(String subject) async {
       final uri = Uri.parse(
           'mailto:closrsupport@gmail.com?subject=${Uri.encodeComponent(subject)}');
-      if (await canLaunchUrl(uri)) await launchUrl(uri);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      } else if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No email app found on this device')));
+      }
     }
 
     return Scaffold(

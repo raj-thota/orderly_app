@@ -4,8 +4,11 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'business_profile_service.dart';
 
-/// Picks an image, compresses it, uploads to the `business-assets` bucket and
-/// returns the public URL. Returns null if the user cancels the picker.
+/// Picks an image, compresses it, and uploads it. Logos go to the public
+/// `business-assets` bucket (they appear on customer-facing invoices) and a
+/// public URL is returned. Signatures are sensitive, so they go to the private
+/// `business-signatures` bucket and a time-limited signed URL is returned.
+/// Returns null if the user cancels the picker.
 class BusinessAssetService {
   BusinessAssetService({ImagePicker? picker, SupabaseClient? client})
       : _picker = picker ?? ImagePicker(),
@@ -31,16 +34,24 @@ class BusinessAssetService {
     );
     final bytes = compressed ?? await File(picked.path).readAsBytes();
 
+    final bucket =
+        kind == 'signature' ? 'business-signatures' : 'business-assets';
     final path = BusinessProfileService.assetStoragePath(
       userId: user.id,
       kind: kind,
       extension: 'jpg',
     );
-    await _supabase.storage.from('business-assets').uploadBinary(
-          path,
-          bytes,
-          fileOptions: const FileOptions(contentType: 'image/jpeg', upsert: true),
-        );
-    return _supabase.storage.from('business-assets').getPublicUrl(path);
+    final storage = _supabase.storage.from(bucket);
+    await storage.uploadBinary(
+      path,
+      bytes,
+      fileOptions: const FileOptions(contentType: 'image/jpeg', upsert: true),
+    );
+    if (bucket == 'business-signatures') {
+      // Private bucket: hand back a 1-year signed URL. Re-sign server-side when
+      // rendering the signature on an invoice.
+      return storage.createSignedUrl(path, 60 * 60 * 24 * 365);
+    }
+    return storage.getPublicUrl(path);
   }
 }
