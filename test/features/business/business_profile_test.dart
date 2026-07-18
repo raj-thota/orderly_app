@@ -58,5 +58,48 @@ void main() {
       expect(map.containsKey('invoice_prefix'), isFalse);
       expect(map['invoice_template'], 'minimal');
     });
+
+    test('round-trips new profile fields through toMap/fromMap', () {
+      final original = BusinessProfile(
+        name: 'Sarees by Anu',
+        ownerName: 'Anu',
+        city: 'Surat',
+        state: 'Gujarat',
+        pincode: '395001',
+        pan: 'ABCDE1234F',
+        businessType: 'Boutique',
+        bankAccountName: 'Anu',
+        bankAccountNumber: '000111222',
+        bankIfsc: 'HDFC0001',
+        defaultPaymentMethod: 'upi',
+        gstEnabled: true,
+        paymentTerms: 'Due on delivery',
+        invoiceFooter: 'Thank you!',
+        signatureUrl: 'https://x/sig.png',
+        language: 'hi',
+        timezone: 'Asia/Kolkata',
+      );
+      final restored = BusinessProfile.fromMap(original.toMap());
+      expect(restored.ownerName, 'Anu');
+      expect(restored.pincode, '395001');
+      expect(restored.gstEnabled, isTrue);
+      expect(restored.defaultPaymentMethod, 'upi');
+      expect(restored.invoiceFooter, 'Thank you!');
+      expect(restored.language, 'hi');
+    });
+
+    test('fromMap defaults language/timezone/gstEnabled', () {
+      final p = BusinessProfile.fromMap({'name': 'X'});
+      expect(p.language, 'en');
+      expect(p.timezone, 'Asia/Kolkata');
+      expect(p.gstEnabled, isFalse);
+    });
+
+    test('toMap still omits server-managed numbering', () {
+      final map = BusinessProfile(name: 'S', ownerName: 'A').toMap();
+      expect(map.containsKey('next_invoice_number'), isFalse);
+      expect(map.containsKey('invoice_prefix'), isFalse);
+      expect(map['owner_name'], 'A');
+    });
   });
 }
