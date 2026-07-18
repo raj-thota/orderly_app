@@ -5,6 +5,21 @@ import 'order.dart';
 
 const _selectWithJoins = '*, customers(name, phone), order_items(*), payments(*)';
 
+/// Serializes draft items into the jsonb `p_items` array the create-order RPC
+/// consumes. `item_type` + `image_url` are snapshotted for badge display.
+List<Map<String, dynamic>> buildItemsPayload(List<CreateOrderItem> items) {
+  return items
+      .map((i) => {
+            'name': i.name,
+            'qty': i.qty,
+            'unit_price': i.unitPrice,
+            'item_type': i.type,
+            if (i.productId != null) 'product_id': i.productId,
+            if (i.imageUrl != null) 'image_url': i.imageUrl,
+          })
+      .toList();
+}
+
 class OrdersService {
   SupabaseClient get _client => Supabase.instance.client;
   String get _userId => _client.auth.currentUser!.id;
@@ -53,14 +68,7 @@ class OrdersService {
     DateTime? expectedDate,
     String? notes,
   }) async {
-    final payload = items
-        .map((i) => {
-              'name': i.name,
-              'qty': i.qty,
-              'unit_price': i.unitPrice,
-              if (i.productId != null) 'product_id': i.productId,
-            })
-        .toList();
+    final payload = buildItemsPayload(items);
     final orderId = await _client.rpc('create_order_with_items', params: {
       'p_customer_id': customerId,
       'p_lead_id': leadId,
