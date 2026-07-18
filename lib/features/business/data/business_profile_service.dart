@@ -38,6 +38,25 @@ class BusinessProfileService {
     return BusinessProfile.fromMap(row);
   }
 
+  /// Bank account number + PAN are encrypted at rest (a DB trigger encrypts the
+  /// plaintext columns into bytea and nulls them). They can only be read back
+  /// through the owner-scoped `get_business_sensitive` RPC, which decrypts them
+  /// for the calling user. Returns nulls when unset or unauthenticated.
+  Future<({String? bankAccountNumber, String? pan})> fetchSensitive() async {
+    final user = _supabase.auth.currentUser;
+    if (user == null) return (bankAccountNumber: null, pan: null);
+
+    final rows = await _supabase.rpc('get_business_sensitive');
+    if (rows is List && rows.isNotEmpty) {
+      final r = rows.first as Map<String, dynamic>;
+      return (
+        bankAccountNumber: r['bank_account_number'] as String?,
+        pan: r['pan'] as String?,
+      );
+    }
+    return (bankAccountNumber: null, pan: null);
+  }
+
   /// Path under the `business-assets` bucket. First segment = uid so the
   /// storage RLS policy authorizes the write.
   static String assetStoragePath({

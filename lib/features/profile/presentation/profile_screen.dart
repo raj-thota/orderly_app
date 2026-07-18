@@ -47,6 +47,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       final service = ref.read(businessProfileServiceProvider);
       await service.upsert(edit(current));
       ref.invalidate(businessProfileProvider);
+      ref.invalidate(businessSensitiveProvider);
       ref.invalidate(userProfileProvider);
       if (!mounted) return;
       setState(() {
@@ -72,6 +73,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(businessProfileProvider);
+    // Bank account number + PAN are encrypted at rest; read them back through
+    // the owner-scoped RPC rather than the plain profile row.
+    final sensitive = ref.watch(businessSensitiveProvider).value;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -120,7 +124,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               _sectionCard('Business Identity', [
                 _field(p, 'gstin', 'GST Number (optional)', p.gstin ?? '',
                     (v) => (c) => c.copyWith(gstin: v)),
-                _field(p, 'pan', 'PAN (optional)', p.pan ?? '',
+                _field(p, 'pan', 'PAN (optional)', sensitive?.pan ?? '',
                     (v) => (c) => c.copyWith(pan: v)),
                 _field(p, 'business_type', 'Business Type', p.businessType ?? '',
                     (v) => (c) => c.copyWith(businessType: v)),
@@ -143,7 +147,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     p.bankAccountName ?? '',
                     (v) => (c) => c.copyWith(bankAccountName: v)),
                 _field(p, 'bank_account_number', 'Bank Account Number (optional)',
-                    p.bankAccountNumber ?? '',
+                    sensitive?.bankAccountNumber ?? '',
                     (v) => (c) => c.copyWith(bankAccountNumber: v),
                     keyboardType: TextInputType.number),
                 _field(p, 'bank_ifsc', 'IFSC (optional)', p.bankIfsc ?? '',

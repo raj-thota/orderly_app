@@ -34,11 +34,10 @@ on conflict (id) do nothing;
 -- Policies are dropped-then-created so this migration is re-runnable
 -- (Postgres has no `create policy if not exists`).
 
--- business-assets: public read; write/update/delete scoped to the owner's uid folder.
+-- business-assets: public bucket. No SELECT policy — public buckets serve objects
+-- by direct URL without one, and a broad SELECT policy would let clients LIST
+-- (enumerate) every tenant's files. Write/update/delete scoped to the owner's uid.
 drop policy if exists "business-assets read" on storage.objects;
-create policy "business-assets read"
-  on storage.objects for select
-  using (bucket_id = 'business-assets');
 
 drop policy if exists "business-assets write own" on storage.objects;
 create policy "business-assets write own"

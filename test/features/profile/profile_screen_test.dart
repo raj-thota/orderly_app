@@ -17,6 +17,8 @@ Widget _wrap() => ProviderScope(
             )),
         userProfileProvider.overrideWith((ref) async =>
             <String, dynamic>{'email': 'anu@shop.com'}),
+        businessSensitiveProvider.overrideWith(
+            (ref) async => (bankAccountNumber: null, pan: null)),
       ],
       child: const MaterialApp(home: ProfileScreen()),
     );
