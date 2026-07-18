@@ -25,11 +25,11 @@ class BusinessHubScreen extends StatelessWidget {
           () => push(const _CatalogPage())),
       (Icons.receipt_long_rounded, 'Invoices', 'Generated invoices',
           () => push(const InvoicesScreen())),
-      (Icons.badge_rounded, 'Business Profile', 'Name, UPI, GST, invoice settings',
+      (Icons.badge_rounded, 'Business Profile', 'Name, contact, payment, GST',
           () => push(const ProfileScreen())),
       (Icons.workspace_premium_rounded, 'Go Pro', 'Closr Pro subscription',
           () => push(const SubscriptionScreen())),
-      (Icons.settings_rounded, 'Settings', 'Profile, invoices, privacy',
+      (Icons.settings_rounded, 'Settings', 'Notifications, invoices, support',
           () => push(const SettingsScreen())),
     ];
 
