@@ -1,19 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:orderly_app/core/theme/app_colors.dart';
 import 'package:orderly_app/core/theme/app_spacing.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'privacy_policy_screen.dart';
-import 'terms_screen.dart';
+import 'faqs_screen.dart';
 
 class HelpSupportScreen extends StatelessWidget {
   const HelpSupportScreen({super.key});
-
-  Future<void> _contactSupport() async {
-    final uri = Uri.parse(
-      "mailto:closrsupport@gmail.com?subject=Closr Support",
-    );
-    await launchUrl(uri);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -94,64 +85,23 @@ class HelpSupportScreen extends StatelessWidget {
 
           const SizedBox(height: 20),
 
-          /// SUPPORT
-          _section("Support"),
+          /// FAQs
+          _section("FAQs"),
 
           _card(
             child: ListTile(
+              contentPadding: EdgeInsets.zero,
               leading: const Icon(
-                Icons.support_agent,
+                Icons.quiz_rounded,
                 color: AppColors.primary,
               ),
-              title: const Text("Contact Support"),
-              subtitle: const Text("Tap to email us"),
+              title: const Text("Frequently Asked Questions"),
+              subtitle: const Text("Answers to common questions"),
               trailing: const Icon(Icons.arrow_forward_ios, size: 14),
-              onTap: _contactSupport,
-            ),
-          ),
-
-          const SizedBox(height: 20),
-
-          /// LEGAL
-          _section("Legal"),
-
-          _card(
-            child: Column(
-              children: [
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(
-                    Icons.privacy_tip,
-                    color: AppColors.primary,
-                  ),
-                  title: const Text("Privacy Policy"),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 14),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const PrivacyPolicyScreen(),
-                      ),
-                    );
-                  },
-                ),
-                const Divider(),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(
-                    Icons.description,
-                    color: AppColors.primary,
-                  ),
-                  title: const Text("Terms of Service"),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 14),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const TermsScreen()),
-                    );
-                  },
-                ),
-              ],
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const FaqsScreen()),
+              ),
             ),
           ),
 

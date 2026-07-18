@@ -99,8 +99,6 @@ class SettingsScreen extends ConsumerWidget {
                 icon: Icons.lightbulb_rounded,
                 title: 'Request a Feature',
                 onTap: () => mail('Closr Feature Request')),
-            const SettingsTile(
-                icon: Icons.quiz_rounded, title: 'FAQs', comingSoon: true),
           ]),
           SettingsSection(title: 'About', children: [
             const SettingsTile(
@@ -115,14 +113,6 @@ class SettingsScreen extends ConsumerWidget {
                 icon: Icons.policy_rounded,
                 title: 'Privacy Policy',
                 onTap: () => push(const PrivacyPolicyScreen())),
-            SettingsTile(
-                icon: Icons.code_rounded,
-                title: 'Open Source Licenses',
-                onTap: () => showLicensePage(
-                      context: context,
-                      applicationName: 'Closr',
-                      applicationVersion: '1.0.0',
-                    )),
           ]),
           SettingsSection(title: 'Account', children: [
             SettingsTile(

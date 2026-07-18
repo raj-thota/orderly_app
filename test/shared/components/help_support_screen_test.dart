@@ -10,12 +10,21 @@ void main() {
     expect(find.text('Work in Focus Mode'), findsOneWidget);
     expect(find.text('Record payments'), findsOneWidget);
     expect(find.text('Share invoices'), findsOneWidget);
-    // Scroll to reveal items below the fold before checking.
+  });
+
+  testWidgets('links to FAQs and no longer duplicates Support/Legal', (t) async {
+    await t.pumpWidget(const MaterialApp(home: HelpSupportScreen()));
+    await t.pumpAndSettle();
+    // Support/Legal moved to Settings (single home) — gone from this screen.
+    expect(find.text('Contact Support'), findsNothing);
+    expect(find.text('Privacy Policy'), findsNothing);
+    expect(find.text('Terms of Service'), findsNothing);
+    // FAQs entry present (below the fold — scroll to reveal).
     await t.scrollUntilVisible(
-      find.text('Contact Support'),
+      find.text('Frequently Asked Questions'),
       100,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('Contact Support'), findsOneWidget);
+    expect(find.text('Frequently Asked Questions'), findsOneWidget);
   });
 }
