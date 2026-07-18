@@ -38,11 +38,30 @@ class CreateOrderNotifier extends StateNotifier<CreateOrderState> {
 
   final OrdersService _service;
 
-  void addItem(CreateOrderItem item) => state = state.copyWith(
-        draft: state.draft.copyWith(
-          items: [...state.draft.items, item],
-        ),
-      );
+  void addItem(CreateOrderItem item) {
+    final items = List<CreateOrderItem>.of(state.draft.items);
+    if (item.productId != null) {
+      final i = items.indexWhere((e) => e.productId == item.productId);
+      if (i != -1) {
+        items[i] = items[i].copyWith(qty: items[i].qty + item.qty);
+        state = state.copyWith(draft: state.draft.copyWith(items: items));
+        return;
+      }
+    }
+    items.add(item);
+    state = state.copyWith(draft: state.draft.copyWith(items: items));
+  }
+
+  void setQty(int index, int qty) {
+    final items = List<CreateOrderItem>.of(state.draft.items);
+    if (index < 0 || index >= items.length) return;
+    if (qty <= 0) {
+      items.removeAt(index);
+    } else {
+      items[index] = items[index].copyWith(qty: qty);
+    }
+    state = state.copyWith(draft: state.draft.copyWith(items: items));
+  }
 
   void removeItem(int index) {
     final items = List<CreateOrderItem>.of(state.draft.items)..removeAt(index);
