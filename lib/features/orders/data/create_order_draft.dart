@@ -4,12 +4,16 @@ class CreateOrderItem {
     this.qty = 1,
     this.unitPrice = 0,
     this.productId,
+    this.type = 'product',
+    this.imageUrl,
   });
 
   final String name;
   final int qty;
   final double unitPrice;
   final String? productId;
+  final String type;
+  final String? imageUrl;
 
   double get lineTotal => qty * unitPrice;
 
@@ -19,6 +23,8 @@ class CreateOrderItem {
         qty: qty ?? this.qty,
         unitPrice: unitPrice ?? this.unitPrice,
         productId: productId,
+        type: type,
+        imageUrl: imageUrl,
       );
 }
 

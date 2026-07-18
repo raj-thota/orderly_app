@@ -1,3 +1,4 @@
+import 'package:orderly_app/features/catalog/data/item_type.dart';
 import 'package:orderly_app/features/payments/data/payment.dart';
 
 class OrderItem {
@@ -9,6 +10,7 @@ class OrderItem {
     this.lineTotal = 0,
     this.gstRate = 0,
     this.productId,
+    this.type = 'product',
   });
 
   final String name;
@@ -18,6 +20,9 @@ class OrderItem {
   final double lineTotal;
   final double gstRate;
   final String? productId;
+  final String type;
+
+  ItemType get itemType => ItemType.fromId(type);
 
   factory OrderItem.fromMap(Map<String, dynamic> map) {
     return OrderItem(
@@ -28,6 +33,7 @@ class OrderItem {
       lineTotal: double.tryParse(map['line_total']?.toString() ?? '') ?? 0,
       gstRate: double.tryParse(map['gst_rate']?.toString() ?? '') ?? 0,
       productId: map['product_id']?.toString(),
+      type: (map['item_type'] ?? 'product').toString(),
     );
   }
 }
