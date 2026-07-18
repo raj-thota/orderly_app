@@ -37,4 +37,21 @@ class AppColors {
   static const Color dues = Color(0xFFDC2626);
 
   static const Color border = Color(0xFFE5E7EB);
+
+  // Item type accents + soft-tint badge backgrounds + placeholder gradients
+  static const Color typeProductAccent = Color(0xFF5B4FE9);
+  static const Color typeProductTint = Color(0xFFECEBFD);
+  static const Color typeProductGradientEnd = Color(0xFFDEDBFA);
+
+  static const Color typeServiceAccent = Color(0xFF0D9488);
+  static const Color typeServiceTint = Color(0xFFE0F2F0);
+  static const Color typeServiceGradientEnd = Color(0xFFCFE9E6);
+
+  static const Color typeDigitalAccent = Color(0xFF7C3AED);
+  static const Color typeDigitalTint = Color(0xFFF1EBFE);
+  static const Color typeDigitalGradientEnd = Color(0xFFE7D9FC);
+
+  static const Color typeOtherAccent = Color(0xFF64748B);
+  static const Color typeOtherTint = Color(0xFFEEF1F5);
+  static const Color typeOtherGradientEnd = Color(0xFFE2E7EE);
 }
