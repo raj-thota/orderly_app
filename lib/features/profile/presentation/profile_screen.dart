@@ -84,7 +84,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => const Center(child: Text('Could not load profile')),
         data: (profile) {
-          final p = profile ?? const BusinessProfile(name: 'Your Business');
+          final base = profile ?? const BusinessProfile(name: 'Your Business');
+          // bank/PAN come back null from the plain select (encrypted at rest);
+          // merge the decrypted values so edits to ANY field re-send the real
+          // ones instead of relying on the trigger's null-preserves behaviour.
+          final p = base.copyWith(
+            pan: sensitive?.pan,
+            bankAccountNumber: sensitive?.bankAccountNumber,
+          );
           _seeded = p;
           if (widget.scrollTo == ProfileAnchor.payment) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -124,7 +131,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               _sectionCard('Business Identity', [
                 _field(p, 'gstin', 'GST Number (optional)', p.gstin ?? '',
                     (v) => (c) => c.copyWith(gstin: v)),
-                _field(p, 'pan', 'PAN (optional)', sensitive?.pan ?? '',
+                _field(p, 'pan', 'PAN (optional)', p.pan ?? '',
                     (v) => (c) => c.copyWith(pan: v)),
                 _field(p, 'business_type', 'Business Type', p.businessType ?? '',
                     (v) => (c) => c.copyWith(businessType: v)),
@@ -147,7 +154,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     p.bankAccountName ?? '',
                     (v) => (c) => c.copyWith(bankAccountName: v)),
                 _field(p, 'bank_account_number', 'Bank Account Number (optional)',
-                    sensitive?.bankAccountNumber ?? '',
+                    p.bankAccountNumber ?? '',
                     (v) => (c) => c.copyWith(bankAccountNumber: v),
                     keyboardType: TextInputType.number),
                 _field(p, 'bank_ifsc', 'IFSC (optional)', p.bankIfsc ?? '',

@@ -89,6 +89,9 @@ security definer
 set search_path = ''
 as $$
 begin
+  if auth.uid() is null then
+    return;
+  end if;
   return query
   select
     case when bp.bank_account_number_enc is not null
