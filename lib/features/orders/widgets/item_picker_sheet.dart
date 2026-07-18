@@ -5,7 +5,7 @@ import 'package:orderly_app/core/utils/money.dart';
 import 'package:orderly_app/features/catalog/controller/catalog_filter.dart';
 import 'package:orderly_app/features/catalog/data/item_type.dart';
 import 'package:orderly_app/features/catalog/data/product.dart';
-import 'package:orderly_app/features/catalog/widgets/item_placeholder.dart';
+import 'package:orderly_app/features/catalog/widgets/product_image.dart';
 import 'package:orderly_app/features/catalog/widgets/type_badge.dart';
 
 /// Bottom-sheet catalog picker for the order builder: search + type + category
@@ -138,7 +138,13 @@ class _ItemPickerSheetState extends State<ItemPickerSheet> {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(AppRadius.sm),
-                  child: _productImage(p),
+                  child: ProductImage(
+                    path: p.coverImage,
+                    type: p.itemType,
+                    name: p.name,
+                    iconSize: 22,
+                    cacheWidth: 240,
+                  ),
                 ),
                 Positioned(
                   top: 4,
@@ -159,23 +165,6 @@ class _ItemPickerSheetState extends State<ItemPickerSheet> {
                   fontSize: 11.5, color: AppColors.textSecondary)),
         ],
       ),
-    );
-  }
-
-  /// Renders the product thumbnail. Uses [ItemPlaceholder] when there is no
-  /// cover image so the widget tree stays Riverpod-free (no ConsumerWidget
-  /// needed for signed-URL resolution at this level).
-  Widget _productImage(Product p) {
-    final cover = p.coverImage;
-    if (cover == null) {
-      return ItemPlaceholder(type: p.itemType, name: p.name, letterSize: 28);
-    }
-    return Image.network(
-      cover,
-      fit: BoxFit.cover,
-      cacheWidth: 240,
-      errorBuilder: (_, _, _) =>
-          ItemPlaceholder(type: p.itemType, name: p.name, letterSize: 28),
     );
   }
 }

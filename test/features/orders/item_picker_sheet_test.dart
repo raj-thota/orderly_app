@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orderly_app/features/catalog/data/product.dart';
 import 'package:orderly_app/features/orders/widgets/item_picker_sheet.dart';
 
-Widget _wrap(Widget child) => MaterialApp(home: Scaffold(body: child));
+Widget _wrap(Widget child) =>
+    ProviderScope(child: MaterialApp(home: Scaffold(body: child)));
 
 void main() {
   final products = [
