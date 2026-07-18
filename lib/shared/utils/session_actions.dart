@@ -34,4 +34,10 @@ Future<void> confirmAndLogout(BuildContext context, WidgetRef ref) async {
   // Clear cached business data so the next account starts clean.
   ref.invalidate(userProfileProvider);
   ref.invalidate(businessProfileProvider);
+
+  // RootGate (the first route) decides WHAT to show based on auth state; pop any
+  // pushed screens (Settings/Profile) so that reactive root becomes visible.
+  if (context.mounted) {
+    Navigator.of(context).popUntil((route) => route.isFirst);
+  }
 }
