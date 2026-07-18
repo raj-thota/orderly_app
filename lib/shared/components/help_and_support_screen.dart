@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:orderly_app/core/theme/app_colors.dart';
+import 'package:orderly_app/core/theme/app_spacing.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'privacy_policy_screen.dart';
 import 'terms_screen.dart';
@@ -18,9 +20,9 @@ class HelpSupportScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text("Help & Support")),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
-          /// 🔥 INTRO
+          /// INTRO
           _card(
             child: const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -32,7 +34,7 @@ class HelpSupportScreen extends StatelessWidget {
                 SizedBox(height: 6),
                 Text(
                   "Manage leads, follow-ups, and orders from your chats — all in one place.",
-                  style: TextStyle(color: Colors.grey),
+                  style: TextStyle(color: AppColors.textSecondary),
                 ),
               ],
             ),
@@ -40,41 +42,51 @@ class HelpSupportScreen extends StatelessWidget {
 
           const SizedBox(height: 20),
 
-          /// 🔥 QUICK HELP
+          /// QUICK HELP
           _section("Quick Help"),
 
           _card(
             child: const Column(
               children: [
                 _HelpItem(
-                  icon: Icons.add_circle_outline,
-                  title: "Add a lead",
+                  icon: Icons.bolt_rounded,
+                  title: 'Capture a lead',
                   subtitle:
-                      "Paste a WhatsApp message or speak using voice input",
+                      'Paste a WhatsApp message or use voice — Closr logs the enquiry.',
                 ),
                 Divider(),
                 _HelpItem(
-                  icon: Icons.psychology,
-                  title: "AI understanding",
-                  subtitle: "Closr detects intent and highlights hot customers",
+                  icon: Icons.today_rounded,
+                  title: 'Work your day',
+                  subtitle:
+                      'Today shows all your orders and enquiries in one pipeline.',
                 ),
                 Divider(),
                 _HelpItem(
-                  icon: Icons.track_changes,
-                  title: "Follow-ups",
-                  subtitle: "Get reminders so you never miss a potential deal",
+                  icon: Icons.center_focus_strong_rounded,
+                  title: 'Work in Focus Mode',
+                  subtitle:
+                      'Start My Work to handle items one at a time, distraction-free.',
                 ),
                 Divider(),
                 _HelpItem(
-                  icon: Icons.check_circle_outline,
-                  title: "Close orders",
-                  subtitle: "Mark leads as completed once the deal is done",
+                  icon: Icons.payments_rounded,
+                  title: 'Record payments',
+                  subtitle:
+                      'Track order status, log payments, and see outstanding dues.',
                 ),
                 Divider(),
                 _HelpItem(
-                  icon: Icons.insights,
-                  title: "Priority leads",
-                  subtitle: "Focus on customers who are most likely to convert",
+                  icon: Icons.receipt_long_rounded,
+                  title: 'Share invoices',
+                  subtitle:
+                      'Generate branded invoice PDFs and send them to customers.',
+                ),
+                Divider(),
+                _HelpItem(
+                  icon: Icons.notifications_active_rounded,
+                  title: 'Never miss a follow-up',
+                  subtitle: 'Smart reminders keep warm leads from going cold.',
                 ),
               ],
             ),
@@ -82,14 +94,14 @@ class HelpSupportScreen extends StatelessWidget {
 
           const SizedBox(height: 20),
 
-          /// 🔥 SUPPORT
+          /// SUPPORT
           _section("Support"),
 
           _card(
             child: ListTile(
               leading: const Icon(
                 Icons.support_agent,
-                color: Colors.deepPurple,
+                color: AppColors.primary,
               ),
               title: const Text("Contact Support"),
               subtitle: const Text("Tap to email us"),
@@ -100,7 +112,7 @@ class HelpSupportScreen extends StatelessWidget {
 
           const SizedBox(height: 20),
 
-          /// 🔥 LEGAL
+          /// LEGAL
           _section("Legal"),
 
           _card(
@@ -110,7 +122,7 @@ class HelpSupportScreen extends StatelessWidget {
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(
                     Icons.privacy_tip,
-                    color: Colors.deepPurple,
+                    color: AppColors.primary,
                   ),
                   title: const Text("Privacy Policy"),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 14),
@@ -128,7 +140,7 @@ class HelpSupportScreen extends StatelessWidget {
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(
                     Icons.description,
-                    color: Colors.deepPurple,
+                    color: AppColors.primary,
                   ),
                   title: const Text("Terms of Service"),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 14),
@@ -145,11 +157,11 @@ class HelpSupportScreen extends StatelessWidget {
 
           const SizedBox(height: 30),
 
-          /// 🔥 VERSION
+          /// VERSION
           const Center(
             child: Text(
               "Closr • Version 1.0.0",
-              style: TextStyle(color: Colors.grey, fontSize: 12),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
             ),
           ),
         ],
@@ -162,17 +174,20 @@ class HelpSupportScreen extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         title,
-        style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.grey),
+        style: const TextStyle(
+          fontWeight: FontWeight.w600,
+          color: AppColors.textSecondary,
+        ),
       ),
     );
   }
 
   Widget _card({required Widget child}) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.md),
       ),
       child: child,
     );
@@ -194,7 +209,7 @@ class _HelpItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, color: Colors.deepPurple),
+        Icon(icon, color: AppColors.primary),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -204,7 +219,10 @@ class _HelpItem extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 subtitle,
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ],
           ),
