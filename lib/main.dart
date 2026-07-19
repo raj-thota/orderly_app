@@ -97,6 +97,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       NotificationService.checkAndTriggerSmartReminders();
+      NotificationService.consumePendingLaunchTap();
     });
   }
 
