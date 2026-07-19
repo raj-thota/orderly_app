@@ -107,7 +107,9 @@ class WorkItemsNotifier extends StateNotifier<WorkItemsState> {
     final prev = state;
     final ids = prev.items.map((i) => i.id).toList();
     if (ids.isEmpty) return;
-    // Optimistic clear; all count as completed.
+    // Optimistic clear; all count as completed. On partial failure we roll the
+    // whole list back — any already-persisted 'done' items reappear until the
+    // next load() reconciles them (consistent with markDone/dismiss).
     state = state.copyWith(
         items: const [], completedCount: prev.completedCount + ids.length);
     try {

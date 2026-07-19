@@ -166,7 +166,9 @@ class NotificationService {
   }
 
   /// Reconcile the OS reminder set against [leads] (defaults to the legacy
-  /// lead maps). Safe to call from anywhere; runs are serialized.
+  /// lead maps). Safe to call from anywhere; runs are serialized. [leads] must
+  /// be the COMPLETE desired lead set — reconcile cancels reminders for any
+  /// lead not present, so never pass a partial subset.
   static Future<void> syncFollowUpReminders({
     List<Map<String, dynamic>>? leads,
   }) async {

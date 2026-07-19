@@ -156,7 +156,7 @@ void main() {
 
   testWidgets('renders a relative timestamp when createdAt is set', (t) async {
     await t.pumpWidget(_wrap([
-      _item(name: 'Priya', createdAt: DateTime.now().subtract(const Duration(hours: 2))),
+      _item(name: 'Priya', createdAt: DateTime.now().subtract(const Duration(hours: 2, minutes: 1))),
     ]));
     await t.pumpAndSettle();
     expect(find.textContaining('2h ago'), findsOneWidget);

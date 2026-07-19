@@ -33,6 +33,11 @@ class FollowUpReminderScheduler {
   bool _dirty = false;
   List<Map<String, dynamic>> _leads = <Map<String, dynamic>>[];
 
+  /// Reconciles the OS reminder set against [leads]. [leads] MUST be the
+  /// complete desired set: reconcile cancels any pending reminder whose lead is
+  /// not present, so passing a subset will silently cancel the rest. Concurrent
+  /// calls coalesce last-set-wins — never race a subset against the full set.
+  ///
   /// Secondary callers that arrive mid-flight await the entire drain, including
   /// the extra pass caused by their own leads.
   Future<void> sync(List<Map<String, dynamic>> leads) {
