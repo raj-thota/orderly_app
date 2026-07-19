@@ -203,4 +203,29 @@ void main() {
     // Items should be restored after failure.
     expect(c.read(workItemsProvider).items, hasLength(2));
   });
+
+  test('markAllDone clears all items and counts them completed', () async {
+    final svc = FakeAiWorkItemsService([_item('1'), _item('2'), _item('3')]);
+    final c = makeContainer(svc);
+    addTearDown(c.dispose);
+    await c.read(workItemsProvider.notifier).load();
+
+    await c.read(workItemsProvider.notifier).markAllDone();
+
+    expect(c.read(workItemsProvider).items, isEmpty);
+    expect(c.read(workItemsProvider).completedCount, 3);
+    expect(svc.updates['1'], 'done');
+    expect(svc.updates['2'], 'done');
+    expect(svc.updates['3'], 'done');
+  });
+
+  test('markAllDone on an empty list is a no-op', () async {
+    final c = makeContainer(FakeAiWorkItemsService([]));
+    addTearDown(c.dispose);
+    await c.read(workItemsProvider.notifier).load();
+
+    await c.read(workItemsProvider.notifier).markAllDone();
+
+    expect(c.read(workItemsProvider).completedCount, 0);
+  });
 }
