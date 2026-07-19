@@ -81,6 +81,20 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
         actions: [
+          if (state.items.isNotEmpty)
+            IconButton(
+              key: const Key('notif_mark_all_done'),
+              tooltip: 'Mark all done',
+              icon: const Icon(Icons.done_all_rounded),
+              onPressed: () {
+                ref.read(workItemsProvider.notifier).markAllDone();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Marked all done ✅')),
+                  );
+                }
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             onPressed: () => ref.read(workItemsProvider.notifier).load(),
@@ -97,25 +111,13 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                   if (high.isNotEmpty) ...[
                     const _SectionTitle('🔥 Urgent'),
                     const SizedBox(height: AppSpacing.sm),
-                    for (final item in high)
-                      _NotificationTile(
-                        item: item,
-                        onTap: () => _open(item),
-                        onAction: () => _runAction(item),
-                        onDone: () => _done(item),
-                      ),
+                    for (final item in high) _dismissibleTile(item),
                     const SizedBox(height: AppSpacing.md),
                   ],
                   if (others.isNotEmpty) ...[
                     const _SectionTitle('Needs attention'),
                     const SizedBox(height: AppSpacing.sm),
-                    for (final item in others)
-                      _NotificationTile(
-                        item: item,
-                        onTap: () => _open(item),
-                        onAction: () => _runAction(item),
-                        onDone: () => _done(item),
-                      ),
+                    for (final item in others) _dismissibleTile(item),
                   ],
                 ],
               ),
@@ -140,6 +142,38 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             style: TextStyle(color: Colors.grey.shade600),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _dismissibleTile(AiWorkItem item) {
+    return Dismissible(
+      key: ValueKey('notif_dismiss_${item.id}'),
+      direction: DismissDirection.endToStart,
+      background: const SizedBox.shrink(),
+      secondaryBackground: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: AppSpacing.md),
+        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+        decoration: BoxDecoration(
+          color: AppColors.danger.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
+        child: const Icon(Icons.close_rounded, color: AppColors.danger),
+      ),
+      onDismissed: (_) {
+        ref.read(workItemsProvider.notifier).dismiss(item.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Dismissed')),
+          );
+        }
+      },
+      child: _NotificationTile(
+        item: item,
+        onTap: () => _open(item),
+        onAction: () => _runAction(item),
+        onDone: () => _done(item),
       ),
     );
   }
@@ -268,6 +302,16 @@ class _NotificationTile extends StatelessWidget {
                           ),
                         ),
                       ],
+                      if (item.createdAt != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          _relativeTime(item.createdAt!),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -333,4 +377,12 @@ class _MiniButton extends StatelessWidget {
       ),
     );
   }
+}
+
+String _relativeTime(DateTime time) {
+  final diff = DateTime.now().difference(time);
+  if (diff.inMinutes < 1) return 'just now';
+  if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+  if (diff.inHours < 24) return '${diff.inHours}h ago';
+  return '${diff.inDays}d ago';
 }

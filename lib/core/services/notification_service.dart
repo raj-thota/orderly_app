@@ -1,278 +1,134 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
+import 'package:orderly_app/core/services/follow_up_reminder_planner.dart';
+import 'package:orderly_app/core/services/follow_up_reminder_scheduler.dart';
 import 'package:orderly_app/core/services/lead_navigation_service.dart';
+import 'package:orderly_app/core/services/notification_id_registry.dart';
+import 'package:orderly_app/core/services/tap_deduper.dart';
 import 'package:orderly_app/features/enquiries/data/enquiries_service.dart';
 import 'package:orderly_app/features/followups/data/follow_ups_service.dart';
 import 'package:orderly_app/main.dart';
 
-class NotificationBuckets {
-  const NotificationBuckets({
-    required this.overdue,
-    required this.today,
-    required this.attention,
-  });
-
-  final List<Map<String, dynamic>> overdue;
-  final List<Map<String, dynamic>> today;
-  final List<Map<String, dynamic>> attention;
-
-  int get totalCount => attention.length;
-  bool get hasItems => attention.isNotEmpty;
-}
-
-class NotificationSuggestion {
-  const NotificationSuggestion({
-    required this.title,
-    required this.subtitle,
-    required this.actionLabel,
-    required this.kind,
-    this.lead,
-  });
-
-  final String title;
-  final String subtitle;
-  final String actionLabel;
-  final String kind;
-  final Map<String, dynamic>? lead;
-}
-
+/// Static facade over `flutter_local_notifications`. Owns plugin init,
+/// permissions, the follow-up reminder scheduler, and tap navigation. All the
+/// scheduling *decisions* live in the pure planner/reconcile/scheduler units.
 class NotificationService {
   static const String _channelId = 'followup_channel';
   static const String _channelName = 'Follow Ups';
   static const String _channelDescription =
       'Follow-up and overdue lead reminders';
-  static const String _scheduledLeadIdsKey = 'scheduled_follow_up_lead_ids';
-  static const int _defaultReminderHour = 9;
+  static const String _migrationFlagKey = 'notif_reconcile_migration_v1_done';
+
   static const AndroidNotificationChannel _notificationChannel =
       AndroidNotificationChannel(
-        _channelId,
-        _channelName,
-        description: _channelDescription,
-        importance: Importance.max,
-        playSound: true,
-        enableVibration: true,
-        showBadge: true,
-      );
+    _channelId,
+    _channelName,
+    description: _channelDescription,
+    importance: Importance.max,
+    playSound: true,
+    enableVibration: true,
+    showBadge: true,
+  );
 
   static final FlutterLocalNotificationsPlugin _notifications =
       FlutterLocalNotificationsPlugin();
-  static String? _pendingLeadId;
+  static final TapDeduper _tapDeduper = TapDeduper();
+
+  static bool _initialized = false;
   static bool _canScheduleExactAlarms = true;
+  static FollowUpReminderScheduler? _scheduler;
+  static String? _pendingLaunchPayload;
 
   static Future<void> init() async {
+    if (_initialized) return;
+    _initialized = true;
+
     tz.initializeTimeZones();
 
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
-
     const ios = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
       requestSoundPermission: true,
     );
-
     const settings = InitializationSettings(android: android, iOS: ios);
 
     await _notifications.initialize(
       settings: settings,
-      onDidReceiveNotificationResponse: (response) async {
-        _queueLeadNavigation(response.payload);
+      onDidReceiveNotificationResponse: (response) {
+        _handleTap(response.payload);
       },
     );
 
-    final launchDetails = await _notifications
-        .getNotificationAppLaunchDetails();
+    final prefs = await SharedPreferences.getInstance();
+    await _migrateLegacyOnce(prefs);
+
+    // Build the scheduler before requesting permissions so a failing permission
+    // call can never leave reminder scheduling permanently disabled.
+    _scheduler = FollowUpReminderScheduler(
+      pendingIds: _pendingIds,
+      schedule: _scheduleReminder,
+      cancel: (id) => _notifications.cancel(id: id),
+      registry: NotificationIdRegistry.load(prefs),
+    );
+
+    // Cold-start tap: stash the payload and replay it once the app shell is
+    // mounted (see consumePendingLaunchTap). Navigating from here would push
+    // onto the splash route and be lost when splash replaces itself.
+    final launchDetails =
+        await _notifications.getNotificationAppLaunchDetails();
     if (launchDetails?.didNotificationLaunchApp ?? false) {
-      _queueLeadNavigation(launchDetails?.notificationResponse?.payload);
+      _pendingLaunchPayload = launchDetails?.notificationResponse?.payload;
     }
 
-    /// 🔥 iOS permission fix
     await _notifications
         .resolvePlatformSpecificImplementation<
-          IOSFlutterLocalNotificationsPlugin
-        >()
+            IOSFlutterLocalNotificationsPlugin>()
         ?.requestPermissions(alert: true, badge: true, sound: true);
 
-    final androidPlugin = _notifications
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >();
-
+    final androidPlugin = _notifications.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
     await androidPlugin?.createNotificationChannel(_notificationChannel);
     await androidPlugin?.requestNotificationsPermission();
-
     final exactPermission = await androidPlugin?.requestExactAlarmsPermission();
     if (exactPermission != null) {
       _canScheduleExactAlarms = exactPermission;
     }
   }
 
-  static DateTime? parseFollowUpDate(dynamic value) {
-    if (value == null) return null;
-    if (value is DateTime) return value;
-    return DateTime.tryParse(value.toString());
+  /// Replays a notification tap that cold-started the app, once the app shell
+  /// (navigator) is mounted. Call from the app shell after the first frame.
+  static void consumePendingLaunchTap() {
+    final payload = _pendingLaunchPayload;
+    if (payload == null) return;
+    _pendingLaunchPayload = null;
+    _handleTap(payload);
   }
 
-  static bool isFollowUpToday(Map<String, dynamic> lead, {DateTime? now}) {
-    if (lead["status"] != "follow") return false;
-
-    final followUpDate = parseFollowUpDate(lead["follow_up_date"]);
-    if (followUpDate == null) return false;
-
-    final currentTime = now ?? DateTime.now();
-    return followUpDate.year == currentTime.year &&
-        followUpDate.month == currentTime.month &&
-        followUpDate.day == currentTime.day;
+  /// Old-scheme (Object.hash id) notifications can't be matched by the new
+  /// registry ids, so clear everything once; the next sync reschedules fresh.
+  static Future<void> _migrateLegacyOnce(SharedPreferences prefs) async {
+    if (prefs.getBool(_migrationFlagKey) ?? false) return;
+    await _notifications.cancelAll();
+    await prefs.remove('scheduled_follow_up_lead_ids');
+    for (final key in prefs
+        .getKeys()
+        .where((k) => k.startsWith('follow_up_notification_'))
+        .toList()) {
+      await prefs.remove(key);
+    }
+    await prefs.setBool(_migrationFlagKey, true);
   }
 
-  static bool isOverdueFollowUp(Map<String, dynamic> lead, {DateTime? now}) {
-    if (lead["status"] != "follow") return false;
-
-    final followUpDate = parseFollowUpDate(lead["follow_up_date"]);
-    if (followUpDate == null) return false;
-
-    final currentTime = now ?? DateTime.now();
-    final startOfToday = DateTime(
-      currentTime.year,
-      currentTime.month,
-      currentTime.day,
-    );
-
-    return followUpDate.isBefore(startOfToday);
+  static Future<Set<int>> _pendingIds() async {
+    final pending = await _notifications.pendingNotificationRequests();
+    return pending.map((r) => r.id).toSet();
   }
 
-  static bool needsFollowUpAttention(
-    Map<String, dynamic> lead, {
-    DateTime? now,
-  }) {
-    return isFollowUpToday(lead, now: now) || isOverdueFollowUp(lead, now: now);
-  }
-
-  static NotificationBuckets buildBuckets(
-    List<Map<String, dynamic>> leads, {
-    DateTime? now,
-  }) {
-    final currentTime = now ?? DateTime.now();
-    final overdue = <Map<String, dynamic>>[];
-    final today = <Map<String, dynamic>>[];
-
-    for (final lead in leads) {
-      if (isOverdueFollowUp(lead, now: currentTime)) {
-        overdue.add(lead);
-        continue;
-      }
-
-      if (isFollowUpToday(lead, now: currentTime)) {
-        today.add(lead);
-      }
-    }
-
-    int sortByFollowUp(Map<String, dynamic> a, Map<String, dynamic> b) {
-      final first = parseFollowUpDate(a["follow_up_date"]) ?? DateTime(2100);
-      final second = parseFollowUpDate(b["follow_up_date"]) ?? DateTime(2100);
-      return first.compareTo(second);
-    }
-
-    overdue.sort(sortByFollowUp);
-    today.sort(sortByFollowUp);
-
-    return NotificationBuckets(
-      overdue: overdue,
-      today: today,
-      attention: [...overdue, ...today],
-    );
-  }
-
-  static List<NotificationSuggestion> buildSuggestions(
-    List<Map<String, dynamic>> leads, {
-    DateTime? now,
-  }) {
-    final currentTime = now ?? DateTime.now();
-    final buckets = buildBuckets(leads, now: currentTime);
-    final suggestions = <NotificationSuggestion>[];
-    final seenLeadIds = <String>{};
-
-    void addSuggestion(NotificationSuggestion suggestion) {
-      final leadId = suggestion.lead?["id"]?.toString();
-      if (leadId != null && leadId.isNotEmpty && !seenLeadIds.add(leadId)) {
-        return;
-      }
-
-      suggestions.add(suggestion);
-    }
-
-    for (final lead in buckets.overdue.take(2)) {
-      addSuggestion(
-        NotificationSuggestion(
-          title: 'Overdue follow-up for ${_leadName(lead)}',
-          subtitle:
-              'This lead slipped past the due date. Call or message them now.',
-          actionLabel: 'Open lead',
-          kind: 'overdue',
-          lead: lead,
-        ),
-      );
-    }
-
-    final hotLead = leads.cast<Map<String, dynamic>>().firstWhere(
-      (lead) => _isHighIntentLead(lead) && !_isClosedLead(lead),
-      orElse: () => <String, dynamic>{},
-    );
-    if (hotLead.isNotEmpty) {
-      addSuggestion(
-        NotificationSuggestion(
-          title: 'Hot lead ready for a fast reply',
-          subtitle:
-              '${_leadName(hotLead)} looks high intent. Sending a quote or closing the loop now can lift conversion.',
-          actionLabel: 'Open lead',
-          kind: 'hot',
-          lead: hotLead,
-        ),
-      );
-    }
-
-    for (final lead in buckets.today.take(2)) {
-      addSuggestion(
-        NotificationSuggestion(
-          title: 'Follow-up due today for ${_leadName(lead)}',
-          subtitle:
-              'Scheduled ${_friendlyFollowUpLabel(lead, currentTime)}. A quick reply keeps this lead warm.',
-          actionLabel: 'Open lead',
-          kind: 'today',
-          lead: lead,
-        ),
-      );
-    }
-
-    if (suggestions.isEmpty) {
-      suggestions.add(
-        const NotificationSuggestion(
-          title: 'Nothing urgent right now',
-          subtitle:
-              'Your reminders are in sync. New follow-ups will appear here automatically.',
-          actionLabel: 'All clear',
-          kind: 'clear',
-        ),
-      );
-    }
-
-    return suggestions.take(4).toList();
-  }
-
-  /// 🔔 SCHEDULE
-  static Future<void> scheduleNotification({
-    required int id,
-    required String title,
-    required String body,
-    required DateTime date,
-    String? payload,
-    bool repeatDaily = false,
-  }) async {
-    final scheduledDate = tz.TZDateTime.from(date, tz.local);
-
+  static Future<void> _scheduleReminder(PlannedReminder reminder) async {
     const androidDetails = AndroidNotificationDetails(
       _channelId,
       _channelName,
@@ -282,7 +138,6 @@ class NotificationService {
       playSound: true,
       enableVibration: true,
     );
-
     const iosDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
@@ -293,10 +148,10 @@ class NotificationService {
     );
 
     await _notifications.zonedSchedule(
-      id: id,
-      title: title,
-      body: body,
-      scheduledDate: scheduledDate,
+      id: reminder.id,
+      title: reminder.title,
+      body: reminder.body,
+      scheduledDate: tz.TZDateTime.from(reminder.when, tz.local),
       notificationDetails: const NotificationDetails(
         android: androidDetails,
         iOS: iosDetails,
@@ -304,294 +159,52 @@ class NotificationService {
       androidScheduleMode: _canScheduleExactAlarms
           ? AndroidScheduleMode.exactAllowWhileIdle
           : AndroidScheduleMode.inexactAllowWhileIdle,
-      payload: payload,
-      matchDateTimeComponents: repeatDaily ? DateTimeComponents.time : null,
+      payload: reminder.payload,
+      matchDateTimeComponents:
+          reminder.repeatDaily ? DateTimeComponents.time : null,
     );
   }
 
-  /// ⚡ INSTANT
-  static Future<void> showNotification({
-    required int id,
-    required String title,
-    required String body,
-    String? payload,
+  /// Reconcile the OS reminder set against [leads] (defaults to the legacy
+  /// lead maps). Safe to call from anywhere; runs are serialized. [leads] must
+  /// be the COMPLETE desired lead set — reconcile cancels reminders for any
+  /// lead not present, so never pass a partial subset.
+  static Future<void> syncFollowUpReminders({
+    List<Map<String, dynamic>>? leads,
   }) async {
-    const androidDetails = AndroidNotificationDetails(
-      _channelId,
-      _channelName,
-      channelDescription: _channelDescription,
-      importance: Importance.max,
-      priority: Priority.high,
-      playSound: true,
-      enableVibration: true,
-    );
-
-    const iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-      presentBanner: true,
-      presentList: true,
-      threadIdentifier: 'follow_up_thread',
-    );
-
-    await _notifications.show(
-      id: id,
-      title: title,
-      body: body,
-      notificationDetails: const NotificationDetails(
-        android: androidDetails,
-        iOS: iosDetails,
-      ),
-      payload: payload,
-    );
+    final scheduler = _scheduler;
+    if (scheduler == null) return;
+    final leadData = leads ?? await EnquiriesService().fetchLegacyMaps();
+    await scheduler.sync(leadData);
   }
 
-  /// ❌ CANCEL
-  static Future<void> cancel(int id) async {
-    await _notifications.cancel(id: id);
-  }
-
-  /// ❌ CANCEL ALL
-  static Future<void> cancelAll() async {
-    await _notifications.cancelAll();
-  }
-
-  /// 🧠 SMART REMINDERS
+  /// Entry point used by app lifecycle + save flows. Prefers the follow_ups
+  /// table, falling back to legacy leads if it is unavailable.
   static Future<void> checkAndTriggerSmartReminders() async {
     try {
       final followUps = await FollowUpsService().fetchPending();
       final maps = followUps.map((f) => f.toNotificationMap()).toList();
-      await syncLeadNotifications(leads: maps);
+      await syncFollowUpReminders(leads: maps);
     } catch (_) {
-      // Fall back to legacy leads query if follow_ups is unavailable.
       final leads = await EnquiriesService().fetchLegacyMaps();
-      await syncLeadNotifications(leads: leads);
+      await syncFollowUpReminders(leads: leads);
     }
   }
 
-  static Future<void> syncLeadNotifications({
-    List<Map<String, dynamic>>? leads,
-  }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final currentTime = DateTime.now();
-    final leadData = leads ?? await EnquiriesService().fetchLegacyMaps();
-
-    final previousLeadIds =
-        prefs.getStringList(_scheduledLeadIdsKey) ?? <String>[];
-    final currentLeadIds = leadData
-        .where(
-          (lead) =>
-              lead["id"] != null &&
-              lead["status"] == "follow" &&
-              parseFollowUpDate(lead["follow_up_date"]) != null,
-        )
-        .map((lead) => lead["id"].toString())
-        .toSet();
-
-    for (final removedLeadId in previousLeadIds.where(
-      (leadId) => !currentLeadIds.contains(leadId),
-    )) {
-      await cancel(_notificationId(removedLeadId, "follow_up"));
-      await cancel(_notificationId(removedLeadId, "overdue"));
-    }
-
-    for (final lead in leadData) {
-      final leadId = lead["id"]?.toString();
-      final followUpDate = parseFollowUpDate(lead["follow_up_date"]);
-
-      if (leadId == null ||
-          followUpDate == null ||
-          lead["status"] != "follow") {
-        if (leadId != null) {
-          await cancel(_notificationId(leadId, "follow_up"));
-          await cancel(_notificationId(leadId, "overdue"));
-        }
-        continue;
-      }
-
-      final leadName = (lead["name"] ?? "Customer").toString();
-      final followUpNotificationId = _notificationId(leadId, "follow_up");
-      final overdueNotificationId = _notificationId(leadId, "overdue");
-
-      if (isOverdueFollowUp(lead, now: currentTime)) {
-        await cancel(followUpNotificationId);
-        await scheduleNotification(
-          id: overdueNotificationId,
-          title: 'Overdue follow-up',
-          body: '$leadName still needs your attention.',
-          date: _nextOverdueReminderTime(currentTime),
-          payload: leadId,
-          repeatDaily: true,
-        );
-        await _showOncePerDay(
-          prefs: prefs,
-          type: "overdue",
-          leadId: leadId,
-          day: currentTime,
-          id: overdueNotificationId,
-          title: "Overdue follow-up",
-          body: "$leadName still needs your attention.",
-        );
-        continue;
-      }
-
-      await cancel(overdueNotificationId);
-      final notificationTime = _notificationTimeForFollowUp(followUpDate);
-
-      if (notificationTime.isAfter(currentTime)) {
-        await scheduleNotification(
-          id: followUpNotificationId,
-          title: "Follow-up reminder",
-          body: "Reach out to $leadName on time.",
-          date: notificationTime,
-          payload: leadId,
-        );
-        continue;
-      }
-
-      await cancel(followUpNotificationId);
-
-      if (isFollowUpToday(lead, now: currentTime)) {
-        await _showOncePerDay(
-          prefs: prefs,
-          type: "today",
-          leadId: leadId,
-          day: currentTime,
-          id: followUpNotificationId,
-          title: "Follow-up today",
-          body: "Reach out to $leadName today.",
-        );
-      }
-    }
-
-    await prefs.setStringList(_scheduledLeadIdsKey, currentLeadIds.toList());
+  static void _handleTap(String? payload) {
+    if (!_tapDeduper.shouldHandle(payload)) return;
+    _navigateToLead(payload!);
   }
 
-  static Future<void> _showOncePerDay({
-    required SharedPreferences prefs,
-    required String type,
-    required String leadId,
-    required DateTime day,
-    required int id,
-    required String title,
-    required String body,
-  }) async {
-    final receiptKey = _dailyReceiptKey(type, leadId, day);
-    if (prefs.getBool(receiptKey) == true) return;
-
-    await showNotification(id: id, title: title, body: body, payload: leadId);
-    await prefs.setBool(receiptKey, true);
-  }
-
-  static DateTime _notificationTimeForFollowUp(DateTime followUpDate) {
-    final hasExplicitTime =
-        followUpDate.hour != 0 ||
-        followUpDate.minute != 0 ||
-        followUpDate.second != 0 ||
-        followUpDate.millisecond != 0 ||
-        followUpDate.microsecond != 0;
-
-    return hasExplicitTime
-        ? followUpDate
-        : DateTime(
-            followUpDate.year,
-            followUpDate.month,
-            followUpDate.day,
-            _defaultReminderHour,
-          );
-  }
-
-  static DateTime _nextOverdueReminderTime(DateTime currentTime) {
-    final reminderTime = DateTime(
-      currentTime.year,
-      currentTime.month,
-      currentTime.day,
-      _defaultReminderHour,
-    );
-
-    if (reminderTime.isAfter(currentTime)) {
-      return reminderTime;
-    }
-
-    return reminderTime.add(const Duration(days: 1));
-  }
-
-  static String _dailyReceiptKey(String type, String leadId, DateTime date) {
-    final dayKey =
-        "${date.year.toString().padLeft(4, '0')}-"
-        "${date.month.toString().padLeft(2, '0')}-"
-        "${date.day.toString().padLeft(2, '0')}";
-    return "follow_up_notification_${type}_${leadId}_$dayKey";
-  }
-
-  static int _notificationId(String leadId, String type) {
-    return Object.hash(leadId, type) & 0x7fffffff;
-  }
-
-  static String _leadName(Map<String, dynamic> lead) {
-    return (lead["name"] ?? "Customer").toString().trim();
-  }
-
-  static bool _isClosedLead(Map<String, dynamic> lead) {
-    return (lead["status"] ?? "").toString().toLowerCase() == "closed";
-  }
-
-  static bool _isHighIntentLead(Map<String, dynamic> lead) {
-    final intent = (lead["intent"] ?? "").toString().toLowerCase();
-    final message = (lead["msg"] ?? "").toString().toLowerCase();
-
-    return intent == "high" ||
-        message.contains("price") ||
-        message.contains("quote") ||
-        message.contains("buy") ||
-        message.contains("order");
-  }
-
-  static String _friendlyFollowUpLabel(
-    Map<String, dynamic> lead,
-    DateTime currentTime,
-  ) {
-    final followUpDate = parseFollowUpDate(lead["follow_up_date"]);
-    if (followUpDate == null) {
-      return 'today';
-    }
-
-    final notificationTime = _notificationTimeForFollowUp(followUpDate);
-    final hour = notificationTime.hour % 12 == 0
-        ? 12
-        : notificationTime.hour % 12;
-    final minute = notificationTime.minute.toString().padLeft(2, '0');
-    final suffix = notificationTime.hour >= 12 ? 'PM' : 'AM';
-
-    if (notificationTime.year == currentTime.year &&
-        notificationTime.month == currentTime.month &&
-        notificationTime.day == currentTime.day) {
-      return 'for $hour:$minute $suffix';
-    }
-
-    return 'soon';
-  }
-
-  static void _queueLeadNavigation(String? leadId) {
-    if (leadId == null || leadId.isEmpty) return;
-
-    _pendingLeadId = leadId;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+  static Future<void> _navigateToLead(String leadId) async {
+    // Bounded wait for the navigator to be ready (cold start), then push once.
+    for (var attempt = 0; attempt < 20; attempt++) {
       final navigator = navigatorKey.currentState;
-      final queuedLeadId = _pendingLeadId;
-
-      if (navigator == null || queuedLeadId == null) {
-        if (queuedLeadId != null) {
-          _queueLeadNavigation(queuedLeadId);
-        }
+      if (navigator != null) {
+        navigator.push(LeadNavigationService.leadDetailRoute({'id': leadId}));
         return;
       }
-
-      _pendingLeadId = null;
-      navigator.push(
-        LeadNavigationService.leadDetailRoute({"id": queuedLeadId}),
-      );
-    });
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+    }
   }
 }

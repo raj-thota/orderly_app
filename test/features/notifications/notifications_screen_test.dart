@@ -65,6 +65,7 @@ AiWorkItem _item({
   String priority = 'high',
   String? name,
   String? phone,
+  DateTime? createdAt,
 }) =>
     AiWorkItem(
       id: id,
@@ -77,6 +78,7 @@ AiWorkItem _item({
       customerId: 'c-$id',
       customerName: name ?? 'Customer $id',
       phone: phone,
+      createdAt: createdAt,
     );
 
 Widget _wrap(List<AiWorkItem> items) => ProviderScope(
@@ -149,6 +151,40 @@ void main() {
     await t.pumpAndSettle();
 
     expect(find.text('Priya'), findsNothing);
+    expect(find.textContaining('All caught up'), findsOneWidget);
+  });
+
+  testWidgets('renders a relative timestamp when createdAt is set', (t) async {
+    await t.pumpWidget(_wrap([
+      _item(name: 'Priya', createdAt: DateTime.now().subtract(const Duration(hours: 2, minutes: 1))),
+    ]));
+    await t.pumpAndSettle();
+    expect(find.textContaining('2h ago'), findsOneWidget);
+  });
+
+  testWidgets('swiping a tile dismisses it', (t) async {
+    await t.pumpWidget(_wrap([_item(id: '3', name: 'Priya')]));
+    await t.pumpAndSettle();
+
+    await t.drag(find.text('Priya'), const Offset(-500, 0));
+    await t.pumpAndSettle();
+
+    expect(find.text('Priya'), findsNothing);
+    expect(find.text('Dismissed'), findsOneWidget);
+  });
+
+  testWidgets('mark-all-done clears the list', (t) async {
+    await t.pumpWidget(_wrap([
+      _item(id: '1', name: 'Priya'),
+      _item(id: '2', name: 'Rahul', priority: 'medium'),
+    ]));
+    await t.pumpAndSettle();
+
+    await t.tap(find.byKey(const Key('notif_mark_all_done')));
+    await t.pumpAndSettle();
+
+    expect(find.text('Priya'), findsNothing);
+    expect(find.text('Rahul'), findsNothing);
     expect(find.textContaining('All caught up'), findsOneWidget);
   });
 }

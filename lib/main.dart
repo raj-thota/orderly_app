@@ -65,7 +65,8 @@ class MainScreen extends ConsumerStatefulWidget {
   ConsumerState<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends ConsumerState<MainScreen> {
+class _MainScreenState extends ConsumerState<MainScreen>
+    with WidgetsBindingObserver {
   int currentIndex = 0;
   late final List<Widget> _screens;
 
@@ -95,9 +96,24 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       const BusinessHubScreen(),
     ];
 
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       NotificationService.checkAndTriggerSmartReminders();
+      NotificationService.consumePendingLaunchTap();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      NotificationService.checkAndTriggerSmartReminders();
+    }
   }
 
   @override

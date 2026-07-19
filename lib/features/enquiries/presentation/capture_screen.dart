@@ -244,7 +244,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
       if (!mounted) return;
       if (Navigator.canPop(context)) Navigator.pop(context);
       ref.read(enquiriesControllerProvider.notifier).load();
-      NotificationService.syncLeadNotifications().catchError((_) {});
+      NotificationService.syncFollowUpReminders().catchError((_) {});
       messenger.showSnackBar(
         const SnackBar(content: Text('Quote shared and enquiry saved')),
       );
@@ -268,7 +268,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
       ref.read(enquiriesControllerProvider.notifier).load();
       // Schedule/refresh the follow-up reminder for the just-saved enquiry.
       // Fire-and-forget; a scheduling failure must never break the save.
-      NotificationService.syncLeadNotifications().catchError((_) {});
+      NotificationService.syncFollowUpReminders().catchError((_) {});
       messenger.showSnackBar(SnackBar(
         content: Text(result.kind == SaveKind.order
             ? 'Order created for ${result.customerName}'
