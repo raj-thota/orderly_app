@@ -1,6 +1,8 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeaders, json } from "../_shared/cors.ts";
-import { createParser } from "./provider.ts";
+import { createProvider } from "../_shared/ai/factory.ts";
+import { parseEnquiryPrompt, parseEnquirySchema } from "../_shared/ai/prompts/parse-enquiry.ts";
+import { ParsedEnquiry } from "./schema.ts";
 
 const MAX_INPUT_CHARS = 4000;
 const MAX_IMAGE_B64 = 2_000_000; // ~1.5 MB decoded
@@ -84,8 +86,14 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const parser = createParser();
-    const result = await parser.parse({ text, image });
+    const today = new Date().toISOString().slice(0, 10);
+    const provider = createProvider("parse-enquiry");
+    const result = await provider.generateJson<ParsedEnquiry>({
+      messages: [{ role: "user", content: parseEnquiryPrompt(text, today) }],
+      schema: parseEnquirySchema,
+      temperature: 0,
+      image: image ? { mimeType: image.mimeType, dataBase64: image.data } : undefined,
+    });
     return json(result, 200);
   } catch (e) {
     // Label only — never the chat text or provider payload.
