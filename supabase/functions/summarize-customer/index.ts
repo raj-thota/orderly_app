@@ -1,6 +1,7 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeaders, json } from "../_shared/cors.ts";
-import { createSummarizeProvider } from "./provider.ts";
+import { createProvider } from "../_shared/ai/factory.ts";
+import { summarizePrompt, summarizeSchema } from "../_shared/ai/prompts/summarize-customer.ts";
 import { createHash } from "node:crypto";
 
 const RATE_MAX = 30;
@@ -94,11 +95,22 @@ Deno.serve(async (req) => {
     : [];
 
   try {
-    const provider = createSummarizeProvider();
-    const result = await provider.summarize({
-      customerName: customerRow?.name ?? null,
-      messages,
-      existingFacts,
+    const provider = createProvider("summarize-customer");
+    const result = await provider.generateJson<{
+      bullets: string[];
+      close_confidence: number;
+      facts: { fact: string; source_message_id: string }[];
+    }>({
+      messages: [{
+        role: "user",
+        content: summarizePrompt({
+          customerName: customerRow?.name ?? null,
+          messages,
+          existingFacts,
+        }),
+      }],
+      schema: summarizeSchema,
+      temperature: 0.2,
     });
 
     // Clamp confidence.

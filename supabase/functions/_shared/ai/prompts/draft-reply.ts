@@ -1,8 +1,6 @@
-export type DraftObjective =
-  | "reply"
-  | "payment_reminder"
-  | "follow_up"
-  | "nudge";
+import type { NeutralSchema } from "../schema.ts";
+
+export type DraftObjective = "reply" | "payment_reminder" | "follow_up" | "nudge";
 
 export interface DraftInput {
   customerId: string;
@@ -13,21 +11,16 @@ export interface DraftInput {
   enquiryContext: string | null;
 }
 
-export interface DraftOutput {
-  message: string;
-  confidence: number; // 0..1
-}
-
-export const responseSchema = {
-  type: "OBJECT",
+export const draftReplySchema: NeutralSchema = {
+  type: "object",
   properties: {
-    message: { type: "STRING" },
-    confidence: { type: "NUMBER" },
+    message: { type: "string" },
+    confidence: { type: "number" },
   },
   required: ["message", "confidence"],
 };
 
-export function buildPrompt(input: DraftInput, sellerName: string): string {
+export function draftReplyPrompt(input: DraftInput, sellerName: string): string {
   const lastMessages = input.messages.slice(-10);
   const chatLines = lastMessages
     .map((m) => `${m.direction === "inbound" ? "Customer" : "You"}: ${m.body}`)
@@ -38,10 +31,8 @@ export function buildPrompt(input: DraftInput, sellerName: string): string {
       "Write a warm, concise reply to the customer's latest message. Match the seller's conversational tone.",
     payment_reminder:
       "Write a polite payment reminder. Do NOT include any rupee amounts, UPI IDs, or account numbers in the message — those will be added by the seller from their records.",
-    follow_up:
-      "Write a friendly follow-up message to re-engage the customer.",
-    nudge:
-      "Write a short nudge to prompt the customer to respond.",
+    follow_up: "Write a friendly follow-up message to re-engage the customer.",
+    nudge: "Write a short nudge to prompt the customer to respond.",
   };
 
   return [
@@ -62,7 +53,5 @@ export function buildPrompt(input: DraftInput, sellerName: string): string {
     input.enquiryContext ? `Context: ${input.enquiryContext}` : "",
     "",
     "Return JSON with 'message' (the draft text) and 'confidence' (0..1, your confidence in the draft quality).",
-  ]
-    .filter(Boolean)
-    .join("\n");
+  ].filter(Boolean).join("\n");
 }

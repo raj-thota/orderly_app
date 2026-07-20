@@ -1,30 +1,23 @@
+import type { NeutralSchema } from "../schema.ts";
+
 export interface SummarizeInput {
   customerName: string | null;
   messages: { direction: string; body: string; id: string }[];
   existingFacts: { fact: string }[];
 }
 
-export interface SummarizeOutput {
-  bullets: string[];
-  close_confidence: number;
-  facts: { fact: string; source_message_id: string }[];
-}
-
-export const responseSchema = {
-  type: "OBJECT",
+export const summarizeSchema: NeutralSchema = {
+  type: "object",
   properties: {
-    bullets: {
-      type: "ARRAY",
-      items: { type: "STRING" },
-    },
-    close_confidence: { type: "NUMBER" },
+    bullets: { type: "array", items: { type: "string" } },
+    close_confidence: { type: "number" },
     facts: {
-      type: "ARRAY",
+      type: "array",
       items: {
-        type: "OBJECT",
+        type: "object",
         properties: {
-          fact: { type: "STRING" },
-          source_message_id: { type: "STRING" },
+          fact: { type: "string" },
+          source_message_id: { type: "string" },
         },
         required: ["fact", "source_message_id"],
       },
@@ -33,7 +26,7 @@ export const responseSchema = {
   required: ["bullets", "close_confidence", "facts"],
 };
 
-export function buildPrompt(input: SummarizeInput): string {
+export function summarizePrompt(input: SummarizeInput): string {
   const chatLines = input.messages
     .map((m) => `[${m.id}] ${m.direction === "inbound" ? "Customer" : "Seller"}: ${m.body}`)
     .join("\n");
