@@ -1,6 +1,7 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeaders, json } from "../_shared/cors.ts";
-import { createDraftProvider } from "./provider.ts";
+import { createProvider } from "../_shared/ai/factory.ts";
+import { DraftInput, draftReplyPrompt, draftReplySchema } from "../_shared/ai/prompts/draft-reply.ts";
 
 const RATE_MAX = 60;
 const RATE_WINDOW_SECONDS = 3600;
@@ -92,20 +93,20 @@ Deno.serve(async (req) => {
     .maybeSingle();
 
   try {
-    const provider = createDraftProvider();
-    const result = await provider.generate(
-      {
-        customerId,
-        objective: objective as "reply" | "payment_reminder" | "follow_up" | "nudge",
-        messages,
-        customerName: customerRow?.name ?? null,
-        outstandingAmount: null, // never from model; client reads from DB
-        enquiryContext: leadRow?.message ?? null,
-      },
-      bizRow?.name ?? "Seller",
-    );
-
-    // Clamp confidence.
+    const provider = createProvider("draft-reply");
+    const input: DraftInput = {
+      customerId,
+      objective: objective as DraftInput["objective"],
+      messages,
+      customerName: customerRow?.name ?? null,
+      outstandingAmount: null, // never from model; client reads from DB
+      enquiryContext: leadRow?.message ?? null,
+    };
+    const result = await provider.generateJson<{ message: string; confidence: number }>({
+      messages: [{ role: "user", content: draftReplyPrompt(input, bizRow?.name ?? "Seller") }],
+      schema: draftReplySchema,
+      temperature: 0.4,
+    });
     const confidence = Math.min(1, Math.max(0, result.confidence));
     return json({ message: result.message, confidence }, 200);
   } catch (e) {
