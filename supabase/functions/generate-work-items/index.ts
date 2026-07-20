@@ -1,7 +1,8 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeaders, json } from "../_shared/cors.ts";
-import { createWorkItemsProvider } from "./provider.ts";
-import { CustomerSignal, WorkItemKind, WorkItemPriority } from "./schema.ts";
+import { createProvider } from "../_shared/ai/factory.ts";
+import { CustomerSignal, workItemsPrompt, workItemsSchema } from "../_shared/ai/prompts/work-items.ts";
+import { GenerateOutput, WorkItemKind, WorkItemPriority } from "./schema.ts";
 
 const RATE_MAX = 10;
 const RATE_WINDOW_SECONDS = 3600;
@@ -81,7 +82,8 @@ Deno.serve(async (req) => {
       .limit(MAX_CUSTOMERS)
     : { data: [] };
 
-  const lastMsgByConv = new Map<string, typeof lastMsgs extends (infer T)[] | null ? T : never>();
+  type LastMsg = { conversation_id: string; direction: string | null; body: string | null; created_at: string | null };
+  const lastMsgByConv = new Map<string, LastMsg>();
   for (const msg of lastMsgs ?? []) {
     if (!lastMsgByConv.has(msg.conversation_id)) {
       lastMsgByConv.set(msg.conversation_id, msg);
@@ -175,12 +177,13 @@ Deno.serve(async (req) => {
     .eq("user_id", userId)
     .maybeSingle();
 
-  let rawItems: ReturnType<typeof createWorkItemsProvider> extends { generate: (...args: unknown[]) => Promise<infer R> } ? R extends { items: (infer I)[] } ? I[] : never : never;
+  let rawItems: GenerateOutput["items"];
   try {
-    const provider = createWorkItemsProvider();
-    const result = await provider.generate({
-      signals,
-      sellerName: bizRow?.name ?? "Seller",
+    const provider = createProvider("generate-work-items");
+    const result = await provider.generateJson<GenerateOutput>({
+      messages: [{ role: "user", content: workItemsPrompt({ signals, sellerName: bizRow?.name ?? "Seller" }) }],
+      schema: workItemsSchema,
+      temperature: 0.3,
     });
     rawItems = result.items ?? [];
   } catch (e) {
