@@ -1,0 +1,8 @@
+{
+  "tasks": {
+    "test": "deno test --allow-env _shared/ai/",
+    "check": "deno check **/*.ts"
+  },
+  "lint": { "rules": { "tags": ["recommended"] } },
+  "fmt": { "lineWidth": 100 }
+}
