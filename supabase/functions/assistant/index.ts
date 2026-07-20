@@ -1,7 +1,13 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeaders, json } from "../_shared/cors.ts";
-import { createAssistantProvider } from "./provider.ts";
-import type { AssistantInput } from "./schema.ts";
+import { createProvider } from "../_shared/ai/factory.ts";
+import {
+  assistantFinalSchema,
+  assistantSystemPrompt,
+  assistantTools,
+  PII_PATTERN,
+} from "../_shared/ai/prompts/assistant.ts";
+import type { AssistantInput, AssistantOutput } from "./schema.ts";
 
 const RATE_MAX = 40;
 const RATE_WINDOW_SECONDS = 3600;
@@ -70,10 +76,54 @@ Deno.serve(async (req) => {
 
   const startMs = Date.now();
   try {
-    const provider = createAssistantProvider();
-    const output = await provider.answer(question, history, supabase, sellerName);
+    const provider = createProvider("assistant");
+    const output = await provider.runToolLoop<AssistantOutput>({
+      system: assistantSystemPrompt(sellerName),
+      messages: [
+        ...history.map((h) => ({
+          role: h.role === "assistant" ? "assistant" as const : "user" as const,
+          content: h.content,
+        })),
+        { role: "user" as const, content: question },
+      ],
+      tools: assistantTools,
+      finalSchema: assistantFinalSchema,
+      maxToolCalls: 3,
+      temperature: 0.3,
+      executeTool: async (name, args) => {
+        const limit = Math.min(Number(args.limit ?? 10), 20);
+        switch (name) {
+          case "outstanding_summary": {
+            const { data, error } = await supabase.rpc("assistant_outstanding_summary", { p_limit: limit });
+            if (error) throw new Error(`rpc_outstanding_${error.code}`);
+            return data;
+          }
+          case "top_customers": {
+            const { data, error } = await supabase.rpc("assistant_top_customers", { p_limit: limit });
+            if (error) throw new Error(`rpc_top_customers_${error.code}`);
+            return data;
+          }
+          case "pipeline_stats": {
+            const { data, error } = await supabase.rpc("assistant_pipeline_stats");
+            if (error) throw new Error(`rpc_pipeline_stats_${error.code}`);
+            return data;
+          }
+          case "overdue_followups": {
+            const { data, error } = await supabase.rpc("assistant_overdue_followups", { p_limit: limit });
+            if (error) throw new Error(`rpc_overdue_followups_${error.code}`);
+            return data;
+          }
+          default:
+            throw new Error(`unknown_tool_${name}`);
+        }
+      },
+    });
 
-    // Log AI call latency (fire-and-forget).
+    // PII guard: strip any proposed items whose draft leaks sensitive data.
+    output.proposed_work_items = (output.proposed_work_items ?? []).filter(
+      (item) => !PII_PATTERN.test(item.draft_message),
+    );
+
     supabase.from("app_events").insert({
       user_id: userId,
       event_type: "ai_call",
@@ -83,13 +133,11 @@ Deno.serve(async (req) => {
     return json(output);
   } catch (err) {
     const message = err instanceof Error ? err.message : "unknown";
-
     supabase.from("app_events").insert({
       user_id: userId,
       event_type: "ai_call",
       payload: { fn: "assistant", ms: Date.now() - startMs, ok: false, error: message },
     }).then(() => {});
-
     if (message.includes("abort") || message.includes("timeout")) {
       return json({ error: "assistant_timeout" }, 504);
     }
