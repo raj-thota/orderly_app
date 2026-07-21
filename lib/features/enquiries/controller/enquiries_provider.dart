@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:orderly_app/core/providers/auth_providers.dart';
 import '../data/capture_draft.dart';
+import '../data/contacts_service.dart';
 import '../data/customers_service.dart';
 import '../data/enquiries_service.dart';
 import '../data/enquiry.dart';
@@ -10,6 +11,11 @@ final customersServiceProvider = Provider<CustomersService>((ref) {
   ref.watch(authUserIdProvider.select((v) => v.valueOrNull));
   return CustomersService();
 });
+
+/// Native OS contact picker for the manual add form. Injected so tests can
+/// override it with a fake instead of hitting the platform picker.
+final contactsServiceProvider =
+    Provider<ContactsService>((ref) => DeviceContactsService());
 
 final enquiriesServiceProvider = Provider<EnquiriesService>((ref) {
   ref.watch(authUserIdProvider.select((v) => v.valueOrNull));

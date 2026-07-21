@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:orderly_app/core/theme/app_colors.dart';
 import 'package:orderly_app/core/theme/app_spacing.dart';
 import 'package:orderly_app/features/enquiries/controller/capture_provider.dart';
+import 'package:orderly_app/features/enquiries/controller/enquiries_provider.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
 import 'extraction_progress_screen.dart';
@@ -134,15 +135,18 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
           _Header(),
           if (_source == null) _SourcePicker(onTap: _pickSource),
           if (_source != null) ...[
-            _InputArea(
-              source: _source!,
-              textCtrl: _textCtrl,
-              listening: _listening,
-              onTextChanged: _onTextChanged,
-              onToggleVoice:
-                  _listening ? _stopListening : () => _startListening(),
-              screenshotBytes: state.screenshotBytes,
-            ),
+            if (_source == _CaptureSource.manual)
+              const _ManualForm()
+            else
+              _InputArea(
+                source: _source!,
+                textCtrl: _textCtrl,
+                listening: _listening,
+                onTextChanged: _onTextChanged,
+                onToggleVoice:
+                    _listening ? _stopListening : () => _startListening(),
+                screenshotBytes: state.screenshotBytes,
+              ),
             Padding(
               padding: const EdgeInsets.fromLTRB(
                   AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.lg),
@@ -271,6 +275,153 @@ class _SourceCard extends StatelessWidget {
       );
 }
 
+/// Structured manual add: the user types the customer directly, so name and
+/// phone are captured as fields (never inferred by the chat parser). Each field
+/// feeds the shared [CaptureController] — name/phone become manual values the AI
+/// refine cannot overwrite; the optional description still drives items/intent.
+class _ManualForm extends ConsumerStatefulWidget {
+  const _ManualForm();
+
+  @override
+  ConsumerState<_ManualForm> createState() => _ManualFormState();
+}
+
+class _ManualFormState extends ConsumerState<_ManualForm> {
+  final _nameCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
+  final _descCtrl = TextEditingController();
+  Timer? _descDebounce;
+
+  @override
+  void dispose() {
+    _descDebounce?.cancel();
+    _nameCtrl.dispose();
+    _phoneCtrl.dispose();
+    _descCtrl.dispose();
+    super.dispose();
+  }
+
+  CaptureController get _controller =>
+      ref.read(captureControllerProvider.notifier);
+
+  void _onDescChanged(String v) {
+    // Debounce: the description drives an AI refine, so avoid firing per key.
+    _descDebounce?.cancel();
+    _descDebounce = Timer(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
+      _controller.setText(v);
+    });
+  }
+
+  Future<void> _pickContact() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final pick = await ref.read(contactsServiceProvider).pickContact();
+    if (!mounted || pick == null) return; // cancelled / denied
+    if (pick.name != null) {
+      _nameCtrl.text = pick.name!;
+      _controller.setName(pick.name!);
+    }
+    if (pick.phone != null) {
+      _phoneCtrl.text = pick.phone!;
+      _controller.setPhone(pick.phone!);
+    }
+    if (pick.name == null && pick.phone == null) {
+      messenger.showSnackBar(const SnackBar(
+          content: Text('That contact has no name or number')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          OutlinedButton.icon(
+            onPressed: _pickContact,
+            icon: const Icon(Icons.contacts_outlined, size: 18),
+            label: const Text('Pick from Contacts'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              side: const BorderSide(color: AppColors.border),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _Field(
+            controller: _nameCtrl,
+            hint: 'Customer name',
+            autofocus: true,
+            textCapitalization: TextCapitalization.words,
+            onChanged: _controller.setName,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _Field(
+            controller: _phoneCtrl,
+            hint: 'Phone number',
+            keyboardType: TextInputType.phone,
+            onChanged: _controller.setPhone,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _Field(
+            controller: _descCtrl,
+            hint: 'What they want (optional)',
+            maxLines: 3,
+            onChanged: _onDescChanged,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Field extends StatelessWidget {
+  const _Field({
+    required this.controller,
+    required this.hint,
+    required this.onChanged,
+    this.keyboardType,
+    this.maxLines = 1,
+    this.autofocus = false,
+    this.textCapitalization = TextCapitalization.none,
+  });
+
+  final TextEditingController controller;
+  final String hint;
+  final ValueChanged<String> onChanged;
+  final TextInputType? keyboardType;
+  final int maxLines;
+  final bool autofocus;
+  final TextCapitalization textCapitalization;
+
+  @override
+  Widget build(BuildContext context) => TextField(
+        controller: controller,
+        onChanged: onChanged,
+        keyboardType: keyboardType,
+        maxLines: maxLines,
+        autofocus: autofocus,
+        textCapitalization: textCapitalization,
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle:
+              const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+          filled: true,
+          fillColor: AppColors.background,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
+        ),
+      );
+}
+
 class _InputArea extends StatelessWidget {
   const _InputArea({
     required this.source,
@@ -326,13 +477,10 @@ class _InputArea extends StatelessWidget {
           TextField(
             controller: textCtrl,
             onChanged: (_) => onTextChanged(),
-            maxLines: source == _CaptureSource.manual ? 4 : 6,
-            autofocus: source == _CaptureSource.paste ||
-                source == _CaptureSource.manual,
+            maxLines: 6,
+            autofocus: source == _CaptureSource.paste,
             decoration: InputDecoration(
-              hintText: source == _CaptureSource.manual
-                  ? 'Customer name, phone, what they want…'
-                  : 'Paste WhatsApp chat here…',
+              hintText: 'Paste WhatsApp chat here…',
               hintStyle:
                   const TextStyle(color: AppColors.textSecondary, fontSize: 14),
               filled: true,

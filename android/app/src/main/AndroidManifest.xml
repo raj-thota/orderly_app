@@ -2,6 +2,10 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+    <!-- Android 11+/Xiaomi require this to pick a single contact via the native
+         picker (fluttercontactpicker). Requested at runtime; used only for the
+         user-initiated "Pick from Contacts" import in the manual add form. -->
+    <uses-permission android:name="android.permission.READ_CONTACTS"/>
 
     <application
         android:label="Closr"
