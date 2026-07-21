@@ -79,9 +79,13 @@ DateTime _weekStartOf(DateTime date) {
       .subtract(Duration(days: weekday - 1));
 }
 
+/// Reference "now" used to pick the calendar's initial week. Overridable in
+/// tests so the week math is deterministic regardless of the real date.
+final followUpCalendarClockProvider = Provider<DateTime>((_) => DateTime.now());
+
 final followUpCalendarProvider = StateNotifierProvider.autoDispose<
     FollowUpCalendarNotifier, FollowUpCalendarState>((ref) {
   final svc = ref.watch(followUpsServiceProvider);
-  final weekStart = _weekStartOf(DateTime.now());
+  final weekStart = _weekStartOf(ref.watch(followUpCalendarClockProvider));
   return FollowUpCalendarNotifier(svc, weekStart)..load();
 });

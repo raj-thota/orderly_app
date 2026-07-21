@@ -38,9 +38,14 @@ FollowUp _fu(String id, DateTime dueAt, {String? name}) => FollowUp(
       customerName: name ?? 'Test Customer',
     );
 
+// Any day within the week of Monday 2026-07-13, so the calendar's initial
+// week is fixed regardless of the real date the suite runs on.
+final _fixedNow = DateTime(2026, 7, 13, 9, 0);
+
 ProviderContainer _container(_CalFake fake) {
   final c = ProviderContainer(overrides: [
     followUpsServiceProvider.overrideWithValue(fake),
+    followUpCalendarClockProvider.overrideWithValue(_fixedNow),
   ]);
   addTearDown(c.dispose);
   return c;
