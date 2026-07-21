@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orderly_app/core/services/event_service.dart';
-import 'package:orderly_app/core/services/notification_service.dart';
 import 'package:orderly_app/core/theme/app_colors.dart';
 import 'package:orderly_app/core/theme/app_spacing.dart';
 import 'package:orderly_app/features/enquiries/controller/capture_provider.dart';
@@ -32,12 +31,23 @@ class _ReviewConfirmScreenState extends ConsumerState<ReviewConfirmScreen> {
     setState(() => _saving = true);
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
+    // Capture the confidence bucket up front: the controller is autoDispose, so
+    // reading its draft after popUntil would see a reset state.
+    final confidenceBucket = _confidenceBucket(
+        ref.read(captureControllerProvider).draft.confidence);
     try {
       final result =
           await ref.read(captureControllerProvider.notifier).save();
       if (!mounted) return;
-      await NotificationService.checkAndTriggerSmartReminders();
-      ref.read(enquiriesControllerProvider.notifier).load();
+      // One shared refresh for every surface a save can touch (enquiries,
+      // orders, work items) plus follow-up reminders. Do it while the widget —
+      // and therefore `ref` — is still mounted, before we pop.
+      refreshAfterCapture(ref);
+      // fire-and-forget telemetry (non-blocking)
+      ref.read(eventServiceProvider).track(
+            'capture_confirmed',
+            props: {'confidence_bucket': confidenceBucket},
+          );
       navigator.popUntil((r) => r.isFirst);
       messenger.showSnackBar(
         SnackBar(
@@ -45,18 +55,13 @@ class _ReviewConfirmScreenState extends ConsumerState<ReviewConfirmScreen> {
           backgroundColor: AppColors.success,
         ),
       );
-      // fire-and-forget telemetry (non-blocking)
-      ref.read(eventServiceProvider).track(
-            'capture_confirmed',
-            props: {'confidence_bucket': _confidenceBucket(
-                ref.read(captureControllerProvider).draft.confidence)},
-          );
     } catch (e) {
+      debugPrint('capture save failed: $e');
       if (mounted) {
         setState(() => _saving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Save failed: $e'),
+        messenger.showSnackBar(
+          const SnackBar(
+              content: Text("Couldn't save. Please try again."),
               backgroundColor: AppColors.danger),
         );
       }
@@ -72,6 +77,13 @@ class _ReviewConfirmScreenState extends ConsumerState<ReviewConfirmScreen> {
   @override
   Widget build(BuildContext context) {
     final draft = ref.watch(captureControllerProvider).draft;
+    final existingEnquiries =
+        ref.watch(enquiriesControllerProvider).valueOrNull ?? const [];
+    final isDuplicate = hasOpenEnquiryFor(
+      existing: existingEnquiries,
+      phone: draft.phone,
+      name: draft.name,
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -84,6 +96,10 @@ class _ReviewConfirmScreenState extends ConsumerState<ReviewConfirmScreen> {
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.md),
         children: [
+          if (isDuplicate) ...[
+            const _DuplicateBanner(),
+            const SizedBox(height: AppSpacing.md),
+          ],
           _Section(
             label: 'AI Confidence',
             child: ConfidenceBar(confidence: draft.confidence),
@@ -195,6 +211,35 @@ class _ReviewConfirmScreenState extends ConsumerState<ReviewConfirmScreen> {
       ),
     );
   }
+}
+
+class _DuplicateBanner extends StatelessWidget {
+  const _DuplicateBanner();
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: AppColors.warning.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.info_outline_rounded,
+                color: AppColors.warning, size: 18),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text(
+                'You already have an open enquiry for this customer. '
+                'Saving will add another — that\'s fine if it\'s a new request.',
+                style: TextStyle(fontSize: 13, color: AppColors.textPrimary),
+              ),
+            ),
+          ],
+        ),
+      );
 }
 
 class _Section extends StatelessWidget {

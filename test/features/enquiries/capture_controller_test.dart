@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orderly_app/features/conversations/controller/conversation_provider.dart' show conversationsServiceProvider;
@@ -17,6 +18,10 @@ import 'package:orderly_app/features/enquiries/data/enquiry.dart';
 import 'package:orderly_app/features/followups/data/follow_up.dart';
 import 'package:orderly_app/features/followups/data/follow_ups_service.dart';
 import 'package:orderly_app/features/catalog/data/product.dart';
+import 'package:orderly_app/features/orders/controller/orders_provider.dart';
+import 'package:orderly_app/features/orders/data/orders_service.dart';
+import 'package:orderly_app/features/work/controller/work_items_provider.dart';
+import 'package:orderly_app/features/work/data/ai_work_items_service.dart';
 
 class FakeCustomersService implements CustomersService {
   final created = <Map<String, String?>>[];
@@ -196,6 +201,37 @@ ProviderContainer makeContainer(
   container.listen(captureControllerProvider, (_, _) {}, fireImmediately: true);
   return container;
 }
+
+/// Spy controllers that count reloads without touching Supabase, so we can
+/// assert [refreshAfterCapture] fans out to every list surface.
+class SpyEnquiriesController extends EnquiriesController {
+  SpyEnquiriesController() : super(FakeEnquiriesService());
+  int loads = 0;
+  @override
+  Future<void> load() async => loads++;
+}
+
+class SpyOrdersController extends OrdersController {
+  SpyOrdersController() : super(OrdersService());
+  int loads = 0;
+  @override
+  Future<void> load() async => loads++;
+}
+
+class SpyWorkItemsNotifier extends WorkItemsNotifier {
+  SpyWorkItemsNotifier() : super(SupabaseAiWorkItemsService());
+  int loads = 0;
+  @override
+  Future<void> load() async => loads++;
+}
+
+Enquiry _openEnquiry({String? name, String? phone, String status = 'new'}) =>
+    Enquiry.fromMap({
+      'id': 'e-$name-$phone',
+      'status': status,
+      'source': 'paste',
+      'customers': {'name': name, 'phone': phone},
+    });
 
 void main() {
   test('save creates customer then enquiry with follow status', () async {
@@ -569,5 +605,67 @@ void main() {
     expect(state.draft.budget, 8000);
     expect(state.draft.notes, 'prefers evening');
     expect(state.draft.confidence, 0.9);
+  });
+
+  // ── refreshAfterCapture: the single post-save fan-out ──────────────────────
+  testWidgets(
+      'refreshAfterCapture reloads enquiries, orders and work items',
+      (tester) async {
+    final spyEnquiries = SpyEnquiriesController();
+    final spyOrders = SpyOrdersController();
+    final spyWork = SpyWorkItemsNotifier();
+    late WidgetRef capturedRef;
+
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        enquiriesControllerProvider.overrideWith((_) => spyEnquiries),
+        ordersControllerProvider.overrideWith((_) => spyOrders),
+        workItemsProvider.overrideWith((_) => spyWork),
+      ],
+      child: Consumer(
+        builder: (context, ref, _) {
+          capturedRef = ref;
+          return const SizedBox.shrink();
+        },
+      ),
+    ));
+
+    refreshAfterCapture(capturedRef);
+
+    // An order capture must refresh Orders, not only Enquiries — the original
+    // bug was that only the enquiries list was reloaded.
+    expect(spyEnquiries.loads, 1);
+    expect(spyOrders.loads, 1);
+    expect(spyWork.loads, 1);
+  });
+
+  // ── hasOpenEnquiryFor: non-blocking duplicate awareness ────────────────────
+  group('hasOpenEnquiryFor', () {
+    test('matches an open enquiry by normalized phone', () {
+      final existing = [_openEnquiry(name: 'Priya', phone: '9876543210')];
+      expect(
+        hasOpenEnquiryFor(
+            existing: existing, phone: '+91 98765 43210', name: 'Someone Else'),
+        isTrue,
+      );
+    });
+
+    test('falls back to case-insensitive name when no phone', () {
+      final existing = [_openEnquiry(name: 'Anita Rao')];
+      expect(hasOpenEnquiryFor(existing: existing, name: 'anita rao'), isTrue);
+    });
+
+    test('ignores the placeholder "Unknown" name', () {
+      final existing = [_openEnquiry(name: 'Unknown')];
+      expect(hasOpenEnquiryFor(existing: existing, name: 'Unknown'), isFalse);
+    });
+
+    test('no match returns false', () {
+      final existing = [_openEnquiry(name: 'Priya', phone: '9876543210')];
+      expect(
+        hasOpenEnquiryFor(existing: existing, phone: '9000000000'),
+        isFalse,
+      );
+    });
   });
 }

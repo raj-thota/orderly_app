@@ -6,7 +6,6 @@ import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:orderly_app/core/services/event_service.dart';
-import 'package:orderly_app/core/services/notification_service.dart';
 import 'package:orderly_app/core/theme/app_colors.dart';
 import 'package:orderly_app/core/theme/app_spacing.dart';
 import 'package:orderly_app/features/business/controller/business_profile_provider.dart';
@@ -16,7 +15,6 @@ import 'package:speech_to_text/speech_to_text.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../controller/capture_provider.dart';
-import '../controller/enquiries_provider.dart';
 import '../widgets/draft_card.dart';
 
 class CaptureScreen extends ConsumerStatefulWidget {
@@ -239,16 +237,16 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
 
     try {
       final result = await controller.save(quoteText: quote.message);
+      if (!mounted) return;
+      refreshAfterCapture(ref);
       ref.read(eventServiceProvider).track(
           result.kind == SaveKind.order ? 'order_created' : 'enquiry_created');
-      if (!mounted) return;
       if (Navigator.canPop(context)) Navigator.pop(context);
-      ref.read(enquiriesControllerProvider.notifier).load();
-      NotificationService.syncFollowUpReminders().catchError((_) {});
       messenger.showSnackBar(
         const SnackBar(content: Text('Quote shared and enquiry saved')),
       );
-    } catch (_) {
+    } catch (e) {
+      debugPrint('capture save failed after quote: $e');
       if (!mounted) return;
       messenger.showSnackBar(
         const SnackBar(content: Text('Shared, but could not save. Try again.')),
@@ -259,25 +257,26 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
   Future<void> _save() async {
     final controller = ref.read(captureControllerProvider.notifier);
     final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
     try {
       final result = await controller.save();
+      if (!mounted) return;
+      // One shared refresh (enquiries, orders, work items) + follow-up
+      // reminders, run while `ref` is still mounted, before we pop.
+      refreshAfterCapture(ref);
       ref.read(eventServiceProvider).track(
           result.kind == SaveKind.order ? 'order_created' : 'enquiry_created');
-      if (!mounted) return;
-      if (Navigator.canPop(context)) Navigator.pop(context);
-      ref.read(enquiriesControllerProvider.notifier).load();
-      // Schedule/refresh the follow-up reminder for the just-saved enquiry.
-      // Fire-and-forget; a scheduling failure must never break the save.
-      NotificationService.syncFollowUpReminders().catchError((_) {});
+      if (navigator.canPop()) navigator.pop();
       messenger.showSnackBar(SnackBar(
         content: Text(result.kind == SaveKind.order
             ? 'Order created for ${result.customerName}'
             : 'Enquiry saved for ${result.customerName}'),
       ));
-    } catch (_) {
+    } catch (e) {
+      debugPrint('capture save failed: $e');
       if (!mounted) return;
       messenger.showSnackBar(
-        const SnackBar(content: Text('Could not save. Try again.')),
+        const SnackBar(content: Text("Couldn't save. Please try again.")),
       );
     }
   }

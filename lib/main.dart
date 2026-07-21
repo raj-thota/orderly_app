@@ -18,6 +18,7 @@ import 'package:orderly_app/features/enquiries/controller/enquiries_provider.dar
 import 'package:orderly_app/features/capture/presentation/capture_sheet.dart';
 import 'features/orders/presentation/orders_screen.dart';
 import 'features/orders/controller/orders_provider.dart';
+import 'features/work/controller/work_items_provider.dart';
 import 'features/work/presentation/my_work_screen.dart';
 
 // Shared Widgets
@@ -76,12 +77,13 @@ class _MainScreenState extends ConsumerState<MainScreen>
     });
     // Tabs live in an always-alive IndexedStack; refresh their data on entry
     // so captures, payments, and conversions made elsewhere show up.
-    // 0=Today (shows orders+enquiries), 1=My Work, 2=Orders, 3=Business.
+    // 0=Today (shows orders+enquiries+work items), 1=My Work, 2=Orders.
     if (index == 0 || index == 2) {
       ref.read(ordersControllerProvider.notifier).load();
     }
     if (index == 0 || index == 1) {
       ref.read(enquiriesControllerProvider.notifier).load();
+      ref.read(workItemsProvider.notifier).load();
     }
   }
 

@@ -1,16 +1,21 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:orderly_app/core/services/notification_service.dart';
 import 'package:orderly_app/features/catalog/data/product.dart';
 import 'package:orderly_app/features/conversations/controller/conversation_provider.dart' show conversationsServiceProvider;
 import 'package:orderly_app/features/conversations/data/conversations_service.dart';
 import 'package:orderly_app/features/followups/data/follow_ups_service.dart';
+import 'package:orderly_app/features/orders/controller/orders_provider.dart';
 import 'package:orderly_app/features/quotations/data/quotation.dart';
+import 'package:orderly_app/features/work/controller/work_items_provider.dart';
 
 import '../data/ai_parse_service.dart';
 import '../data/capture_draft.dart';
 import '../data/customers_service.dart';
 import '../data/enquiries_service.dart';
+import '../data/enquiry.dart';
 import 'enquiries_provider.dart';
 
 final followUpsServiceProvider =
@@ -378,4 +383,52 @@ class CaptureController extends StateNotifier<CaptureState> {
       lines: lines,
     );
   }
+}
+
+/// Single source of truth for the refresh that must follow every successful
+/// capture, from any entry point (the review sheet flow and the product-first
+/// [CaptureScreen]). A capture can create an enquiry OR an order, so we reload
+/// both lists — Today, Enquiries and Orders all `watch` these shared singletons,
+/// so a new record shows up immediately without a manual pull-to-refresh. Work
+/// items are AI-curated in a separate table and won't contain the fresh record
+/// synchronously, but we reload them cheaply so the surface stays consistent if
+/// the backend has added one. Finally we (re)schedule follow-up reminders.
+///
+/// Every step is fire-and-forget: the save has already committed, so a refresh
+/// or scheduling hiccup must never surface to the user as a failed save.
+void refreshAfterCapture(WidgetRef ref) {
+  ref.read(enquiriesControllerProvider.notifier).load();
+  ref.read(ordersControllerProvider.notifier).load();
+  ref.read(workItemsProvider.notifier).load();
+  unawaited(
+    NotificationService.checkAndTriggerSmartReminders().catchError((_) {}),
+  );
+}
+
+/// True when [existing] already holds an open enquiry (status new/follow) for
+/// the same customer as the draft — matched by normalized phone when present,
+/// else by case-insensitive name. Powers a non-blocking "you already have an
+/// open enquiry" hint on the review screen; it never blocks the save.
+bool hasOpenEnquiryFor({
+  required List<Enquiry> existing,
+  String? phone,
+  String? name,
+}) {
+  bool isOpen(Enquiry e) => e.status == 'new' || e.status == 'follow';
+
+  final normalizedPhone = CaptureDraft.normalizePhone(phone);
+  if (normalizedPhone != null) {
+    return existing.any((e) =>
+        isOpen(e) &&
+        CaptureDraft.normalizePhone(e.customerPhone) == normalizedPhone);
+  }
+
+  final normalizedName = name?.trim().toLowerCase();
+  if (normalizedName == null ||
+      normalizedName.isEmpty ||
+      normalizedName == 'unknown') {
+    return false;
+  }
+  return existing.any((e) =>
+      isOpen(e) && e.customerName?.trim().toLowerCase() == normalizedName);
 }
