@@ -8,7 +8,7 @@ import 'capture_draft.dart';
 import 'enquiry.dart';
 
 const _selectWithJoins =
-    '*, customers(name, phone), products(name, images, price, is_unique, piece_status)';
+    '*, customers(name, phone, email), products(name, images, price, is_unique, piece_status)';
 
 class EnquiriesService {
   SupabaseClient get _client => Supabase.instance.client;
@@ -106,6 +106,28 @@ class EnquiriesService {
         .select(_selectWithJoins)
         .single();
     return Enquiry.fromMap(row);
+  }
+
+  /// Appends a quote_sent activity to an existing enquiry. Read-modify-write
+  /// is fine here: rows are per-user and edited from one device, so a lost
+  /// update is not a realistic risk and an RPC would be needless surface.
+  Future<void> appendQuoteActivity(String enquiryId, String quoteText) async {
+    final row = await _client
+        .from('leads')
+        .select('activities')
+        .eq('id', enquiryId)
+        .eq('user_id', _userId)
+        .maybeSingle();
+    if (row == null) return; // lead deleted while the share sheet was open
+    final activities = [
+      ...(row['activities'] as List? ?? const []),
+      {
+        'type': 'quote_sent',
+        'note': quoteText,
+        'time': DateTime.now().toIso8601String(),
+      },
+    ];
+    await updateEnquiry(enquiryId, {'activities': activities});
   }
 
   Future<void> updateEnquiry(String id, Map<String, dynamic> changes) async {

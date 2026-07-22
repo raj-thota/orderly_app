@@ -47,6 +47,12 @@ class EnquiriesController extends StateNotifier<AsyncValue<List<Enquiry>>> {
     await load();
   }
 
+  /// Records a quote_sent activity after the quote was actually shared.
+  Future<void> recordQuoteSent(String id, String quoteText) async {
+    await _service.appendQuoteActivity(id, quoteText);
+    await load();
+  }
+
   Future<void> markLost(String id) async {
     await _service.updateEnquiry(id, {'status': 'lost'});
     await load();

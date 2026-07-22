@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orderly_app/core/theme/app_colors.dart';
 import 'package:orderly_app/core/theme/app_spacing.dart';
+import 'package:orderly_app/features/business/controller/business_profile_provider.dart';
+import 'package:orderly_app/features/business/data/business_profile.dart';
+import 'package:orderly_app/features/catalog/controller/products_provider.dart';
+import 'package:orderly_app/features/quotations/data/quotation.dart';
+import 'package:orderly_app/features/quotations/presentation/quote_share_sheet.dart';
 import 'package:orderly_app/shared/widgets/app_card.dart';
 import 'package:orderly_app/shared/widgets/app_primary_button.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -51,6 +56,75 @@ class _EnquiryDetailScreenState extends ConsumerState<EnquiryDetailScreen> {
     } catch (_) {
       messenger.showSnackBar(
           const SnackBar(content: Text('Could not update. Try again.')));
+    }
+  }
+
+  bool _quoting = false;
+
+  Future<void> _sendQuote(Enquiry live) async {
+    if (_quoting) return; // await below opens a double-tap window
+    _quoting = true;
+    try {
+      await _sendQuoteInner(live);
+    } finally {
+      _quoting = false;
+    }
+  }
+
+  Future<void> _sendQuoteInner(Enquiry live) async {
+    // Await the profile rather than watching it in build: this screen only
+    // needs it here, and the future is normally already resolved by tap time.
+    BusinessProfile? profile;
+    try {
+      profile = await ref.read(businessProfileProvider.future);
+    } catch (_) {}
+    if (!mounted) return;
+    final products = ref.read(productsControllerProvider).valueOrNull ?? const [];
+
+    // Enquiries carry at most one attached product; catalog matching fills in
+    // the canonical name/price. Anything else stays editable in the sheet.
+    final lines = matchCatalog(
+      [
+        DraftItem(
+          name: live.productName ?? 'Item',
+          qty: 1,
+          price: live.productPrice,
+        ),
+      ],
+      products,
+    );
+    final quote = Quotation.compose(
+      businessName: profile?.name ?? 'My Shop',
+      upiId: profile?.upiId,
+      upiName: profile?.upiName,
+      customerName: live.customerName,
+      lines: lines,
+    );
+
+    final messenger = ScaffoldMessenger.of(context);
+    final sentText = await showQuoteShareSheet(
+      context,
+      QuoteShareRequest(
+        message: quote.message,
+        customerPhone: live.customerPhone,
+        customerEmail: live.customerEmail,
+        businessName: profile?.name,
+      ),
+    );
+    if (sentText == null || !mounted) return;
+
+    final id = live.id;
+    if (id == null) return; // nothing to record against
+
+    try {
+      await ref
+          .read(enquiriesControllerProvider.notifier)
+          .recordQuoteSent(id, sentText);
+      messenger.showSnackBar(const SnackBar(content: Text('Quote sent')));
+    } catch (_) {
+      // The quote already went out; losing the activity note is non-fatal.
+      messenger.showSnackBar(const SnackBar(
+          content: Text('Quote sent, but could not update the timeline')));
     }
   }
 
@@ -175,6 +249,12 @@ class _EnquiryDetailScreenState extends ConsumerState<EnquiryDetailScreen> {
             ),
           ),
           const SizedBox(height: AppSpacing.xl),
+          OutlinedButton.icon(
+            onPressed: () => _sendQuote(live),
+            icon: const Icon(Icons.request_quote_outlined, size: 18),
+            label: const Text('Send quote'),
+          ),
+          const SizedBox(height: AppSpacing.sm),
           AppPrimaryButton(
             label: 'Convert to order',
             loading: _busy,

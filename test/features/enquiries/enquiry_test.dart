@@ -64,4 +64,20 @@ void main() {
     });
     expect(e.screenshotUrl, 'uid/123.jpg');
   });
+
+  test('fromMap surfaces customer email when present', () {
+    final e = Enquiry.fromMap({
+      'id': 'e1',
+      'customers': {'name': 'Priya', 'phone': '9876543210', 'email': 'p@x.com'},
+    });
+    expect(e.customerEmail, 'p@x.com');
+  });
+
+  test('fromMap tolerates a missing email key', () {
+    final e = Enquiry.fromMap({
+      'id': 'e1',
+      'customers': {'name': 'Priya', 'phone': '9876543210'},
+    });
+    expect(e.customerEmail, isNull);
+  });
 }

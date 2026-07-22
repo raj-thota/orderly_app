@@ -1,14 +1,34 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:orderly_app/features/business/controller/business_profile_provider.dart';
+import 'package:orderly_app/features/business/data/business_profile.dart';
+import 'package:orderly_app/features/catalog/controller/products_provider.dart';
+import 'package:orderly_app/features/catalog/data/product.dart';
+import 'package:orderly_app/features/catalog/data/products_service.dart';
 import 'package:orderly_app/features/enquiries/controller/enquiries_provider.dart';
 import 'package:orderly_app/features/enquiries/data/capture_draft.dart';
 import 'package:orderly_app/features/enquiries/data/enquiry.dart';
 import 'package:orderly_app/features/enquiries/presentation/enquiry_detail_screen.dart';
 
 import 'capture_controller_test.dart' show FakeEnquiriesService;
+
+class QuoteRecordingService extends FakeEnquiriesService {
+  final quoteCalls = <(String, String)>[];
+
+  @override
+  Future<void> appendQuoteActivity(String enquiryId, String quoteText) async {
+    quoteCalls.add((enquiryId, quoteText));
+  }
+}
+
+class _EmptyProductsService extends Fake implements ProductsService {
+  @override
+  Future<List<Product>> fetchProducts() async => const [];
+}
 
 class RecordingEnquiriesService extends FakeEnquiriesService {
   String? convertedLeadId;
@@ -157,5 +177,63 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('This piece is already booked or sold.'), findsOneWidget);
+  });
+
+  Future<void> pumpWithQuoteOverrides(
+      WidgetTester tester, QuoteRecordingService service) async {
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        enquiriesServiceProvider.overrideWithValue(service),
+        productsServiceProvider.overrideWithValue(_EmptyProductsService()),
+        businessProfileProvider.overrideWith(
+            (ref) async => const BusinessProfile(name: 'Rekha Boutique')),
+      ],
+      child: MaterialApp(home: EnquiryDetailScreen(enquiry: enquiry)),
+    ));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('send quote shares and records a quote_sent activity',
+      (tester) async {
+    // Clipboard.setData goes over the platform channel; give it a handler.
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform, (call) async => null);
+    final service = QuoteRecordingService();
+    await pumpWithQuoteOverrides(tester, service);
+
+    await tester.ensureVisible(find.text('Send quote'));
+    await tester.tap(find.text('Send quote'));
+    await tester.pumpAndSettle();
+
+    // Sheet is prefilled from the enquiry's product and business profile.
+    expect(find.text('Send quotation'), findsOneWidget);
+    final preview = tester.widget<TextField>(find.byType(TextField));
+    expect(preview.controller!.text, contains('Rekha Boutique'));
+    expect(preview.controller!.text, contains('Red Banarasi'));
+
+    // Copy always succeeds, so it must record the activity.
+    await tester.tap(find.text('Copy'));
+    await tester.pumpAndSettle();
+
+    expect(service.quoteCalls, hasLength(1));
+    expect(service.quoteCalls.single.$1, 'e1');
+    expect(service.quoteCalls.single.$2, contains('Red Banarasi'));
+    expect(find.text('Quote sent'), findsOneWidget);
+  });
+
+  testWidgets('dismissing the quote sheet records nothing', (tester) async {
+    final service = QuoteRecordingService();
+    await pumpWithQuoteOverrides(tester, service);
+
+    await tester.ensureVisible(find.text('Send quote'));
+    await tester.tap(find.text('Send quote'));
+    await tester.pumpAndSettle();
+    expect(find.text('Send quotation'), findsOneWidget);
+
+    // Dismiss via the barrier above the sheet.
+    await tester.tapAt(const Offset(200, 50));
+    await tester.pumpAndSettle();
+
+    expect(service.quoteCalls, isEmpty);
   });
 }

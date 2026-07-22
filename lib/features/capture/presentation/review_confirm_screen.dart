@@ -3,9 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orderly_app/core/services/event_service.dart';
 import 'package:orderly_app/core/theme/app_colors.dart';
 import 'package:orderly_app/core/theme/app_spacing.dart';
+import 'package:orderly_app/features/business/controller/business_profile_provider.dart';
+import 'package:orderly_app/features/catalog/controller/products_provider.dart';
 import 'package:orderly_app/features/enquiries/controller/capture_provider.dart';
 import 'package:orderly_app/features/enquiries/controller/enquiries_provider.dart';
 import 'package:orderly_app/features/enquiries/data/capture_draft.dart';
+import 'package:orderly_app/features/quotations/presentation/quote_share_sheet.dart';
 import 'package:orderly_app/shared/widgets/confidence_bar.dart';
 
 String _formatCurrency(double amount) {
@@ -26,6 +29,51 @@ class ReviewConfirmScreen extends ConsumerStatefulWidget {
 
 class _ReviewConfirmScreenState extends ConsumerState<ReviewConfirmScreen> {
   bool _saving = false;
+  bool _quoting = false;
+
+  /// Quote text shared from this screen, saved into the enquiry's activities
+  /// when the user confirms. Discarded if they back out without saving.
+  String? _quoteText;
+
+  Future<void> _sendQuote() async {
+    if (_quoting) return;
+    _quoting = true;
+    try {
+      await _sendQuoteInner();
+    } finally {
+      _quoting = false;
+    }
+  }
+
+  Future<void> _sendQuoteInner() async {
+    final profile = ref.read(businessProfileProvider).valueOrNull;
+    final products = ref.read(productsControllerProvider).valueOrNull ?? const [];
+    final controller = ref.read(captureControllerProvider.notifier);
+    final draft = ref.read(captureControllerProvider).draft;
+
+    final quote = controller.buildQuotation(
+      businessName: profile?.name ?? 'My Shop',
+      upiId: profile?.upiId,
+      upiName: profile?.upiName,
+      products: products,
+    );
+
+    // Email is unavailable here: the customer record is only created on save.
+    final sentText = await showQuoteShareSheet(
+      context,
+      QuoteShareRequest(
+        message: quote.message,
+        customerPhone: draft.phone,
+        businessName: profile?.name,
+      ),
+    );
+    if (sentText == null || !mounted) return;
+    setState(() => _quoteText = sentText);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+          content: Text('Quote shared — confirm to save it with the enquiry')),
+    );
+  }
 
   Future<void> _save() async {
     setState(() => _saving = true);
@@ -36,8 +84,9 @@ class _ReviewConfirmScreenState extends ConsumerState<ReviewConfirmScreen> {
     final confidenceBucket = _confidenceBucket(
         ref.read(captureControllerProvider).draft.confidence);
     try {
-      final result =
-          await ref.read(captureControllerProvider.notifier).save();
+      final result = await ref
+          .read(captureControllerProvider.notifier)
+          .save(quoteText: _quoteText);
       if (!mounted) return;
       // One shared refresh for every surface a save can touch (enquiries,
       // orders, work items) plus follow-up reminders. Do it while the widget —
@@ -190,6 +239,23 @@ class _ReviewConfirmScreenState extends ConsumerState<ReviewConfirmScreen> {
             ),
           ],
           const SizedBox(height: AppSpacing.xl),
+          // Quotes are a pre-sale artifact: the order save path never persists
+          // quoteText, so the button is hidden for order-type drafts rather
+          // than silently dropping the activity.
+          if (draft.type != 'order') ...[
+            OutlinedButton.icon(
+              onPressed: _saving ? null : _sendQuote,
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(48),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const Icon(Icons.request_quote_outlined, size: 18),
+              label:
+                  Text(_quoteText == null ? 'Send quote' : 'Quote shared ✓'),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
           FilledButton(
             onPressed: _saving ? null : _save,
             style: FilledButton.styleFrom(

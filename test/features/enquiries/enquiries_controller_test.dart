@@ -22,6 +22,8 @@ class GatedEnquiriesService implements EnquiriesService {
   @override
   Future<void> updateEnquiry(String id, Map<String, dynamic> changes) async {}
   @override
+  Future<void> appendQuoteActivity(String enquiryId, String quoteText) async {}
+  @override
   Future<List<Map<String, dynamic>>> fetchLegacyMaps() async => [];
   @override
   Future<Enquiry> addEnquiry({

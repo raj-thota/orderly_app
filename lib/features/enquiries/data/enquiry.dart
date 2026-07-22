@@ -6,6 +6,7 @@ class Enquiry {
     this.customerId,
     this.customerName,
     this.customerPhone,
+    this.customerEmail,
     this.productId,
     this.productName,
     this.productImage,
@@ -26,6 +27,7 @@ class Enquiry {
   final String? customerId;
   final String? customerName;
   final String? customerPhone;
+  final String? customerEmail;
   final String? productId;
   final String? productName;
   final String? productImage;
@@ -51,6 +53,7 @@ class Enquiry {
       customerId: map['customer_id']?.toString(),
       customerName: customer is Map ? customer['name']?.toString() : null,
       customerPhone: customer is Map ? customer['phone']?.toString() : null,
+      customerEmail: customer is Map ? customer['email']?.toString() : null,
       productId: map['product_id']?.toString(),
       productName: product is Map ? product['name']?.toString() : null,
       productImage: images.isEmpty ? null : images.first.toString(),
