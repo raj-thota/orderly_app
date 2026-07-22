@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 import 'package:orderly_app/app/app_bootstrap.dart';
 import 'package:orderly_app/app/app_setup_screen.dart';
@@ -28,11 +29,30 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
     GlobalKey<ScaffoldMessengerState>();
 
+/// Crash-reporting DSN, injected at build time via
+/// `--dart-define=SENTRY_DSN=...`. Empty on local/dev builds, which run with
+/// reporting disabled so nothing is required to boot the app.
+const _sentryDsn = String.fromEnvironment('SENTRY_DSN');
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final bootstrapState = await AppBootstrapper.bootstrap();
 
-  runApp(ProviderScope(child: OrderlyApp(bootstrapState: bootstrapState)));
+  void runner() =>
+      runApp(ProviderScope(child: OrderlyApp(bootstrapState: bootstrapState)));
+
+  if (_sentryDsn.isEmpty) {
+    runner();
+    return;
+  }
+
+  // SentryFlutter.init installs FlutterError + zone error handlers, so uncaught
+  // widget and async errors are reported automatically.
+  await SentryFlutter.init((options) {
+    options.dsn = _sentryDsn;
+    options.tracesSampleRate = 0.2;
+    options.sendDefaultPii = false; // never ship user PII to the crash backend
+  }, appRunner: runner);
 }
 
 class OrderlyApp extends StatelessWidget {
@@ -126,6 +146,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.primary,
         shape: const CircleBorder(),
+        tooltip: 'Add to my work',
         onPressed: () => CaptureSheet.show(context),
         child: const Icon(Icons.add, color: Colors.white),
       ),
