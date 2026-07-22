@@ -9,6 +9,7 @@ import 'package:orderly_app/core/theme/app_colors.dart';
 import 'package:orderly_app/core/theme/app_spacing.dart';
 import 'package:orderly_app/features/enquiries/controller/capture_provider.dart';
 import 'package:orderly_app/features/enquiries/controller/enquiries_provider.dart';
+import 'package:orderly_app/features/enquiries/data/contacts_service.dart';
 import 'package:orderly_app/features/subscription/controller/subscription_provider.dart';
 import 'package:orderly_app/features/subscription/data/subscription.dart';
 import 'package:orderly_app/features/subscription/presentation/subscription_screen.dart';
@@ -372,8 +373,22 @@ class _ManualFormState extends ConsumerState<_ManualForm> {
 
   Future<void> _pickContact() async {
     final messenger = ScaffoldMessenger.of(context);
-    final pick = await ref.read(contactsServiceProvider).pickContact();
-    if (!mounted || pick == null) return; // cancelled / denied
+    final ContactPick? pick;
+    try {
+      pick = await ref.read(contactsServiceProvider).pickContact();
+    } on ContactPickException {
+      // A real failure (permission denied / OS error) — tell the user instead
+      // of leaving the icon looking dead.
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+              "Couldn't open contacts. Allow Contacts access in Settings."),
+        ),
+      );
+      return;
+    }
+    if (!mounted || pick == null) return; // user cancelled the picker
     if (pick.name != null) {
       _nameCtrl.text = pick.name!;
       _controller.setName(pick.name!);
@@ -396,25 +411,20 @@ class _ManualFormState extends ConsumerState<_ManualForm> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          OutlinedButton.icon(
-            onPressed: _pickContact,
-            icon: const Icon(Icons.contacts_outlined, size: 18),
-            label: const Text('Pick from Contacts'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.primary,
-              side: const BorderSide(color: AppColors.border),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
           _Field(
             controller: _nameCtrl,
             hint: 'Customer name',
             autofocus: true,
             textCapitalization: TextCapitalization.words,
             onChanged: _controller.setName,
+            // Contact picker lives inline on the right of the name field — one
+            // line, no separate full-width button above it.
+            suffixIcon: IconButton(
+              tooltip: 'Pick from Contacts',
+              icon: const Icon(Icons.contacts_outlined,
+                  size: 20, color: AppColors.primary),
+              onPressed: _pickContact,
+            ),
           ),
           const SizedBox(height: AppSpacing.sm),
           _Field(
@@ -445,6 +455,7 @@ class _Field extends StatelessWidget {
     this.maxLines = 1,
     this.autofocus = false,
     this.textCapitalization = TextCapitalization.none,
+    this.suffixIcon,
   });
 
   final TextEditingController controller;
@@ -454,6 +465,7 @@ class _Field extends StatelessWidget {
   final int maxLines;
   final bool autofocus;
   final TextCapitalization textCapitalization;
+  final Widget? suffixIcon;
 
   @override
   Widget build(BuildContext context) => TextField(
@@ -466,6 +478,7 @@ class _Field extends StatelessWidget {
     decoration: InputDecoration(
       hintText: hint,
       hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+      suffixIcon: suffixIcon,
       filled: true,
       fillColor: AppColors.background,
       border: OutlineInputBorder(

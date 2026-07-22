@@ -4,11 +4,13 @@ import 'package:orderly_app/core/theme/app_colors.dart';
 class AppBottomNav extends StatelessWidget {
   final int currentIndex;
   final Function(int) onTap;
+  final VoidCallback? onFabTap;
 
   const AppBottomNav({
     super.key,
     required this.currentIndex,
     required this.onTap,
+    this.onFabTap,
   });
 
   static const List<(IconData, String)> _items = [
@@ -40,7 +42,23 @@ class AppBottomNav extends StatelessWidget {
           children: [
             Expanded(child: _navItem(_items[0].$1, _items[0].$2, 0)),
             Expanded(child: _navItem(_items[1].$1, _items[1].$2, 1)),
-            const SizedBox(width: 64),
+            SizedBox(
+              width: 64,
+              child: Center(
+                child: GestureDetector(
+                  onTap: onFabTap,
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: const BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.add, color: Colors.white, size: 26),
+                  ),
+                ),
+              ),
+            ),
             Expanded(child: _navItem(_items[2].$1, _items[2].$2, 2)),
             Expanded(child: _navItem(_items[3].$1, _items[3].$2, 3)),
           ],

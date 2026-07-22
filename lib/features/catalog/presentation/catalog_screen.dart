@@ -15,13 +15,6 @@ import 'product_form_screen.dart';
 class CatalogScreen extends ConsumerWidget {
   const CatalogScreen({super.key});
 
-  void _openForm(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const ProductFormScreen()),
-    );
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final productsAsync = ref.watch(productsControllerProvider);
@@ -32,35 +25,6 @@ class CatalogScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.lg,
-              AppSpacing.lg,
-              AppSpacing.md,
-              AppSpacing.sm,
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Catalog',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => _openForm(context),
-                  icon: const Icon(
-                    Icons.add_a_photo_outlined,
-                    color: AppColors.primary,
-                  ),
-                  tooltip: 'Add piece',
-                ),
-              ],
-            ),
-          ),
           Expanded(
             child: productsAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -78,7 +42,7 @@ class CatalogScreen extends ConsumerWidget {
                     _FilterBar(categories: categories),
                     Expanded(
                       child: products.isEmpty
-                          ? CatalogEmptyState(onAdd: () => _openForm(context))
+                          ? CatalogEmptyState(onAdd: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductFormScreen())))
                           : _grid(context, ref, visible),
                     ),
                   ],

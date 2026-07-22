@@ -10,6 +10,7 @@ import 'package:orderly_app/features/followups/data/follow_ups_service.dart';
 import 'package:orderly_app/features/orders/controller/orders_provider.dart';
 import 'package:orderly_app/features/quotations/data/quotation.dart';
 import 'package:orderly_app/features/work/controller/work_items_provider.dart';
+import 'package:orderly_app/features/work/data/ai_work_items_service.dart';
 
 import '../data/ai_parse_service.dart';
 import '../data/capture_draft.dart';
@@ -118,6 +119,7 @@ final captureControllerProvider =
     ref.watch(aiParseServiceProvider),
     ref.watch(conversationsServiceProvider),
     ref.watch(followUpsServiceProvider),
+    ref.watch(aiWorkItemsServiceProvider),
   );
 });
 
@@ -128,6 +130,7 @@ class CaptureController extends StateNotifier<CaptureState> {
     this._ai,
     this._conversations,
     this._followUps,
+    this._workItems,
   ) : super(const CaptureState());
 
   final CustomersService _customers;
@@ -135,6 +138,7 @@ class CaptureController extends StateNotifier<CaptureState> {
   final AiParseService _ai;
   final ConversationsService _conversations;
   final FollowUpsService _followUps;
+  final AiWorkItemsService _workItems;
 
   int _parseToken = 0;
 
@@ -306,7 +310,7 @@ class CaptureController extends StateNotifier<CaptureState> {
               : (draft.raw.trim().isEmpty ? 'manual' : 'paste'));
 
       if (draft.type == 'order' && draft.items.isNotEmpty) {
-        await _enquiries.createOrder(
+        final orderId = await _enquiries.createOrder(
           customerId: customer.id!,
           items: draft.items,
           bookProductId:
@@ -319,6 +323,12 @@ class CaptureController extends StateNotifier<CaptureState> {
         );
         await _writeConversationMessage(
             customerId: customer.id!, source: msgSource, body: draft.raw);
+        await _mirrorToWorkItem(
+          draft: draft,
+          customerId: customer.id!,
+          orderId: orderId,
+          isOrder: true,
+        );
         return SaveResult(SaveKind.order, customer.name);
       }
 
@@ -346,9 +356,64 @@ class CaptureController extends StateNotifier<CaptureState> {
         );
       }
 
+      await _mirrorToWorkItem(
+        draft: draft,
+        customerId: customer.id!,
+        leadId: enquiry.id,
+        isOrder: false,
+      );
+
       return SaveResult(SaveKind.enquiry, customer.name);
     } finally {
       if (mounted) state = state.copyWith(saving: false);
+    }
+  }
+
+  /// Best-effort mirror of a just-saved capture into `ai_work_items` so it
+  /// appears in My Work right away (the FAB literally says "Add to my work").
+  /// The lead/order is already committed, so a failure here must never surface
+  /// as a failed save — it is swallowed and the AI batch will backfill later.
+  Future<void> _mirrorToWorkItem({
+    required CaptureDraft draft,
+    required String customerId,
+    String? leadId,
+    String? orderId,
+    required bool isOrder,
+  }) async {
+    try {
+      final name = draft.name ?? 'Customer';
+      final String kind;
+      final String title;
+      if (isOrder) {
+        kind = 'follow_up';
+        title = 'Follow up on new order — $name';
+      } else if (draft.followUpDate != null || draft.intent == 'follow_up') {
+        kind = 'follow_up';
+        title = 'Follow up with $name';
+      } else {
+        kind = 'reply';
+        title = 'Reply to $name';
+      }
+      final priority = isOrder ? 'high' : 'medium';
+      final context = draft.raw.trim().isNotEmpty
+          ? draft.raw.trim()
+          : (draft.items.isNotEmpty
+              ? draft.items.map((i) => '${i.qty}× ${i.name}').join(', ')
+              : null);
+      await _workItems.createFromCapture(
+        kind: kind,
+        priority: priority,
+        score: isOrder ? 70 : 50,
+        title: title,
+        customerId: customerId,
+        leadId: leadId,
+        orderId: orderId,
+        context: context,
+        amount: draft.budget,
+        confidence: draft.confidence,
+      );
+    } catch (_) {
+      // Non-fatal: the save already committed.
     }
   }
 

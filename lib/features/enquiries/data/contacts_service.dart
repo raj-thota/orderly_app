@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:fluttercontactpicker/fluttercontactpicker.dart';
 
 import 'capture_draft.dart';
@@ -14,9 +15,20 @@ class ContactPick {
 /// Abstracted so widgets depend on the interface (not the native plugin) and it
 /// can be faked in tests.
 abstract class ContactsService {
-  /// Returns the picked contact, or null when the user cancelled / denied
-  /// permission.
+  /// Returns the picked contact, or null when the user simply cancelled the
+  /// picker. Throws [ContactPickException] when the picker itself failed
+  /// (permission denied, plugin/OS error) so the UI can surface a real message
+  /// instead of silently doing nothing.
   Future<ContactPick?> pickContact();
+}
+
+/// A real failure opening the OS contact picker — distinct from the user
+/// cancelling. Carries the underlying error for logging, not for display.
+class ContactPickException implements Exception {
+  const ContactPickException(this.cause);
+  final Object cause;
+  @override
+  String toString() => 'ContactPickException: $cause';
 }
 
 /// Pure mapping from the native picker's output to a [ContactPick]: trims the
@@ -39,9 +51,14 @@ class DeviceContactsService implements ContactsService {
     try {
       final contact = await FlutterContactPicker.pickPhoneContact();
       return contactToPrefill(contact.fullName, contact.phoneNumber?.number);
-    } catch (_) {
-      // Cancelled, no selection, or permission denied — treat as no-op.
+    } on UserCancelledPickingException {
+      // The user backed out without choosing — a genuine no-op, not an error.
       return null;
+    } catch (e) {
+      // Permission denied or a plugin/OS failure. Previously this was swallowed
+      // identically to a cancel, so the button appeared dead. Surface it.
+      debugPrint('contact pick failed: $e');
+      throw ContactPickException(e);
     }
   }
 }

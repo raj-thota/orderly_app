@@ -3,6 +3,7 @@ import 'package:orderly_app/core/theme/app_colors.dart';
 import 'package:orderly_app/core/theme/app_spacing.dart';
 import 'package:orderly_app/features/assistant/presentation/assistant_screen.dart';
 import 'package:orderly_app/features/catalog/presentation/catalog_screen.dart';
+import 'package:orderly_app/features/catalog/presentation/product_form_screen.dart';
 import 'package:orderly_app/features/invoices/presentation/invoices_screen.dart';
 import 'package:orderly_app/features/profile/presentation/profile_screen.dart';
 import 'package:orderly_app/features/settings/presentation/settings_screen.dart';
@@ -75,7 +76,7 @@ class BusinessHubScreen extends StatelessWidget {
 }
 
 /// CatalogScreen is a bare tab child (no Scaffold); this wrapper provides one
-/// when it's pushed as a route. Product-add lives in CatalogScreen's header.
+/// when it's pushed as a route.
 class _CatalogPage extends StatelessWidget {
   const _CatalogPage();
 
@@ -83,6 +84,20 @@ class _CatalogPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        title: const Text('Catalog'),
+        actions: [
+          IconButton(
+            tooltip: 'Add piece',
+            icon: const Icon(Icons.add_a_photo_outlined, color: AppColors.primary),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ProductFormScreen()),
+            ),
+          ),
+        ],
+      ),
       body: const CatalogScreen(),
     );
   }

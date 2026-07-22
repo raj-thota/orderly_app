@@ -67,7 +67,7 @@ void main() {
           const ContactPick(name: 'Meera', phone: '9876543210')),
     );
 
-    await tester.tap(find.text('Pick from Contacts'));
+    await tester.tap(find.byTooltip('Pick from Contacts'));
     await tester.pumpAndSettle();
 
     final draft = container.read(captureControllerProvider).draft;

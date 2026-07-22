@@ -29,21 +29,15 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(
-                  AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.sm),
-              child: Text('Invoices',
-                  style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary)),
-            ),
-            Expanded(
-              child: async.when(
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        title: const Text('Invoices'),
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: async.when(
                 loading: () =>
                     const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(
@@ -130,7 +124,6 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
             ),
           ],
         ),
-      ),
     );
   }
 }

@@ -9,6 +9,22 @@ abstract class AiWorkItemsService {
   Future<void> dismiss(String id);
   Future<void> markDone(String id);
   Future<void> triggerGenerate();
+
+  /// Inserts a pending work item that mirrors a just-captured lead/order, so
+  /// what the user adds via the "Add to my work" flow shows up in My Work
+  /// immediately (the AI batch generator only backfills it later).
+  Future<void> createFromCapture({
+    required String kind,
+    required String priority,
+    required int score,
+    required String title,
+    String? customerId,
+    String? leadId,
+    String? orderId,
+    String? context,
+    double? amount,
+    double? confidence,
+  });
 }
 
 class SupabaseAiWorkItemsService implements AiWorkItemsService {
@@ -49,5 +65,39 @@ class SupabaseAiWorkItemsService implements AiWorkItemsService {
   @override
   Future<void> triggerGenerate() async {
     await _client.functions.invoke('generate-work-items', body: {});
+  }
+
+  @override
+  Future<void> createFromCapture({
+    required String kind,
+    required String priority,
+    required int score,
+    required String title,
+    String? customerId,
+    String? leadId,
+    String? orderId,
+    String? context,
+    double? amount,
+    double? confidence,
+  }) async {
+    // batch_id is NOT NULL with no default; reuse the source record's id (a
+    // uuid, unique per capture) so a manual add is its own single-item batch.
+    final batchId = leadId ?? orderId;
+    if (batchId == null) return; // nothing to link to; skip rather than fail
+    await _client.from('ai_work_items').insert({
+      'user_id': _userId,
+      'kind': kind,
+      'priority': priority,
+      'score': score,
+      'title': title,
+      'batch_id': batchId,
+      'status': 'pending',
+      'customer_id': ?customerId,
+      'lead_id': ?leadId,
+      'order_id': ?orderId,
+      if (context != null && context.isNotEmpty) 'context': context,
+      'amount': ?amount,
+      'confidence': ?confidence,
+    });
   }
 }

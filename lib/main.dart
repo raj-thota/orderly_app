@@ -11,8 +11,6 @@ import 'package:orderly_app/core/theme/app_theme.dart';
 import 'core/services/notification_service.dart';
 
 // Features
-import 'package:orderly_app/core/theme/app_colors.dart';
-
 import 'features/business/presentation/business_hub_screen.dart';
 import 'features/today/presentation/today_screen.dart';
 import 'package:orderly_app/features/enquiries/controller/enquiries_provider.dart';
@@ -141,18 +139,12 @@ class _MainScreenState extends ConsumerState<MainScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       body: IndexedStack(index: currentIndex, children: _screens),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.primary,
-        shape: const CircleBorder(),
-        tooltip: 'Add to my work',
-        onPressed: () => CaptureSheet.show(context),
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
       bottomNavigationBar: AppBottomNav(
         currentIndex: currentIndex,
         onTap: changeTab,
+        onFabTap: () => CaptureSheet.show(context),
       ),
     );
   }

@@ -41,7 +41,12 @@ typedef AiInvoker = Future<Map<String, dynamic>?> Function(
 class AiParseService {
   AiParseService({
     AiInvoker? invoker,
-    Duration timeout = const Duration(seconds: 3),
+    // The `parse-enquiry` edge function budgets up to 8s for the Gemini call
+    // (AI_TIMEOUT_MS), so real 200 responses routinely land at 3–9s. A 3s
+    // client timeout discarded most successful extractions (paste/voice looked
+    // broken; screenshot — which has no rules fallback — extracted nothing).
+    // Give the client more headroom than the server so healthy responses land.
+    Duration timeout = const Duration(seconds: 12),
   })  : _invoke = invoker ?? _defaultInvoke,
         _timeout = timeout;
 

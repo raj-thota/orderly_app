@@ -21,6 +21,7 @@ AiWorkItem _item(String id, {String priority = 'high'}) => AiWorkItem(
 class FakeAiWorkItemsService implements AiWorkItemsService {
   final List<AiWorkItem> _items;
   final Map<String, String> updates = {};
+  final List<Map<String, Object?>> created = [];
   bool generateCalled = false;
   bool throwOnApprove;
 
@@ -47,6 +48,29 @@ class FakeAiWorkItemsService implements AiWorkItemsService {
 
   @override
   Future<void> triggerGenerate() async => generateCalled = true;
+
+  @override
+  Future<void> createFromCapture({
+    required String kind,
+    required String priority,
+    required int score,
+    required String title,
+    String? customerId,
+    String? leadId,
+    String? orderId,
+    String? context,
+    double? amount,
+    double? confidence,
+  }) async {
+    created.add({
+      'kind': kind,
+      'priority': priority,
+      'title': title,
+      'customerId': customerId,
+      'leadId': leadId,
+      'orderId': orderId,
+    });
+  }
 }
 
 // ─── Helper ───────────────────────────────────────────────────────────────────

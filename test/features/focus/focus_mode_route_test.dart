@@ -22,6 +22,19 @@ class _Svc implements AiWorkItemsService {
   Future<void> updateStatus(String id, String s) async {}
   @override
   Future<void> triggerGenerate() async {}
+  @override
+  Future<void> createFromCapture({
+    required String kind,
+    required String priority,
+    required int score,
+    required String title,
+    String? customerId,
+    String? leadId,
+    String? orderId,
+    String? context,
+    double? amount,
+    double? confidence,
+  }) async {}
 }
 
 void main() {
