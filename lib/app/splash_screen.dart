@@ -44,7 +44,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   Future<void> _initApp() async {
     final authController = ref.read(authProvider.notifier);
 
-    _setLoadingText("Signing you in…");
+    // Neutral copy: checkAuth only restores an existing session, so "signing
+    // in" was wrong for first-time / logged-out users.
+    _setLoadingText("Loading your workspace…");
 
     await authController.checkAuth();
 

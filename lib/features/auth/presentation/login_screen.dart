@@ -23,10 +23,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   bool get _busy => _googleLoading || _appleLoading;
 
-  // Sign in with Apple is required by App Store Guideline 4.8 wherever a
-  // third-party social login (Google) is offered, and the native flow only
-  // exists on Apple platforms — so the button is iOS-only.
-  bool get _showApple => defaultTargetPlatform == TargetPlatform.iOS;
+  // Sign in with Apple is fully wired but stays off until the iOS backend is
+  // configured (Supabase Apple provider + Apple Developer capability). Flip
+  // this to true to surface it — required by App Store Guideline 4.8 on iOS
+  // wherever Google (a third-party social login) is offered.
+  static const bool _appleSignInEnabled = false;
+  bool get _showApple =>
+      _appleSignInEnabled && defaultTargetPlatform == TargetPlatform.iOS;
 
   @override
   void dispose() {
