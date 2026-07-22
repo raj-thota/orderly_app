@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orderly_app/core/services/event_service.dart';
-import 'package:orderly_app/main.dart';
+import 'package:orderly_app/core/theme/app_colors.dart';
 import '../controller/auth_controller.dart';
 
 class OtpScreen extends ConsumerStatefulWidget {
@@ -34,11 +34,10 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
 
     if (success) {
       ref.read(eventServiceProvider).track('signup_completed');
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const MainScreen()),
-        (route) => false,
-      );
+      // Pop back to RootGate (app root), which reactively routes to business
+      // setup for new users or the main shell for returning ones. Pushing
+      // MainScreen directly here skipped the setup gate for first-time users.
+      Navigator.of(context).popUntil((route) => route.isFirst);
     } else {
       ScaffoldMessenger.of(
         context,
@@ -95,7 +94,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
               const Icon(
                 Icons.sms_outlined,
                 size: 60,
-                color: Colors.deepPurple,
+                color: AppColors.primary,
               ),
 
               const SizedBox(height: 20),
@@ -164,7 +163,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                 child: ElevatedButton(
                   onPressed: state.isLoading ? null : verifyOtp,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepPurple,
+                    backgroundColor: AppColors.primary,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),

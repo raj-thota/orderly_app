@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orderly_app/core/theme/app_colors.dart';
 import 'package:orderly_app/core/theme/app_spacing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supa;
-import 'package:orderly_app/main.dart';
 import '../controller/auth_controller.dart';
 import 'otp_screen.dart';
 
@@ -54,17 +53,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         (data) {
           if (data.session != null && mounted) {
             _authSub?.cancel();
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (_) => const MainScreen()),
-              (_) => false,
-            );
+            // Pop to RootGate (app root); it routes new users to business
+            // setup and returning users to the main shell. Pushing MainScreen
+            // directly skipped the setup gate for first-time Google sign-ups.
+            Navigator.of(context).popUntil((route) => route.isFirst);
           }
         },
       );
     } catch (e) {
       if (!mounted) return;
+      debugPrint('Google sign-in failed: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Google sign-in failed: $e')),
+        const SnackBar(
+            content: Text("Google sign-in didn't work. Please try again.")),
       );
     } finally {
       if (mounted) setState(() => _googleLoading = false);
@@ -84,8 +85,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       );
     } catch (e) {
       if (!mounted) return;
+      debugPrint('send OTP failed: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not send OTP: $e')),
+        const SnackBar(
+            content:
+                Text('Could not send the code. Check the number and try again.')),
       );
     } finally {
       if (mounted) setState(() => _loading = false);
