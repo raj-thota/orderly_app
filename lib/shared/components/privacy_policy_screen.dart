@@ -27,7 +27,8 @@ class PrivacyPolicyScreen extends StatelessWidget {
             "Your data is used only to improve product experience and support.",
           ),
           LegalPoint(
-            "You can request deletion of your data anytime by contacting support.",
+            "You can permanently delete your account and all your data anytime "
+            "from Settings → Delete Account, or by contacting support.",
           ),
 
           SizedBox(height: 20),

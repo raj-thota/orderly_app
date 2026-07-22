@@ -120,6 +120,12 @@ class SettingsScreen extends ConsumerWidget {
                 title: 'Logout',
                 danger: true,
                 onTap: () => confirmAndLogout(context, ref)),
+            SettingsTile(
+                icon: Icons.delete_forever_rounded,
+                title: 'Delete Account',
+                subtitle: 'Permanently erase your account and data',
+                danger: true,
+                onTap: () => confirmAndDeleteAccount(context, ref)),
           ]),
           const SizedBox(height: AppSpacing.xl),
         ],
