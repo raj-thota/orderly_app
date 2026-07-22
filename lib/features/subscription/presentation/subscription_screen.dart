@@ -37,7 +37,15 @@ class SubscriptionScreen extends ConsumerWidget {
       body: SafeArea(
         child: subAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('Error: $e')),
+          error: (e, _) => const Center(
+            child: Padding(
+              padding: EdgeInsets.all(AppSpacing.lg),
+              child: Text(
+                "Couldn't load your subscription. Please try again.",
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
           data: (_) => _Body(entitlement: entitlement),
         ),
       ),

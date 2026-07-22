@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:orderly_app/core/theme/app_colors.dart';
 import 'package:orderly_app/features/auth/presentation/login_screen.dart';
 
 class AppIntroScreen extends StatefulWidget {
@@ -176,7 +177,7 @@ class _AppIntroScreenState extends State<AppIntroScreen>
                     );
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepPurple,
+                    backgroundColor: AppColors.primary,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
@@ -266,7 +267,7 @@ class _AppIntroScreenState extends State<AppIntroScreen>
                   const Icon(
                     Icons.smart_toy,
                     size: 14,
-                    color: Colors.deepPurple,
+                    color: AppColors.primary,
                   ),
                   const SizedBox(width: 6),
                 ],
@@ -318,10 +319,10 @@ class _AppIntroScreenState extends State<AppIntroScreen>
             child: Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.deepPurple.withValues(alpha: 0.1),
+                color: AppColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: Colors.deepPurple, size: 20),
+              child: Icon(icon, color: AppColors.primary, size: 20),
             ),
           ),
           const SizedBox(width: 12),
@@ -371,14 +372,14 @@ class _AppIntroScreenState extends State<AppIntroScreen>
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: active
-              ? Colors.deepPurple.withValues(alpha: 0.15)
+              ? AppColors.primary.withValues(alpha: 0.15)
               : Colors.grey.shade300,
           shape: BoxShape.circle,
         ),
         child: Icon(
           icon,
           size: 14,
-          color: active ? Colors.deepPurple : Colors.grey,
+          color: active ? AppColors.primary : Colors.grey,
         ),
       ),
     );

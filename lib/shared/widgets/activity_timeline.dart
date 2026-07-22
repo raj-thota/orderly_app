@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:orderly_app/core/theme/app_colors.dart';
 
 class ActivityTimeline extends StatelessWidget {
   final List<dynamic>? activities;
@@ -77,7 +78,7 @@ class ActivityTimeline extends StatelessWidget {
         break;
       case "order_update":
         icon = Icons.inventory_2_outlined;
-        color = Colors.deepPurple;
+        color = AppColors.primary;
         title = "Order items updated";
         break;
 

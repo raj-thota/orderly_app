@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/assistant_message.dart';
@@ -60,9 +61,10 @@ class AssistantChatNotifier extends StateNotifier<AssistantState> {
         thinking: false,
       );
     } catch (e) {
+      debugPrint('assistant chat failed: $e');
       state = state.copyWith(
         thinking: false,
-        error: e.toString(),
+        error: "Closr AI couldn't respond. Please try again.",
       );
     }
   }
