@@ -1,4 +1,4 @@
-package com.example.orderly_app
+package com.raj.closr
 
 import io.flutter.embedding.android.FlutterActivity
 

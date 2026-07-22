@@ -83,5 +83,7 @@
 	<string>Closr uses the camera to photograph products for your catalog.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Closr uses your photo library to add product photos to your catalog.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>Closr can add a customer from your contacts so you don't have to retype their name and number.</string>
 </dict>
 </plist>
