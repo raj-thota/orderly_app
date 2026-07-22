@@ -25,9 +25,15 @@ class FakeCheckoutService implements CheckoutService {
 
   FakeCheckoutService({this.returnedUri});
 
+  String? lastPlan;
+
   @override
-  Future<Uri> createCheckout({required String gateway}) async {
+  Future<Uri> createCheckout({
+    required String gateway,
+    required String plan,
+  }) async {
     lastGateway = gateway;
+    lastPlan = plan;
     if (shouldThrow) throw Exception('checkout_failed');
     return returnedUri ?? Uri.parse('https://checkout.example.com');
   }
@@ -39,10 +45,12 @@ ProviderContainer _makeContainer({
 }) {
   final subSvc = FakeSubscriptionService(sub: sub);
   final chkSvc = checkoutSvc ?? FakeCheckoutService();
-  return ProviderContainer(overrides: [
-    subscriptionServiceProvider.overrideWithValue(subSvc),
-    checkoutServiceProvider.overrideWithValue(chkSvc),
-  ]);
+  return ProviderContainer(
+    overrides: [
+      subscriptionServiceProvider.overrideWithValue(subSvc),
+      checkoutServiceProvider.overrideWithValue(chkSvc),
+    ],
+  );
 }
 
 void main() {
@@ -111,20 +119,25 @@ void main() {
     expect(container.read(entitlementProvider), EntitlementStatus.trialing);
   });
 
-  test('checkoutController.startCheckout calls service and returns url', () async {
-    final svc = FakeCheckoutService(
-        returnedUri: Uri.parse('https://rzp.io/subscribe'));
-    final container = _makeContainer(checkoutSvc: svc);
-    addTearDown(container.dispose);
+  test(
+    'checkoutController.startCheckout calls service and returns url',
+    () async {
+      final svc = FakeCheckoutService(
+        returnedUri: Uri.parse('https://rzp.io/subscribe'),
+      );
+      final container = _makeContainer(checkoutSvc: svc);
+      addTearDown(container.dispose);
 
-    final uri = await container
-        .read(checkoutControllerProvider.notifier)
-        .startCheckout(gateway: 'razorpay');
+      final uri = await container
+          .read(checkoutControllerProvider.notifier)
+          .startCheckout(gateway: 'razorpay', plan: 'pro_monthly');
 
-    expect(uri?.toString(), 'https://rzp.io/subscribe');
-    expect(svc.lastGateway, 'razorpay');
-    expect(container.read(checkoutControllerProvider).loading, isFalse);
-  });
+      expect(uri?.toString(), 'https://rzp.io/subscribe');
+      expect(svc.lastGateway, 'razorpay');
+      expect(svc.lastPlan, 'pro_monthly');
+      expect(container.read(checkoutControllerProvider).loading, isFalse);
+    },
+  );
 
   test('checkoutController sets error on service failure', () async {
     final svc = FakeCheckoutService()..shouldThrow = true;
@@ -133,7 +146,7 @@ void main() {
 
     final uri = await container
         .read(checkoutControllerProvider.notifier)
-        .startCheckout(gateway: 'razorpay');
+        .startCheckout(gateway: 'razorpay', plan: 'pro_monthly');
 
     expect(uri, isNull);
     expect(container.read(checkoutControllerProvider).error, isNotNull);

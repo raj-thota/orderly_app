@@ -10,13 +10,20 @@ import 'package:url_launcher/url_launcher.dart';
 class SubscriptionScreen extends ConsumerWidget {
   const SubscriptionScreen({super.key});
 
-  static const int priceInr = 999;
+  static const int starterPriceInr = 499;
+  static const int proPriceInr = 999;
+
+  static const List<String> _starterFeatures = [
+    'Unlimited orders & invoices',
+    'Customer directory & payment tracking',
+    'Branded invoices with your logo',
+    'Manual capture & product catalog',
+  ];
 
   static const List<String> _proFeatures = [
     'AI capture from DMs, screenshots & voice',
     'Auto-prioritised daily chase list',
     'AI-drafted WhatsApp follow-ups & reminders',
-    'Branded invoices with your logo',
     'Customer 360 relationship score',
     'Closr AI business assistant',
   ];
@@ -66,11 +73,20 @@ class _Body extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Two purchasable tiers; hide Starter once the user is fully active.
+          if (entitlement != EntitlementStatus.active) ...[
+            _StarterCard(
+              loading: checkoutState.loading,
+              onSubscribe: () =>
+                  _startCheckout(context, ref, 'starter_monthly'),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+          ],
           _ProCard(
             entitlement: entitlement,
             loading: checkoutState.loading,
             error: checkoutState.error,
-            onSubscribe: () => _startCheckout(context, ref),
+            onSubscribe: () => _startCheckout(context, ref, 'pro_monthly'),
           ),
           const SizedBox(height: AppSpacing.lg),
           _BusinessCard(),
@@ -86,11 +102,20 @@ class _Body extends ConsumerWidget {
     );
   }
 
-  Future<void> _startCheckout(BuildContext context, WidgetRef ref) async {
-    ref.read(eventServiceProvider).track('checkout_started', props: {'gateway': 'razorpay'});
+  Future<void> _startCheckout(
+    BuildContext context,
+    WidgetRef ref,
+    String plan,
+  ) async {
+    ref
+        .read(eventServiceProvider)
+        .track(
+          'checkout_started',
+          props: {'gateway': 'razorpay', 'plan': plan},
+        );
     final uri = await ref
         .read(checkoutControllerProvider.notifier)
-        .startCheckout(gateway: 'razorpay');
+        .startCheckout(gateway: 'razorpay', plan: plan);
     if (uri != null) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
@@ -127,11 +152,14 @@ class _ProCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Text('Closr Pro',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800)),
+              const Text(
+                'Closr Pro',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
               const Spacer(),
               if (entitlement == EntitlementStatus.trialing)
                 _Badge('Trial active', Colors.white.withAlpha(50), Colors.white)
@@ -143,29 +171,48 @@ class _ProCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
-            children: const [
-              Text('₹999',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold)),
-              Text(' / month',
-                  style: TextStyle(color: Colors.white70, fontSize: 14)),
+            children: [
+              Text(
+                '₹${SubscriptionScreen.proPriceInr}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 36,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Text(
+                ' / month',
+                style: TextStyle(color: Colors.white70, fontSize: 14),
+              ),
             ],
           ),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: AppSpacing.md),
+          const Text(
+            'Everything in Starter, plus:',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
           for (final f in SubscriptionScreen._proFeatures)
             Padding(
               padding: const EdgeInsets.only(bottom: AppSpacing.sm),
               child: Row(
                 children: [
-                  const Icon(Icons.check_circle_rounded,
-                      color: Colors.white, size: 18),
+                  const Icon(
+                    Icons.check_circle_rounded,
+                    color: Colors.white,
+                    size: 18,
+                  ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
-                      child: Text(f,
-                          style: const TextStyle(
-                              color: Colors.white, fontSize: 14))),
+                    child: Text(
+                      f,
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -173,9 +220,10 @@ class _ProCard extends StatelessWidget {
           if (error != null)
             Padding(
               padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-              child: Text(error!,
-                  style:
-                      const TextStyle(color: Colors.white70, fontSize: 12)),
+              child: Text(
+                error!,
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
+              ),
             ),
           _CtaButton(
             entitlement: entitlement,
@@ -225,12 +273,108 @@ class _CtaButton extends StatelessWidget {
           ? const SizedBox(
               width: 20,
               height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2))
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
           : Text(
               entitlement == EntitlementStatus.trialing
-                  ? 'Subscribe now  ₹999/mo'
+                  ? 'Subscribe now  ₹${SubscriptionScreen.proPriceInr}/mo'
                   : 'Start Free Trial',
-              style: const TextStyle(fontWeight: FontWeight.w700)),
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+    );
+  }
+}
+
+class _StarterCard extends StatelessWidget {
+  const _StarterCard({required this.loading, required this.onSubscribe});
+  final bool loading;
+  final VoidCallback onSubscribe;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Starter',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                '₹${SubscriptionScreen.starterPriceInr}',
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Text(
+                ' / month',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          for (final f in SubscriptionScreen._starterFeatures)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.check_circle_rounded,
+                    color: AppColors.primary,
+                    size: 18,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      f,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: AppSpacing.sm),
+          OutlinedButton(
+            key: const Key('cta_start_trial_starter'),
+            onPressed: loading ? null : onSubscribe,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              side: const BorderSide(color: AppColors.primary),
+              minimumSize: const Size(double.infinity, 48),
+            ),
+            child: loading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text(
+                    'Choose Starter',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -250,11 +394,14 @@ class _BusinessCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Text('Business',
-                  style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800)),
+              const Text(
+                'Business',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
               const SizedBox(width: AppSpacing.sm),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -262,24 +409,31 @@ class _BusinessCard extends StatelessWidget {
                   color: AppColors.border,
                   borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
-                child: const Text('Coming soon',
-                    style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary)),
+                child: const Text(
+                  'Coming soon',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
               ),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          const Text('₹2,499 / month',
-              style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600)),
+          const Text(
+            '₹2,499 / month',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(height: AppSpacing.md),
-          const Text('Everything in Pro, plus:',
-              style: TextStyle(
-                  color: AppColors.textSecondary, fontSize: 13)),
+          const Text(
+            'Everything in Pro, plus:',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+          ),
           const SizedBox(height: AppSpacing.sm),
           for (final f in const [
             'Team members & shared inbox',
@@ -291,12 +445,19 @@ class _BusinessCard extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: AppSpacing.xs),
               child: Row(
                 children: [
-                  const Icon(Icons.check_rounded,
-                      color: AppColors.textSecondary, size: 16),
+                  const Icon(
+                    Icons.check_rounded,
+                    color: AppColors.textSecondary,
+                    size: 16,
+                  ),
                   const SizedBox(width: AppSpacing.sm),
-                  Text(f,
-                      style: const TextStyle(
-                          color: AppColors.textSecondary, fontSize: 13)),
+                  Text(
+                    f,
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -320,9 +481,14 @@ class _Badge extends StatelessWidget {
         color: bgColor,
         borderRadius: BorderRadius.circular(AppRadius.pill),
       ),
-      child: Text(label,
-          style: TextStyle(
-              fontSize: 12, fontWeight: FontWeight.w700, color: textColor)),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: textColor,
+        ),
+      ),
     );
   }
 }

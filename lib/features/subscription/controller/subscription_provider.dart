@@ -14,8 +14,9 @@ final checkoutServiceProvider = Provider<CheckoutService>(
 
 /// Realtime stream of the user's subscription row (null = no row yet).
 /// Also calls ensureTrial() on init so a trial row is created on first load.
-final subscriptionProvider =
-    StreamProvider.autoDispose<Subscription?>((ref) async* {
+final subscriptionProvider = StreamProvider.autoDispose<Subscription?>((
+  ref,
+) async* {
   final svc = ref.watch(subscriptionServiceProvider);
   await svc.ensureTrial();
   yield* svc.watchSubscription();
@@ -37,11 +38,14 @@ class CheckoutState {
   final bool loading;
   final String? error;
 
-  CheckoutState copyWith({bool? loading, String? error, bool clearError = false}) =>
-      CheckoutState(
-        loading: loading ?? this.loading,
-        error: clearError ? null : (error ?? this.error),
-      );
+  CheckoutState copyWith({
+    bool? loading,
+    String? error,
+    bool clearError = false,
+  }) => CheckoutState(
+    loading: loading ?? this.loading,
+    error: clearError ? null : (error ?? this.error),
+  );
 }
 
 class CheckoutNotifier extends StateNotifier<CheckoutState> {
@@ -49,10 +53,13 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
 
   final CheckoutService _service;
 
-  Future<Uri?> startCheckout({required String gateway}) async {
+  Future<Uri?> startCheckout({
+    required String gateway,
+    required String plan,
+  }) async {
     state = state.copyWith(loading: true, clearError: true);
     try {
-      final uri = await _service.createCheckout(gateway: gateway);
+      final uri = await _service.createCheckout(gateway: gateway, plan: plan);
       state = state.copyWith(loading: false);
       return uri;
     } catch (e) {
@@ -64,5 +71,5 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
 
 final checkoutControllerProvider =
     StateNotifierProvider.autoDispose<CheckoutNotifier, CheckoutState>((ref) {
-  return CheckoutNotifier(ref.watch(checkoutServiceProvider));
-});
+      return CheckoutNotifier(ref.watch(checkoutServiceProvider));
+    });

@@ -19,10 +19,15 @@ class _FakeSubSvc implements SubscriptionService {
 class _FakeCheckoutSvc implements CheckoutService {
   Uri? uri;
   String? lastGateway;
+  String? lastPlan;
   _FakeCheckoutSvc({this.uri});
   @override
-  Future<Uri> createCheckout({required String gateway}) async {
+  Future<Uri> createCheckout({
+    required String gateway,
+    required String plan,
+  }) async {
     lastGateway = gateway;
+    lastPlan = plan;
     return uri ?? Uri.parse('https://checkout.example.com');
   }
 }
@@ -31,29 +36,30 @@ Widget _wrap({Subscription? sub, _FakeCheckoutSvc? checkoutSvc}) {
   return ProviderScope(
     overrides: [
       subscriptionServiceProvider.overrideWithValue(_FakeSubSvc(sub)),
-      checkoutServiceProvider
-          .overrideWithValue(checkoutSvc ?? _FakeCheckoutSvc()),
+      checkoutServiceProvider.overrideWithValue(
+        checkoutSvc ?? _FakeCheckoutSvc(),
+      ),
     ],
     child: const MaterialApp(home: SubscriptionScreen()),
   );
 }
 
 Subscription _trialSub() => Subscription(
-      id: 's1',
-      userId: 'u1',
-      plan: 'pro_monthly',
-      status: 'trialing',
-      trialEnd: DateTime.now().add(const Duration(days: 7)),
-      createdAt: DateTime(2026, 1, 1),
-    );
+  id: 's1',
+  userId: 'u1',
+  plan: 'pro_monthly',
+  status: 'trialing',
+  trialEnd: DateTime.now().add(const Duration(days: 7)),
+  createdAt: DateTime(2026, 1, 1),
+);
 
 Subscription _activeSub() => Subscription(
-      id: 's1',
-      userId: 'u1',
-      plan: 'pro_monthly',
-      status: 'active',
-      createdAt: DateTime(2026, 1, 1),
-    );
+  id: 's1',
+  userId: 'u1',
+  plan: 'pro_monthly',
+  status: 'active',
+  createdAt: DateTime(2026, 1, 1),
+);
 
 void main() {
   testWidgets('shows Pro plan with 999 price', (t) async {
@@ -61,6 +67,25 @@ void main() {
     await t.pumpAndSettle();
     expect(find.textContaining('999'), findsWidgets);
     expect(find.textContaining('Pro'), findsWidgets);
+  });
+
+  testWidgets('shows Starter tier with 499 price when gated', (t) async {
+    await t.pumpWidget(_wrap(sub: null));
+    await t.pumpAndSettle();
+    expect(find.text('Starter'), findsOneWidget);
+    expect(find.textContaining('499'), findsWidgets);
+    expect(find.byKey(const Key('cta_start_trial_starter')), findsOneWidget);
+  });
+
+  testWidgets('tapping Choose Starter checks out the starter plan', (t) async {
+    final checkoutSvc = _FakeCheckoutSvc(uri: Uri.parse('https://rzp.io/s'));
+    await t.pumpWidget(_wrap(sub: null, checkoutSvc: checkoutSvc));
+    await t.pumpAndSettle();
+
+    await t.tap(find.byKey(const Key('cta_start_trial_starter')));
+    await t.pumpAndSettle();
+
+    expect(checkoutSvc.lastPlan, 'starter_monthly');
   });
 
   testWidgets('shows Business Coming soon card', (t) async {
@@ -89,14 +114,17 @@ void main() {
   });
 
   testWidgets('tapping Start Free Trial calls checkout service', (t) async {
-    final checkoutSvc =
-        _FakeCheckoutSvc(uri: Uri.parse('https://rzp.io/subscribe'));
+    final checkoutSvc = _FakeCheckoutSvc(
+      uri: Uri.parse('https://rzp.io/subscribe'),
+    );
     await t.pumpWidget(_wrap(sub: null, checkoutSvc: checkoutSvc));
     await t.pumpAndSettle();
 
+    await t.ensureVisible(find.byKey(const Key('cta_start_trial')));
     await t.tap(find.byKey(const Key('cta_start_trial')));
     await t.pumpAndSettle();
 
     expect(checkoutSvc.lastGateway, 'razorpay');
+    expect(checkoutSvc.lastPlan, 'pro_monthly');
   });
 }

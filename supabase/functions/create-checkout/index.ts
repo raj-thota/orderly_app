@@ -2,8 +2,23 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeaders, json } from "../_shared/cors.ts";
 
 // Plan amounts are defined server-side only — never trust client for pricing.
-const RAZORPAY_PLAN_ID = Deno.env.get("RAZORPAY_PLAN_ID") ?? "";
-const STRIPE_PRICE_ID = Deno.env.get("STRIPE_PRICE_ID") ?? "";
+// The client sends a plan KEY (starter_monthly | pro_monthly); we map it here
+// to the gateway plan/price id. The bare env vars remain the Pro ids for
+// backward compatibility.
+const RAZORPAY_PLAN_ID = Deno.env.get("RAZORPAY_PLAN_ID") ?? ""; // Pro ₹999
+const RAZORPAY_PLAN_ID_STARTER = Deno.env.get("RAZORPAY_PLAN_ID_STARTER") ?? ""; // Starter ₹499
+const STRIPE_PRICE_ID = Deno.env.get("STRIPE_PRICE_ID") ?? ""; // Pro ₹999
+const STRIPE_PRICE_ID_STARTER = Deno.env.get("STRIPE_PRICE_ID_STARTER") ?? ""; // Starter ₹499
+
+const VALID_PLANS = new Set(["starter_monthly", "pro_monthly"]);
+
+function razorpayPlanId(plan: string): string {
+  return plan === "starter_monthly" ? RAZORPAY_PLAN_ID_STARTER : RAZORPAY_PLAN_ID;
+}
+
+function stripePriceId(plan: string): string {
+  return plan === "starter_monthly" ? STRIPE_PRICE_ID_STARTER : STRIPE_PRICE_ID;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -23,7 +38,7 @@ Deno.serve(async (req) => {
   const userId = userData.user.id;
   const userEmail = userData.user.email ?? "";
 
-  let body: { gateway?: string };
+  let body: { gateway?: string; plan?: string };
   try {
     body = await req.json();
   } catch {
@@ -34,6 +49,9 @@ Deno.serve(async (req) => {
   if (gateway !== "razorpay" && gateway !== "stripe") {
     return json({ error: "invalid_gateway" }, 400);
   }
+
+  // Default to Pro if the client sends an unknown/absent plan.
+  const plan = VALID_PLANS.has(body.plan ?? "") ? body.plan! : "pro_monthly";
 
   // Fetch or create the subscription row (ensure_trial creates one if missing).
   const { data: sub, error: subErr } = await supabase
@@ -46,9 +64,9 @@ Deno.serve(async (req) => {
 
   try {
     if (gateway === "razorpay") {
-      return await _razorpayCheckout(supabase, userId, userEmail, sub?.id, sub?.gateway_customer_id);
+      return await _razorpayCheckout(supabase, userId, userEmail, sub?.id, sub?.gateway_customer_id, plan);
     } else {
-      return await _stripeCheckout(supabase, userId, userEmail, sub?.id, sub?.gateway_customer_id);
+      return await _stripeCheckout(supabase, userId, userEmail, sub?.id, sub?.gateway_customer_id, plan);
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : "unknown";
@@ -63,6 +81,7 @@ async function _razorpayCheckout(
   email: string,
   subId: string | undefined,
   existingCustomerId: string | undefined,
+  plan: string,
 ): Promise<Response> {
   const keyId = Deno.env.get("RAZORPAY_KEY_ID")!;
   const keySecret = Deno.env.get("RAZORPAY_KEY_SECRET")!;
@@ -93,7 +112,7 @@ async function _razorpayCheckout(
     method: "POST",
     headers,
     body: JSON.stringify({
-      plan_id: RAZORPAY_PLAN_ID,
+      plan_id: razorpayPlanId(plan),
       customer_id: customerId,
       total_count: 120,   // 10 years max; cancellable anytime
       quantity: 1,
@@ -108,6 +127,7 @@ async function _razorpayCheckout(
   // Persist gateway IDs on our subscription row (pending state — webhook will activate).
   if (subId) {
     await supabase.from("subscriptions").update({
+      plan,
       gateway: "razorpay",
       gateway_customer_id: customerId,
       gateway_subscription_id: rzpSub.id,
@@ -123,6 +143,7 @@ async function _stripeCheckout(
   email: string,
   subId: string | undefined,
   existingCustomerId: string | undefined,
+  plan: string,
 ): Promise<Response> {
   const stripeKey = Deno.env.get("STRIPE_SECRET_KEY")!;
   const headers = {
@@ -152,7 +173,7 @@ async function _stripeCheckout(
   // Create Stripe Checkout Session.
   const params = new URLSearchParams({
     customer: customerId,
-    "line_items[0][price]": STRIPE_PRICE_ID,
+    "line_items[0][price]": stripePriceId(plan),
     "line_items[0][quantity]": "1",
     mode: "subscription",
     success_url: `${appUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
@@ -173,6 +194,7 @@ async function _stripeCheckout(
   // Persist gateway IDs pending webhook confirmation.
   if (subId) {
     await supabase.from("subscriptions").update({
+      plan,
       gateway: "stripe",
       gateway_customer_id: customerId,
     }).eq("id", subId);
