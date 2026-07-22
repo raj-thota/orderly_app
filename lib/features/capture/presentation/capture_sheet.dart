@@ -9,6 +9,9 @@ import 'package:orderly_app/core/theme/app_colors.dart';
 import 'package:orderly_app/core/theme/app_spacing.dart';
 import 'package:orderly_app/features/enquiries/controller/capture_provider.dart';
 import 'package:orderly_app/features/enquiries/controller/enquiries_provider.dart';
+import 'package:orderly_app/features/subscription/controller/subscription_provider.dart';
+import 'package:orderly_app/features/subscription/data/subscription.dart';
+import 'package:orderly_app/features/subscription/presentation/subscription_screen.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
 import 'extraction_progress_screen.dart';
@@ -56,6 +59,18 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
   }
 
   Future<void> _pickSource(_CaptureSource src) async {
+    // AI capture (paste/screenshot/voice) is a Pro feature; manual entry is
+    // always free. Gated users get sent to the paywall instead of a silent
+    // AI run they can't pay for. Closes the capture monetization bypass.
+    if (src != _CaptureSource.manual &&
+        ref.read(entitlementProvider) == EntitlementStatus.gated) {
+      final navigator = Navigator.of(context);
+      navigator.pop(); // close the capture sheet first
+      navigator.push(
+        MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+      );
+      return;
+    }
     switch (src) {
       case _CaptureSource.paste:
         setState(() => _source = src);
@@ -94,13 +109,13 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
     final available = await _speech.initialize();
     if (!available || !mounted) return;
     setState(() => _listening = true);
-    _speech.listen(onResult: (r) {
-      if (!mounted) return;
-      _textCtrl.text = r.recognizedWords;
-      ref
-          .read(captureControllerProvider.notifier)
-          .setText(r.recognizedWords);
-    });
+    _speech.listen(
+      onResult: (r) {
+        if (!mounted) return;
+        _textCtrl.text = r.recognizedWords;
+        ref.read(captureControllerProvider.notifier).setText(r.recognizedWords);
+      },
+    );
   }
 
   void _stopListening() {
@@ -109,17 +124,16 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
   }
 
   void _proceed() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const ExtractionProgressScreen(),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const ExtractionProgressScreen()));
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(captureControllerProvider);
-    final hasContent = !state.draft.isEmpty ||
+    final hasContent =
+        !state.draft.isEmpty ||
         state.screenshotBytes != null ||
         _textCtrl.text.trim().isNotEmpty;
 
@@ -133,7 +147,11 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
         children: [
           _Handle(),
           _Header(),
-          if (_source == null) _SourcePicker(onTap: _pickSource),
+          if (_source == null)
+            _SourcePicker(
+              onTap: _pickSource,
+              gated: ref.watch(entitlementProvider) == EntitlementStatus.gated,
+            ),
           if (_source != null) ...[
             if (_source == _CaptureSource.manual)
               const _ManualForm()
@@ -143,23 +161,31 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
                 textCtrl: _textCtrl,
                 listening: _listening,
                 onTextChanged: _onTextChanged,
-                onToggleVoice:
-                    _listening ? _stopListening : () => _startListening(),
+                onToggleVoice: _listening
+                    ? _stopListening
+                    : () => _startListening(),
                 screenshotBytes: state.screenshotBytes,
               ),
             Padding(
               padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.lg),
+                AppSpacing.md,
+                AppSpacing.sm,
+                AppSpacing.md,
+                AppSpacing.lg,
+              ),
               child: FilledButton(
                 onPressed: hasContent ? _proceed : null,
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   minimumSize: const Size.fromHeight(48),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                child: const Text('Review & Confirm',
-                    style: TextStyle(color: Colors.white)),
+                child: const Text(
+                  'Review & Confirm',
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
             ),
           ],
@@ -173,43 +199,50 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
 class _Handle extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(
-        child: Container(
-          margin: const EdgeInsets.only(top: 12, bottom: 4),
-          width: 36,
-          height: 4,
-          decoration: BoxDecoration(
-            color: AppColors.border,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-      );
+    child: Container(
+      margin: const EdgeInsets.only(top: 12, bottom: 4),
+      width: 36,
+      height: 4,
+      decoration: BoxDecoration(
+        color: AppColors.border,
+        borderRadius: BorderRadius.circular(2),
+      ),
+    ),
+  );
 }
 
 class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-        child: Row(
-          children: [
-            const Text('Add to My Work',
-                style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary)),
-            const Spacer(),
-            IconButton(
-              icon: const Icon(Icons.close, color: AppColors.textSecondary),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ],
+    padding: const EdgeInsets.symmetric(
+      horizontal: AppSpacing.md,
+      vertical: AppSpacing.sm,
+    ),
+    child: Row(
+      children: [
+        const Text(
+          'Add to My Work',
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
         ),
-      );
+        const Spacer(),
+        IconButton(
+          tooltip: 'Close',
+          icon: const Icon(Icons.close, color: AppColors.textSecondary),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ],
+    ),
+  );
 }
 
 class _SourcePicker extends StatelessWidget {
-  const _SourcePicker({required this.onTap});
+  const _SourcePicker({required this.onTap, required this.gated});
   final void Function(_CaptureSource) onTap;
+  final bool gated;
 
   @override
   Widget build(BuildContext context) {
@@ -230,7 +263,14 @@ class _SourcePicker extends StatelessWidget {
         childAspectRatio: 2.2,
         children: [
           for (final (src, icon, label) in sources)
-            _SourceCard(source: src, icon: icon, label: label, onTap: onTap),
+            _SourceCard(
+              source: src,
+              icon: icon,
+              label: label,
+              onTap: onTap,
+              // Manual entry is free; AI sources show a Pro lock when gated.
+              locked: gated && src != _CaptureSource.manual,
+            ),
         ],
       ),
     );
@@ -243,36 +283,53 @@ class _SourceCard extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
+    this.locked = false,
   });
   final _CaptureSource source;
   final IconData icon;
   final String label;
   final void Function(_CaptureSource) onTap;
+  final bool locked;
 
   @override
-  Widget build(BuildContext context) => InkWell(
-        onTap: () => onTap(source),
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          decoration: BoxDecoration(
-            color: AppColors.surfaceMuted,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: AppColors.primary, size: 20),
-              const SizedBox(width: 8),
-              Text(label,
-                  style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textPrimary)),
-            ],
-          ),
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: locked ? '$label, Pro feature' : label,
+    child: InkWell(
+      onTap: () => onTap(source),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surfaceMuted,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
         ),
-      );
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: AppColors.primary, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            if (locked) ...[
+              const SizedBox(width: 6),
+              const Icon(
+                Icons.lock_outline,
+                color: AppColors.textSecondary,
+                size: 14,
+              ),
+            ],
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 /// Structured manual add: the user types the customer directly, so name and
@@ -326,8 +383,9 @@ class _ManualFormState extends ConsumerState<_ManualForm> {
       _controller.setPhone(pick.phone!);
     }
     if (pick.name == null && pick.phone == null) {
-      messenger.showSnackBar(const SnackBar(
-          content: Text('That contact has no name or number')));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('That contact has no name or number')),
+      );
     }
   }
 
@@ -346,7 +404,8 @@ class _ManualFormState extends ConsumerState<_ManualForm> {
               foregroundColor: AppColors.primary,
               side: const BorderSide(color: AppColors.border),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -398,28 +457,27 @@ class _Field extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => TextField(
-        controller: controller,
-        onChanged: onChanged,
-        keyboardType: keyboardType,
-        maxLines: maxLines,
-        autofocus: autofocus,
-        textCapitalization: textCapitalization,
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle:
-              const TextStyle(color: AppColors.textSecondary, fontSize: 14),
-          filled: true,
-          fillColor: AppColors.background,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.border),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.border),
-          ),
-        ),
-      );
+    controller: controller,
+    onChanged: onChanged,
+    keyboardType: keyboardType,
+    maxLines: maxLines,
+    autofocus: autofocus,
+    textCapitalization: textCapitalization,
+    decoration: InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+      filled: true,
+      fillColor: AppColors.background,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.border),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.border),
+      ),
+    ),
+  );
 }
 
 class _InputArea extends StatelessWidget {
@@ -445,8 +503,11 @@ class _InputArea extends StatelessWidget {
       return const Padding(
         padding: EdgeInsets.all(AppSpacing.md),
         child: Center(
-            child: Text('Picking screenshot…',
-                style: TextStyle(color: AppColors.textSecondary))),
+          child: Text(
+            'Picking screenshot…',
+            style: TextStyle(color: AppColors.textSecondary),
+          ),
+        ),
       );
     }
     return Padding(
@@ -468,8 +529,10 @@ class _InputArea extends StatelessWidget {
                 ),
                 const Spacer(),
                 IconButton(
-                  icon: Icon(listening ? Icons.stop : Icons.mic,
-                      color: AppColors.primary),
+                  icon: Icon(
+                    listening ? Icons.stop : Icons.mic,
+                    color: AppColors.primary,
+                  ),
                   onPressed: onToggleVoice,
                 ),
               ],
@@ -481,8 +544,10 @@ class _InputArea extends StatelessWidget {
             autofocus: source == _CaptureSource.paste,
             decoration: InputDecoration(
               hintText: 'Paste WhatsApp chat here…',
-              hintStyle:
-                  const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+              hintStyle: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 14,
+              ),
               filled: true,
               fillColor: AppColors.background,
               border: OutlineInputBorder(
