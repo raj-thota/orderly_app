@@ -34,6 +34,8 @@ dependencies:
   app_links: ^3.4.1
   fluttercontactpicker: ^4.7.0
   sentry_flutter: ^8.14.2
+  sign_in_with_apple: ^8.1.0
+  crypto: ^3.0.7
 
 dev_dependencies:
   flutter_test:

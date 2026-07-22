@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,46 +9,34 @@ Widget _wrap() => const ProviderScope(
     );
 
 void main() {
-  testWidgets('shows phone input field', (t) async {
-    await t.pumpWidget(_wrap());
-    await t.pumpAndSettle();
-    expect(find.byKey(const Key('phone_field')), findsOneWidget);
-  });
-
-  testWidgets('shows Get OTP button', (t) async {
-    await t.pumpWidget(_wrap());
-    await t.pumpAndSettle();
-    expect(find.byKey(const Key('get_otp_btn')), findsOneWidget);
-  });
-
-  testWidgets('Get OTP button disabled when phone empty', (t) async {
-    await t.pumpWidget(_wrap());
-    await t.pumpAndSettle();
-    final btn = t.widget<FilledButton>(find.byKey(const Key('get_otp_btn')));
-    expect(btn.onPressed, isNull);
-  });
-
-  testWidgets('Get OTP button enabled after entering 10-digit phone', (t) async {
-    await t.pumpWidget(_wrap());
-    await t.pumpAndSettle();
-
-    await t.enterText(find.byKey(const Key('phone_field')), '9876543210');
-    await t.pump();
-
-    final btn = t.widget<FilledButton>(find.byKey(const Key('get_otp_btn')));
-    expect(btn.onPressed, isNotNull);
-  });
-
   testWidgets('shows Google sign-in button', (t) async {
     await t.pumpWidget(_wrap());
     await t.pumpAndSettle();
     expect(find.byKey(const Key('google_signin_btn')), findsOneWidget);
   });
 
-  testWidgets('does not show Apple login or password options', (t) async {
+  testWidgets('phone OTP entry is hidden', (t) async {
     await t.pumpWidget(_wrap());
     await t.pumpAndSettle();
-    expect(find.textContaining('Sign in with Apple'), findsNothing);
-    expect(find.textContaining('Enter password'), findsNothing);
+    expect(find.byKey(const Key('phone_field')), findsNothing);
+    expect(find.byKey(const Key('get_otp_btn')), findsNothing);
+  });
+
+  testWidgets('shows Apple sign-in button on iOS', (t) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    try {
+      await t.pumpWidget(_wrap());
+      await t.pumpAndSettle();
+      expect(find.byKey(const Key('apple_signin_btn')), findsOneWidget);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('hides Apple sign-in button off iOS', (t) async {
+    // Widget tests default to the Android platform, so no override needed.
+    await t.pumpWidget(_wrap());
+    await t.pumpAndSettle();
+    expect(find.byKey(const Key('apple_signin_btn')), findsNothing);
   });
 }

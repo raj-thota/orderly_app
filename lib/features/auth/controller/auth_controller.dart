@@ -101,6 +101,25 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
+  /// 🍎 APPLE LOGIN (native). Completes with a session in one call, so unlike
+  /// Google there is no browser round-trip to wait on. Returns true on success.
+  Future<bool> loginWithApple() async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
+    try {
+      final response = await _authService.signInWithApple();
+      final ok = response.session != null;
+      state = state.copyWith(
+        isAuthenticated: ok,
+        isLoading: false,
+        user: response.user,
+      );
+      return ok;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, errorMessage: _mapAuthError(e));
+      return false;
+    }
+  }
+
   Future<void> sendOtp(String phone) async {
     state = state.copyWith(isLoading: true);
 

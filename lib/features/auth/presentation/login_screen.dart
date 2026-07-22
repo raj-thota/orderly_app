@@ -1,13 +1,13 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:orderly_app/core/theme/app_colors.dart';
 import 'package:orderly_app/core/theme/app_spacing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supa;
 import '../controller/auth_controller.dart';
-import 'otp_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -17,82 +17,73 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _phone = TextEditingController();
-  bool _canSubmit = false;
-  bool _loading = false;
   bool _googleLoading = false;
+  bool _appleLoading = false;
   StreamSubscription<supa.AuthState>? _authSub;
 
-  static final _phoneRe = RegExp(r'^[6-9]\d{9}$');
+  bool get _busy => _googleLoading || _appleLoading;
 
-  @override
-  void initState() {
-    super.initState();
-    _phone.addListener(() {
-      final ok = _phoneRe.hasMatch(_phone.text.trim());
-      if (ok != _canSubmit) setState(() => _canSubmit = ok);
-    });
-  }
+  // Sign in with Apple is required by App Store Guideline 4.8 wherever a
+  // third-party social login (Google) is offered, and the native flow only
+  // exists on Apple platforms — so the button is iOS-only.
+  bool get _showApple => defaultTargetPlatform == TargetPlatform.iOS;
 
   @override
   void dispose() {
-    _phone.dispose();
     _authSub?.cancel();
     super.dispose();
   }
 
+  /// Google is a redirect (browser) flow: launch it, then wait for the deep
+  /// link callback to deliver a session before navigating.
   Future<void> _signInWithGoogle() async {
-    if (_googleLoading || _loading) return;
+    if (_busy) return;
     setState(() => _googleLoading = true);
     try {
       await ref.read(authProvider.notifier).loginWithGoogle();
-      // Browser launched. Subscribe to session changes so we navigate when
-      // the deep link callback delivers the session.
       _authSub?.cancel();
-      _authSub = supa.Supabase.instance.client.auth.onAuthStateChange.listen(
-        (data) {
-          if (data.session != null && mounted) {
-            _authSub?.cancel();
-            // Pop to RootGate (app root); it routes new users to business
-            // setup and returning users to the main shell. Pushing MainScreen
-            // directly skipped the setup gate for first-time Google sign-ups.
-            Navigator.of(context).popUntil((route) => route.isFirst);
-          }
-        },
-      );
+      _authSub = supa.Supabase.instance.client.auth.onAuthStateChange.listen((
+        data,
+      ) {
+        if (data.session != null && mounted) {
+          _authSub?.cancel();
+          // Pop to RootGate (app root); it routes new users to business
+          // setup and returning users to the main shell.
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        }
+      });
     } catch (e) {
       if (!mounted) return;
       debugPrint('Google sign-in failed: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text("Google sign-in didn't work. Please try again.")),
+          content: Text("Google sign-in didn't work. Please try again."),
+        ),
       );
     } finally {
       if (mounted) setState(() => _googleLoading = false);
     }
   }
 
-  Future<void> _submit() async {
-    if (!_canSubmit || _loading) return;
-    final phone = _phone.text.trim();
-    setState(() => _loading = true);
+  /// Apple is a native flow: it returns a session in one call, so we can
+  /// navigate as soon as it succeeds.
+  Future<void> _signInWithApple() async {
+    if (_busy) return;
+    setState(() => _appleLoading = true);
     try {
-      await ref.read(authProvider.notifier).sendOtp(phone);
+      final ok = await ref.read(authProvider.notifier).loginWithApple();
       if (!mounted) return;
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => OtpScreen(phone: phone)),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      debugPrint('send OTP failed: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content:
-                Text('Could not send the code. Check the number and try again.')),
-      );
+      if (ok) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Apple sign-in didn't work. Please try again."),
+          ),
+        );
+      }
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) setState(() => _appleLoading = false);
     }
   }
 
@@ -109,200 +100,173 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: AppSpacing.xl),
-              Center(
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withAlpha(20),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Image.asset('assets/logo/logo.png', height: 48),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    const Text(
-                      'Welcome to Closr',
-                      style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary),
-                    ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      'Your AI-powered sales assistant',
-                      style: TextStyle(
-                          color: AppColors.textSecondary, fontSize: 13),
-                    ),
-                  ],
-                ),
-              ),
               const SizedBox(height: AppSpacing.xxl),
-              Text(
-                'Mobile number',
-                style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Container(
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Row(
-                  children: [
-                    const Padding(
-                      padding: EdgeInsets.symmetric(
-                          horizontal: AppSpacing.md, vertical: AppSpacing.md),
-                      child: Text('+91',
-                          style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary)),
-                    ),
-                    Container(
-                        width: 1,
-                        height: 24,
-                        color: AppColors.border),
-                    Expanded(
-                      child: TextField(
-                        key: const Key('phone_field'),
-                        controller: _phone,
-                        keyboardType: TextInputType.phone,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          LengthLimitingTextInputFormatter(10),
-                        ],
-                        style: const TextStyle(
-                            color: AppColors.textPrimary,
-                            letterSpacing: 2,
-                            fontWeight: FontWeight.w500),
-                        decoration: const InputDecoration(
-                          hintText: '10-digit mobile number',
-                          hintStyle: TextStyle(
-                              color: AppColors.textSecondary,
-                              letterSpacing: 0,
-                              fontWeight: FontWeight.normal,
-                              fontSize: 13),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                              horizontal: AppSpacing.md,
-                              vertical: AppSpacing.md),
-                        ),
-                        onSubmitted: (_) => _submit(),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: FilledButton(
-                  key: const Key('get_otp_btn'),
-                  onPressed: (_canSubmit && !_loading) ? _submit : null,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    disabledBackgroundColor: AppColors.border,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.md)),
-                  ),
-                  child: _loading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
-                      : const Text(
-                          'Get OTP',
-                          style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white),
-                        ),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              const Center(
-                child: Text(
-                  'We\'ll send a one-time password to verify your number',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              Row(
+              Column(
                 children: [
-                  const Expanded(child: Divider(color: AppColors.border)),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                    child: Text('or',
-                        style: TextStyle(
-                            color: AppColors.textSecondary, fontSize: 13)),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withAlpha(20),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Image.asset('assets/logo/logo.png', height: 48),
                   ),
-                  const Expanded(child: Divider(color: AppColors.border)),
+                  const SizedBox(height: AppSpacing.md),
+                  const Text(
+                    'Welcome to Closr',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Your AI-powered sales assistant',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.lg),
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: OutlinedButton(
-                  key: const Key('google_signin_btn'),
-                  onPressed: (_googleLoading || _loading) ? null : _signInWithGoogle,
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppColors.border),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.md)),
-                  ),
-                  child: _googleLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: AppColors.primary))
-                      : Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              'G',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFF4285F4),
-                              ),
-                            ),
-                            const SizedBox(width: AppSpacing.sm),
-                            const Text(
-                              'Continue with Google',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                          ],
-                        ),
+              const Spacer(),
+              const Text(
+                'Sign in to continue',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
                 ),
               ),
-              const Spacer(),
-              const Center(
-                child: Text(
-                  'By continuing you agree to our Terms of Service',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
-                  textAlign: TextAlign.center,
+              const SizedBox(height: AppSpacing.lg),
+              // Apple first on iOS per Apple's HIG.
+              if (_showApple) ...[
+                _AppleButton(
+                  loading: _appleLoading,
+                  onPressed: _busy ? null : _signInWithApple,
                 ),
+                const SizedBox(height: AppSpacing.md),
+              ],
+              _GoogleButton(
+                loading: _googleLoading,
+                onPressed: _busy ? null : _signInWithGoogle,
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              const Text(
+                'By continuing you agree to our Terms of Service',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
               ),
               const SizedBox(height: AppSpacing.lg),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _GoogleButton extends StatelessWidget {
+  const _GoogleButton({required this.loading, required this.onPressed});
+  final bool loading;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 52,
+      child: OutlinedButton(
+        key: const Key('google_signin_btn'),
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          side: const BorderSide(color: AppColors.border),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+        ),
+        child: loading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.primary,
+                ),
+              )
+            : const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'G',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF4285F4),
+                    ),
+                  ),
+                  SizedBox(width: AppSpacing.sm),
+                  Text(
+                    'Continue with Google',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+class _AppleButton extends StatelessWidget {
+  const _AppleButton({required this.loading, required this.onPressed});
+  final bool loading;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 52,
+      child: FilledButton(
+        key: const Key('apple_signin_btn'),
+        onPressed: onPressed,
+        style: FilledButton.styleFrom(
+          backgroundColor: Colors.black,
+          disabledBackgroundColor: Colors.black45,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+        ),
+        child: loading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  FaIcon(FontAwesomeIcons.apple, color: Colors.white, size: 18),
+                  SizedBox(width: AppSpacing.sm),
+                  Text(
+                    'Continue with Apple',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }
