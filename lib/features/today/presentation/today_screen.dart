@@ -665,6 +665,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
         Stack(
           children: [
             IconButton(
+              tooltip: 'Notifications',
               icon: const Icon(Icons.notifications_outlined,
                   color: AppColors.textPrimary),
               onPressed: () {

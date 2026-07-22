@@ -94,6 +94,7 @@ class OrderItemRowCard extends StatelessWidget {
           ),
           if (_editable && onRemove != null)
             IconButton(
+              tooltip: 'Remove item',
               icon: const Icon(Icons.close, size: 16),
               color: AppColors.textSecondary,
               onPressed: onRemove,

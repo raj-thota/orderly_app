@@ -241,6 +241,7 @@ class ProductDetailScreen extends ConsumerWidget {
                       )
                   : null,
               icon: const Icon(Icons.remove_circle_outline),
+              tooltip: 'Decrease stock',
               color: AppColors.primary,
             ),
             SizedBox(
@@ -262,6 +263,7 @@ class ProductDetailScreen extends ConsumerWidget {
                     .adjustQty(p.id!, 1),
               ),
               icon: const Icon(Icons.add_circle_outline),
+              tooltip: 'Increase stock',
               color: AppColors.primary,
             ),
           ],

@@ -130,6 +130,7 @@ class _WeekHeader extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
+                tooltip: 'Previous',
                 icon: const Icon(Icons.chevron_left_rounded),
                 onPressed: onPrev,
                 color: AppColors.textPrimary,
@@ -139,6 +140,7 @@ class _WeekHeader extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary)),
               IconButton(
+                tooltip: 'Next',
                 icon: const Icon(Icons.chevron_right_rounded),
                 onPressed: onNext,
                 color: AppColors.textPrimary,

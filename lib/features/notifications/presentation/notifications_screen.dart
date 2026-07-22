@@ -96,6 +96,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               },
             ),
           IconButton(
+            tooltip: 'Refresh',
             icon: const Icon(Icons.refresh_rounded),
             onPressed: () => ref.read(workItemsProvider.notifier).load(),
           ),

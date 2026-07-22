@@ -289,6 +289,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   width: 18, height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2))
               : IconButton(
+                  tooltip: editing ? 'Save' : 'Edit',
                   icon: Icon(editing ? Icons.check_rounded : Icons.edit_outlined,
                       size: 18, color: AppColors.primary),
                   onPressed: () {

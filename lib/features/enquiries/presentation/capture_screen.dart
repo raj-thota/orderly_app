@@ -358,6 +358,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
                       shape: const CircleBorder(),
                       child: IconButton(
                         iconSize: 18,
+                        tooltip: 'Remove screenshot',
                         icon: const Icon(Icons.close, color: Colors.white),
                         onPressed: controller.clearScreenshot,
                       ),

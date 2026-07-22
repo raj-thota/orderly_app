@@ -66,6 +66,7 @@ class DraftCard extends StatelessWidget {
               '${draft.items[i].price != null ? ' @ ${Money.inr(draft.items[i].price!)}' : ''}',
               highlighted: highlightedFields.contains('items'),
               trailing: IconButton(
+                tooltip: 'Remove item',
                 icon: const Icon(Icons.close, size: 16),
                 onPressed: () => onRemoveItem(i),
               ),

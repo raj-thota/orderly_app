@@ -405,7 +405,7 @@ class _ErrorBanner extends StatelessWidget {
       color: AppColors.danger.withAlpha(20),
       padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
-      child: Text('Error: $message',
+      child: Text(message,
           style: const TextStyle(
               color: AppColors.danger, fontSize: 12)),
     );
@@ -499,6 +499,7 @@ class _InputBar extends StatelessWidget {
             ),
             IconButton(
               key: const Key('assistant_send'),
+              tooltip: 'Send',
               onPressed: canSend ? onSend : null,
               icon: const Icon(Icons.send_rounded),
               color: AppColors.primary,

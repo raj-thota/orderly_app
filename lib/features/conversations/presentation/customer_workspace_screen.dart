@@ -68,12 +68,14 @@ class _CustomerWorkspaceScreenState
         actions: [
           if (widget.phone != null)
             IconButton(
+              tooltip: 'Call customer',
               icon: const Icon(Icons.phone_outlined),
               onPressed: () =>
                   launchUrl(Uri.parse('tel:${widget.phone}')),
             ),
           if (widget.phone != null)
             IconButton(
+              tooltip: 'Message on WhatsApp',
               icon: const Icon(Icons.chat_rounded),
               onPressed: () =>
                   launchUrl(Uri.parse('https://wa.me/91${widget.phone}')),

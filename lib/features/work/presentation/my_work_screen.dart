@@ -81,6 +81,7 @@ class _MyWorkScreenState extends ConsumerState<MyWorkScreen>
                   child: CircularProgressIndicator(strokeWidth: 2)),
             ),
           IconButton(
+            tooltip: 'Refresh',
             icon: const Icon(Icons.refresh_rounded),
             onPressed: () => ref.read(workItemsProvider.notifier).load(),
           ),

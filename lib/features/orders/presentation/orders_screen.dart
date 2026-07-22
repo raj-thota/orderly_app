@@ -73,6 +73,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                       prefixIcon: const Icon(Icons.search, size: 18),
                       suffixIcon: _search.isNotEmpty
                           ? IconButton(
+                              tooltip: 'Clear search',
                               icon: const Icon(Icons.clear, size: 18),
                               onPressed: () {
                                 _searchCtl.clear();
