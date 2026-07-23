@@ -387,6 +387,10 @@ class _ManualFormState extends ConsumerState<_ManualForm> {
       return;
     }
     if (!mounted || pick == null) return; // user cancelled the picker
+    // Returning from the picker restores focus to the autofocused name field,
+    // popping the keyboard back over the now-filled form. Drop it so the user
+    // sees the prefilled values.
+    FocusScope.of(context).unfocus();
     if (pick.name != null) {
       _nameCtrl.text = pick.name!;
       _controller.setName(pick.name!);

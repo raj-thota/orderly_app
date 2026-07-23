@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:fluttercontactpicker/fluttercontactpicker.dart';
 
@@ -46,18 +48,37 @@ ContactPick contactToPrefill(String? fullName, String? rawNumber) {
 /// single-contact picker (no address-book enumeration); on Android 11+ the
 /// plugin requests READ_CONTACTS at runtime.
 class DeviceContactsService implements ContactsService {
+  /// A back-out from a real, on-screen picker takes a human at least a beat.
+  /// Anything faster means the picker never actually opened.
+  static const _minGenuineCancel = Duration(milliseconds: 700);
+
   @override
   Future<ContactPick?> pickContact() async {
+    final sw = Stopwatch()..start();
     try {
-      final contact = await FlutterContactPicker.pickPhoneContact();
+      // Cap the wait so a picker that launches but never returns a result
+      // (a silent native hang) surfaces as an error instead of a dead button.
+      final contact = await FlutterContactPicker.pickPhoneContact()
+          .timeout(const Duration(seconds: 60));
       return contactToPrefill(contact.fullName, contact.phoneNumber?.number);
     } on UserCancelledPickingException {
-      // The user backed out without choosing — a genuine no-op, not an error.
+      // The plugin reports BOTH a genuine back-out AND a picker that failed to
+      // open (native returns a null / "CANCELLED" result) as this same
+      // exception. Distinguish by timing: an instant "cancel" means the picker
+      // never appeared, so surface it instead of silently doing nothing.
+      sw.stop();
+      debugPrint('contact pick cancelled after ${sw.elapsedMilliseconds}ms');
+      if (sw.elapsed < _minGenuineCancel) {
+        throw const ContactPickException('picker did not open');
+      }
       return null;
+    } on TimeoutException catch (e) {
+      debugPrint('contact pick timed out after ${sw.elapsedMilliseconds}ms');
+      throw ContactPickException(e);
     } catch (e) {
       // Permission denied or a plugin/OS failure. Previously this was swallowed
       // identically to a cancel, so the button appeared dead. Surface it.
-      debugPrint('contact pick failed: $e');
+      debugPrint('contact pick failed after ${sw.elapsedMilliseconds}ms: $e');
       throw ContactPickException(e);
     }
   }

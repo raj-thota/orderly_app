@@ -187,10 +187,14 @@ class _WorkRow extends StatelessWidget {
 
   Color _priorityColor(String priority) {
     switch (priority) {
-      case 'high': return AppColors.danger;
-      case 'medium': return AppColors.warning;
-      case 'low': return AppColors.success;
-      default: return AppColors.textSecondary;
+      case 'high':
+        return AppColors.danger;
+      case 'medium':
+        return AppColors.warning;
+      case 'low':
+        return AppColors.success;
+      default:
+        return AppColors.textSecondary;
     }
   }
 
@@ -235,8 +239,11 @@ class _WorkRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: AppSpacing.xs),
-            const Icon(Icons.chevron_right_rounded,
-                color: AppColors.textSecondary, size: 16),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: AppColors.textSecondary,
+              size: 16,
+            ),
           ],
         ),
       ),
@@ -467,11 +474,27 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
   }
 
   static const _weekdays = [
-    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
   ];
   static const _months = [
-    'January', 'February', 'March', 'April', 'May', 'June', 'July',
-    'August', 'September', 'October', 'November', 'December',
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
 
   String _dateEyebrow(DateTime now) =>
@@ -507,9 +530,9 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
       child: Padding(
         padding: const EdgeInsets.only(left: AppSpacing.sm),
         child: GestureDetector(
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const ProfileScreen()),
-          ),
+          onTap: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const ProfileScreen())),
           child: Stack(
             clipBehavior: Clip.none,
             children: [
@@ -575,11 +598,13 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
     final orders = ref.watch(ordersControllerProvider).valueOrNull ?? const [];
     final enquiries =
         ref.watch(enquiriesControllerProvider).valueOrNull ?? const [];
-    final name =
-        ref.watch(userProfileProvider).value?['business_name'] ?? '';
+    final name = ref.watch(userProfileProvider).value?['business_name'] ?? '';
     final now = DateTime.now();
-    final brief =
-        buildTodayBrief(orders: orders, enquiries: enquiries, now: now);
+    final brief = buildTodayBrief(
+      orders: orders,
+      enquiries: enquiries,
+      now: now,
+    );
     final workState = ref.watch(workItemsProvider);
     final insights = buildHomeInsights(brief, now: now);
     final activity = buildRecentActivity(orders);
@@ -654,15 +679,21 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
       leading: _buildProfileAvatar(),
       title: Row(
         mainAxisSize: MainAxisSize.min,
-        children: const [
-          Icon(Icons.auto_awesome, size: 16, color: AppColors.primary),
-          SizedBox(width: 4),
-          Text(
-            'Closr',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppColors.primary,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Logo is the "C" of the wordmark; the rest stays as text.
+          const Image(image: AssetImage('assets/logo/logo.png'), height: 40),
+          // Pull the text left to close the transparent padding baked into the
+          // logo PNG so "Closr" reads as one word.
+          Transform.translate(
+            offset: const Offset(-6, 0),
+            child: const Text(
+              'Closr',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primary,
+              ),
             ),
           ),
         ],
@@ -673,12 +704,15 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
           children: [
             IconButton(
               tooltip: 'Notifications',
-              icon: const Icon(Icons.notifications_outlined,
-                  color: AppColors.textPrimary),
+              icon: const Icon(
+                Icons.notifications_outlined,
+                color: AppColors.textPrimary,
+              ),
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                      builder: (_) => const NotificationsScreen()),
+                    builder: (_) => const NotificationsScreen(),
+                  ),
                 );
               },
             ),
@@ -758,7 +792,11 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
     );
   }
 
-  Widget _buildHeroBrief(TodayBrief brief, WorkItemsState workState, DateTime now) {
+  Widget _buildHeroBrief(
+    TodayBrief brief,
+    WorkItemsState workState,
+    DateTime now,
+  ) {
     final narrative = buildBriefNarrative(
       brief: brief,
       items: workState.items,
@@ -827,8 +865,11 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
           if (workState.items.isNotEmpty) ...[
             Row(
               children: [
-                const Icon(Icons.schedule_rounded,
-                    size: 13, color: Colors.white70),
+                const Icon(
+                  Icons.schedule_rounded,
+                  size: 13,
+                  color: Colors.white70,
+                ),
                 const SizedBox(width: AppSpacing.xs),
                 Text(
                   '${workState.items.length} task${workState.items.length == 1 ? '' : 's'} · about ${estimatedMinutes(workState.items)} min',
@@ -851,8 +892,9 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                   style: FilledButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: AppColors.primary,
-                    padding:
-                        const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.md,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppRadius.sm),
                     ),
@@ -860,10 +902,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                   onPressed: () => FocusMode.start(context),
                   child: const Text(
                     'Start My Work →',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                   ),
                 ),
               ),
@@ -908,9 +947,10 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                 for (var i = 0; i < displayItems.length; i++) ...[
                   if (i > 0)
                     const Divider(
-                        height: 1,
-                        indent: AppSpacing.lg,
-                        color: AppColors.border),
+                      height: 1,
+                      indent: AppSpacing.lg,
+                      color: AppColors.border,
+                    ),
                   _WorkRow(
                     item: displayItems[i],
                     onTap: () => _openWorkspace(displayItems[i]),
@@ -1045,9 +1085,10 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                 for (var i = 0; i < activity.length; i++) ...[
                   if (i > 0)
                     const Divider(
-                        height: 1,
-                        indent: AppSpacing.lg,
-                        color: AppColors.border),
+                      height: 1,
+                      indent: AppSpacing.lg,
+                      color: AppColors.border,
+                    ),
                   _buildActivityRow(activity[i]),
                 ],
               ],
@@ -1060,7 +1101,8 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
 
   Widget _buildActivityRow(ActivityEntry entry) {
     final isPayment = entry.kind == ActivityKind.paymentReceived;
-    final who = entry.order.customerName ??
+    final who =
+        entry.order.customerName ??
         (entry.order.orderNumber != null
             ? 'Order #${entry.order.orderNumber}'
             : 'Customer');
@@ -1131,8 +1173,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color:
-                      isPayment ? AppColors.success : AppColors.textPrimary,
+                  color: isPayment ? AppColors.success : AppColors.textPrimary,
                 ),
               ),
           ],
@@ -1207,10 +1248,12 @@ class _PlanNudge extends ConsumerWidget {
       case EntitlementStatus.trialing:
         final days = sub.trialDaysLeft;
         if (days > 3) return const SizedBox.shrink();
-        text = 'Your Pro trial ends in $days day${days == 1 ? '' : 's'} — '
+        text =
+            'Your Pro trial ends in $days day${days == 1 ? '' : 's'} — '
             'keep the AI working for you.';
       case EntitlementStatus.gated:
-        text = 'Your trial has ended — AI is paused. '
+        text =
+            'Your trial has ended — AI is paused. '
             'Core features stay free.';
     }
 
@@ -1222,15 +1265,18 @@ class _PlanNudge extends ConsumerWidget {
         child: InkWell(
           key: const Key('today_plan_nudge'),
           borderRadius: BorderRadius.circular(AppRadius.md),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
-          ),
+          onTap: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const SubscriptionScreen())),
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.md),
             child: Row(
               children: [
-                const Icon(Icons.workspace_premium_rounded,
-                    color: AppColors.primary, size: 20),
+                const Icon(
+                  Icons.workspace_premium_rounded,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Text(
@@ -1242,8 +1288,10 @@ class _PlanNudge extends ConsumerWidget {
                     ),
                   ),
                 ),
-                const Icon(Icons.chevron_right_rounded,
-                    color: AppColors.textSecondary),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.textSecondary,
+                ),
               ],
             ),
           ),
