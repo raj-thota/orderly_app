@@ -79,6 +79,15 @@ class _FakeDraft implements DraftReplyService {
 
 // ─── Helper ──────────────────────────────────────────────────────────────────
 
+final _trialSub = Subscription(
+  id: 's1',
+  userId: 'u1',
+  plan: 'pro_monthly',
+  status: 'trialing',
+  trialEnd: DateTime.now().add(const Duration(days: 30)),
+  createdAt: DateTime(2026, 1, 1),
+);
+
 Widget wrap(Widget child,
     {CustomerSummaryService? summary, DraftReplyService? draft}) {
   return ProviderScope(
@@ -87,7 +96,7 @@ Widget wrap(Widget child,
       customerSummaryServiceProvider
           .overrideWithValue(summary ?? _FakeSummary()),
       draftReplyServiceProvider.overrideWithValue(draft ?? _FakeDraft()),
-      entitlementProvider.overrideWith((_) => EntitlementStatus.trialing),
+      subscriptionProvider.overrideWith((ref) => Stream.value(_trialSub)),
     ],
     child: MaterialApp(home: child),
   );

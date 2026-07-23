@@ -1,5 +1,6 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeaders, json } from "../_shared/cors.ts";
+import { requireAiAccess } from "../_shared/entitlement.ts";
 import { createProvider } from "../_shared/ai/factory.ts";
 import { CustomerSignal, workItemsPrompt, workItemsSchema } from "../_shared/ai/prompts/work-items.ts";
 import { GenerateOutput, WorkItemKind, WorkItemPriority } from "./schema.ts";
@@ -34,6 +35,9 @@ Deno.serve(async (req) => {
   const { data: userData, error: userErr } = await supabase.auth.getUser();
   if (userErr || !userData?.user) return json({ error: "unauthorized" }, 401);
   const userId = userData.user.id;
+
+  const denied = await requireAiAccess(supabase);
+  if (denied) return denied;
 
   // Rate limit — generate-work-items is expensive; 10/hour is generous.
   const { data: allowed, error: rlErr } = await supabase.rpc(

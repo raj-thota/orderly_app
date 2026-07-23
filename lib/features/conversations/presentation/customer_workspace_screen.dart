@@ -6,7 +6,6 @@ import 'package:orderly_app/core/theme/app_spacing.dart';
 import 'package:orderly_app/features/conversations/controller/conversation_provider.dart';
 import 'package:orderly_app/features/conversations/data/ai_summary.dart';
 import 'package:orderly_app/features/subscription/controller/subscription_provider.dart';
-import 'package:orderly_app/features/subscription/data/subscription.dart';
 import 'package:orderly_app/features/subscription/presentation/subscription_screen.dart';
 import 'package:orderly_app/shared/widgets/ai_card.dart';
 import 'package:orderly_app/shared/widgets/chat_bubble.dart';
@@ -145,8 +144,7 @@ class _ChatActions extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(conversationNotifierProvider(customerId));
-    final isGated =
-        ref.watch(entitlementProvider) == EntitlementStatus.gated;
+    final isGated = !ref.watch(aiAccessProvider);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(
@@ -336,8 +334,7 @@ class _SummaryTabState extends ConsumerState<_SummaryTab> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    final isGated =
-        ref.watch(entitlementProvider) == EntitlementStatus.gated;
+    final isGated = !ref.watch(aiAccessProvider);
 
     if (_summary == null || !_summary!.hasSummary) {
       return Center(

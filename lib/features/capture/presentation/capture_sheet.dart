@@ -11,7 +11,6 @@ import 'package:orderly_app/features/enquiries/controller/capture_provider.dart'
 import 'package:orderly_app/features/enquiries/controller/enquiries_provider.dart';
 import 'package:orderly_app/features/enquiries/data/contacts_service.dart';
 import 'package:orderly_app/features/subscription/controller/subscription_provider.dart';
-import 'package:orderly_app/features/subscription/data/subscription.dart';
 import 'package:orderly_app/features/subscription/presentation/subscription_screen.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
@@ -63,8 +62,7 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
     // AI capture (paste/screenshot/voice) is a Pro feature; manual entry is
     // always free. Gated users get sent to the paywall instead of a silent
     // AI run they can't pay for. Closes the capture monetization bypass.
-    if (src != _CaptureSource.manual &&
-        ref.read(entitlementProvider) == EntitlementStatus.gated) {
+    if (src != _CaptureSource.manual && !ref.read(aiAccessProvider)) {
       final navigator = Navigator.of(context);
       navigator.pop(); // close the capture sheet first
       navigator.push(
@@ -151,7 +149,7 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
           if (_source == null)
             _SourcePicker(
               onTap: _pickSource,
-              gated: ref.watch(entitlementProvider) == EntitlementStatus.gated,
+              gated: !ref.watch(aiAccessProvider),
             ),
           if (_source != null) ...[
             if (_source == _CaptureSource.manual)

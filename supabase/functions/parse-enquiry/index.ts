@@ -1,5 +1,6 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeaders, json } from "../_shared/cors.ts";
+import { requireAiAccess } from "../_shared/entitlement.ts";
 import { createProvider } from "../_shared/ai/factory.ts";
 import { parseEnquiryPrompt, parseEnquirySchema } from "../_shared/ai/prompts/parse-enquiry.ts";
 import { ParsedEnquiry } from "./schema.ts";
@@ -33,6 +34,9 @@ Deno.serve(async (req) => {
   if (userErr || !userData?.user) {
     return json({ error: "unauthorized" }, 401);
   }
+
+  const denied = await requireAiAccess(supabase);
+  if (denied) return denied;
 
   // Validate input before consuming a rate-limit slot so malformed requests
   // never burn the user's quota.

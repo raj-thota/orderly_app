@@ -58,62 +58,58 @@ Subscription _activeSub() => Subscription(
   userId: 'u1',
   plan: 'pro_monthly',
   status: 'active',
+  currentPeriodEnd: DateTime(2026, 8, 22),
   createdAt: DateTime(2026, 1, 1),
 );
 
 void main() {
-  testWidgets('shows Pro plan with 999 price', (t) async {
+  testWidgets('shows Pro plan with 499 price', (t) async {
     await t.pumpWidget(_wrap(sub: null));
     await t.pumpAndSettle();
-    expect(find.textContaining('999'), findsWidgets);
+    expect(find.textContaining('499'), findsWidgets);
     expect(find.textContaining('Pro'), findsWidgets);
   });
 
-  testWidgets('shows Starter tier with 499 price when gated', (t) async {
+  testWidgets('shows the free-forever card', (t) async {
     await t.pumpWidget(_wrap(sub: null));
     await t.pumpAndSettle();
-    expect(find.text('Starter'), findsOneWidget);
-    expect(find.textContaining('499'), findsWidgets);
-    expect(find.byKey(const Key('cta_start_trial_starter')), findsOneWidget);
+    expect(find.text('Free forever'), findsOneWidget);
+    expect(find.textContaining('Unlimited orders'), findsOneWidget);
   });
 
-  testWidgets('tapping Choose Starter checks out the starter plan', (t) async {
-    final checkoutSvc = _FakeCheckoutSvc(uri: Uri.parse('https://rzp.io/s'));
-    await t.pumpWidget(_wrap(sub: null, checkoutSvc: checkoutSvc));
-    await t.pumpAndSettle();
-
-    await t.tap(find.byKey(const Key('cta_start_trial_starter')));
-    await t.pumpAndSettle();
-
-    expect(checkoutSvc.lastPlan, 'starter_monthly');
-  });
-
-  testWidgets('shows Business Coming soon card', (t) async {
+  testWidgets('shows WhatsApp tier as coming soon with 999', (t) async {
     await t.pumpWidget(_wrap(sub: null));
     await t.pumpAndSettle();
-    expect(find.textContaining('Business'), findsWidgets);
-    expect(find.textContaining('soon'), findsWidgets);
+    expect(find.text('Pro + WhatsApp'), findsOneWidget);
+    expect(find.text('Coming soon'), findsOneWidget);
+    expect(find.textContaining('999'), findsWidgets);
   });
 
-  testWidgets('shows Start Free Trial when gated (no subscription)', (t) async {
+  testWidgets('gated user sees subscribe CTA and trial-ended note', (t) async {
     await t.pumpWidget(_wrap(sub: null));
     await t.pumpAndSettle();
     expect(find.byKey(const Key('cta_start_trial')), findsOneWidget);
+    expect(find.textContaining('trial has ended'), findsOneWidget);
   });
 
-  testWidgets('shows trial active badge when trialing', (t) async {
+  testWidgets('shows trial badge with days left when trialing', (t) async {
     await t.pumpWidget(_wrap(sub: _trialSub()));
     await t.pumpAndSettle();
-    expect(find.textContaining('Trial'), findsWidgets);
+    expect(find.textContaining('Trial ·'), findsOneWidget);
+    expect(find.textContaining('days left'), findsWidgets);
   });
 
-  testWidgets('shows Manage button when active', (t) async {
+  testWidgets('active subscriber gets manage, never a checkout CTA', (t) async {
     await t.pumpWidget(_wrap(sub: _activeSub()));
     await t.pumpAndSettle();
     expect(find.byKey(const Key('cta_manage')), findsOneWidget);
+    expect(find.byKey(const Key('cta_start_trial')), findsNothing);
+    expect(find.textContaining('Renews on 22/8/2026'), findsOneWidget);
   });
 
-  testWidgets('tapping Start Free Trial calls checkout service', (t) async {
+  testWidgets('tapping subscribe checks out pro_monthly on razorpay', (
+    t,
+  ) async {
     final checkoutSvc = _FakeCheckoutSvc(
       uri: Uri.parse('https://rzp.io/subscribe'),
     );

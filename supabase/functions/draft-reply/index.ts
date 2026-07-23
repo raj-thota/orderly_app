@@ -1,5 +1,6 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeaders, json } from "../_shared/cors.ts";
+import { requireAiAccess } from "../_shared/entitlement.ts";
 import { createProvider } from "../_shared/ai/factory.ts";
 import { DraftInput, draftReplyPrompt, draftReplySchema } from "../_shared/ai/prompts/draft-reply.ts";
 
@@ -24,6 +25,9 @@ Deno.serve(async (req) => {
   const { data: userData, error: userErr } = await supabase.auth.getUser();
   if (userErr || !userData?.user) return json({ error: "unauthorized" }, 401);
   const userId = userData.user.id;
+
+  const denied = await requireAiAccess(supabase);
+  if (denied) return denied;
 
   let body: Record<string, unknown>;
   try {

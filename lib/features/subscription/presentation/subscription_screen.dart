@@ -10,28 +10,27 @@ import 'package:url_launcher/url_launcher.dart';
 class SubscriptionScreen extends ConsumerWidget {
   const SubscriptionScreen({super.key});
 
-  static const int starterPriceInr = 499;
-  static const int proPriceInr = 999;
-
-  static const List<String> _starterFeatures = [
-    'Unlimited orders & invoices',
-    'Customer directory & payment tracking',
-    'Branded invoices with your logo',
-    'Manual capture & product catalog',
-  ];
+  static const int proPriceInr = 499;
+  static const int whatsappPriceInr = 999;
 
   static const List<String> _proFeatures = [
     'AI capture from DMs, screenshots & voice',
     'Auto-prioritised daily chase list',
-    'AI-drafted WhatsApp follow-ups & reminders',
-    'Customer 360 relationship score',
+    'AI-drafted follow-ups & payment reminders',
+    'Customer 360 with AI summaries',
     'Closr AI business assistant',
+  ];
+
+  static const List<String> _freeFeatures = [
+    'Unlimited orders & invoices',
+    'Manual capture & product catalog',
+    'Customer directory & payment tracking',
+    'Follow-up reminders & notifications',
   ];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final subAsync = ref.watch(subscriptionProvider);
-    final entitlement = ref.watch(entitlementProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -53,7 +52,7 @@ class SubscriptionScreen extends ConsumerWidget {
               ),
             ),
           ),
-          data: (_) => _Body(entitlement: entitlement),
+          data: (sub) => _Body(sub: sub),
         ),
       ),
     );
@@ -61,35 +60,41 @@ class SubscriptionScreen extends ConsumerWidget {
 }
 
 class _Body extends ConsumerWidget {
-  const _Body({required this.entitlement});
-  final EntitlementStatus entitlement;
+  const _Body({required this.sub});
+  final Subscription? sub;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final checkoutState = ref.watch(checkoutControllerProvider);
+    final entitlement = sub?.entitlement ?? EntitlementStatus.gated;
+    final trialDays = sub?.trialDaysLeft ?? 0;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Two purchasable tiers; hide Starter once the user is fully active.
-          if (entitlement != EntitlementStatus.active) ...[
-            _StarterCard(
-              loading: checkoutState.loading,
-              onSubscribe: () =>
-                  _startCheckout(context, ref, 'starter_monthly'),
+          if (entitlement == EntitlementStatus.trialing)
+            _StatusLine(
+              'Your free trial gives you everything Pro has — '
+              '$trialDays day${trialDays == 1 ? '' : 's'} left.',
+            )
+          else if (entitlement == EntitlementStatus.gated)
+            const _StatusLine(
+              'Your trial has ended. Core features stay free forever — '
+              'Pro brings the AI back.',
             ),
-            const SizedBox(height: AppSpacing.lg),
-          ],
           _ProCard(
+            sub: sub,
             entitlement: entitlement,
             loading: checkoutState.loading,
             error: checkoutState.error,
-            onSubscribe: () => _startCheckout(context, ref, 'pro_monthly'),
+            onSubscribe: () => _startCheckout(context, ref),
           ),
           const SizedBox(height: AppSpacing.lg),
-          _BusinessCard(),
+          const _FreeCard(),
+          const SizedBox(height: AppSpacing.lg),
+          const _WhatsAppCard(),
           const SizedBox(height: AppSpacing.xl),
           const Center(
             child: Text(
@@ -102,34 +107,50 @@ class _Body extends ConsumerWidget {
     );
   }
 
-  Future<void> _startCheckout(
-    BuildContext context,
-    WidgetRef ref,
-    String plan,
-  ) async {
-    ref
-        .read(eventServiceProvider)
-        .track(
-          'checkout_started',
-          props: {'gateway': 'razorpay', 'plan': plan},
-        );
+  Future<void> _startCheckout(BuildContext context, WidgetRef ref) async {
+    ref.read(eventServiceProvider).track(
+      'checkout_started',
+      props: {'gateway': 'razorpay', 'plan': 'pro_monthly'},
+    );
     final uri = await ref
         .read(checkoutControllerProvider.notifier)
-        .startCheckout(gateway: 'razorpay', plan: plan);
+        .startCheckout(gateway: 'razorpay', plan: 'pro_monthly');
     if (uri != null) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
 }
 
+class _StatusLine extends StatelessWidget {
+  const _StatusLine(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: AppColors.textSecondary,
+          fontSize: 13,
+          height: 1.4,
+        ),
+      ),
+    );
+  }
+}
+
 class _ProCard extends StatelessWidget {
   const _ProCard({
+    required this.sub,
     required this.entitlement,
     required this.loading,
     this.error,
     required this.onSubscribe,
   });
 
+  final Subscription? sub;
   final EntitlementStatus entitlement;
   final bool loading;
   final String? error;
@@ -162,7 +183,11 @@ class _ProCard extends StatelessWidget {
               ),
               const Spacer(),
               if (entitlement == EntitlementStatus.trialing)
-                _Badge('Trial active', Colors.white.withAlpha(50), Colors.white)
+                _Badge(
+                  'Trial · ${sub?.trialDaysLeft ?? 0}d left',
+                  Colors.white.withAlpha(50),
+                  Colors.white,
+                )
               else if (entitlement == EntitlementStatus.active)
                 _Badge('Active', Colors.green.shade700, Colors.white),
             ],
@@ -188,7 +213,7 @@ class _ProCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.md),
           const Text(
-            'Everything in Starter, plus:',
+            'Everything free, plus your AI sales assistant:',
             style: TextStyle(
               color: Colors.white70,
               fontSize: 13,
@@ -225,70 +250,88 @@ class _ProCard extends StatelessWidget {
                 style: const TextStyle(color: Colors.white70, fontSize: 12),
               ),
             ),
-          _CtaButton(
-            entitlement: entitlement,
-            loading: loading,
-            onTap: onSubscribe,
-          ),
+          if (entitlement == EntitlementStatus.active)
+            _ActiveFooter(sub: sub)
+          else
+            FilledButton(
+              key: const Key('cta_start_trial'),
+              onPressed: loading ? null : onSubscribe,
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: AppColors.primary,
+                minimumSize: const Size(double.infinity, 48),
+              ),
+              child: loading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(
+                      entitlement == EntitlementStatus.trialing
+                          ? 'Subscribe now · ₹${SubscriptionScreen.proPriceInr}/mo'
+                          : 'Get Closr Pro · ₹${SubscriptionScreen.proPriceInr}/mo',
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+            ),
         ],
       ),
     );
   }
 }
 
-class _CtaButton extends StatelessWidget {
-  const _CtaButton({
-    required this.entitlement,
-    required this.loading,
-    required this.onTap,
-  });
-
-  final EntitlementStatus entitlement;
-  final bool loading;
-  final VoidCallback onTap;
+/// Active subscribers must never be routed back into checkout — a second
+/// gateway subscription would double-bill them. Cancellation goes through
+/// support until a self-serve portal exists.
+class _ActiveFooter extends StatelessWidget {
+  const _ActiveFooter({required this.sub});
+  final Subscription? sub;
 
   @override
   Widget build(BuildContext context) {
-    if (entitlement == EntitlementStatus.active) {
-      return OutlinedButton(
-        key: const Key('cta_manage'),
-        onPressed: onTap,
-        style: OutlinedButton.styleFrom(
-          foregroundColor: Colors.white,
-          side: const BorderSide(color: Colors.white54),
-        ),
-        child: const Text('Manage subscription'),
-      );
-    }
-
-    return FilledButton(
-      key: const Key('cta_start_trial'),
-      onPressed: loading ? null : onTap,
-      style: FilledButton.styleFrom(
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.primary,
-        minimumSize: const Size(double.infinity, 48),
-      ),
-      child: loading
-          ? const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : Text(
-              entitlement == EntitlementStatus.trialing
-                  ? 'Subscribe now  ₹${SubscriptionScreen.proPriceInr}/mo'
-                  : 'Start Free Trial',
-              style: const TextStyle(fontWeight: FontWeight.w700),
+    final renews = sub?.currentPeriodEnd;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (renews != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: Text(
+              'Renews on ${renews.day}/${renews.month}/${renews.year}',
+              style: const TextStyle(color: Colors.white70, fontSize: 12),
             ),
+          ),
+        OutlinedButton(
+          key: const Key('cta_manage'),
+          onPressed: () async {
+            final messenger = ScaffoldMessenger.of(context);
+            final ok = await launchUrl(
+              Uri(
+                scheme: 'mailto',
+                path: 'closrsupport@gmail.com',
+                query:
+                    'subject=${Uri.encodeComponent('Manage my Closr Pro subscription')}',
+              ),
+            );
+            if (!ok) {
+              messenger.showSnackBar(const SnackBar(
+                  content: Text('No email app found — write to '
+                      'closrsupport@gmail.com')));
+            }
+          },
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Colors.white,
+            side: const BorderSide(color: Colors.white54),
+          ),
+          child: const Text('Manage · Contact support'),
+        ),
+      ],
     );
   }
 }
 
-class _StarterCard extends StatelessWidget {
-  const _StarterCard({required this.loading, required this.onSubscribe});
-  final bool loading;
-  final VoidCallback onSubscribe;
+class _FreeCard extends StatelessWidget {
+  const _FreeCard();
 
   @override
   Widget build(BuildContext context) {
@@ -303,7 +346,7 @@ class _StarterCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Starter',
+            'Free forever',
             style: TextStyle(
               color: AppColors.textPrimary,
               fontSize: 20,
@@ -311,26 +354,12 @@ class _StarterCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(
-                '₹${SubscriptionScreen.starterPriceInr}',
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const Text(
-                ' / month',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
-              ),
-            ],
+          const Text(
+            'Run your business by hand at no cost — with or without Pro.',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
           ),
-          const SizedBox(height: AppSpacing.lg),
-          for (final f in SubscriptionScreen._starterFeatures)
+          const SizedBox(height: AppSpacing.md),
+          for (final f in SubscriptionScreen._freeFeatures)
             Padding(
               padding: const EdgeInsets.only(bottom: AppSpacing.sm),
               child: Row(
@@ -353,33 +382,15 @@ class _StarterCard extends StatelessWidget {
                 ],
               ),
             ),
-          const SizedBox(height: AppSpacing.sm),
-          OutlinedButton(
-            key: const Key('cta_start_trial_starter'),
-            onPressed: loading ? null : onSubscribe,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.primary,
-              side: const BorderSide(color: AppColors.primary),
-              minimumSize: const Size(double.infinity, 48),
-            ),
-            child: loading
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text(
-                    'Choose Starter',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-          ),
         ],
       ),
     );
   }
 }
 
-class _BusinessCard extends StatelessWidget {
+class _WhatsAppCard extends StatelessWidget {
+  const _WhatsAppCard();
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -395,7 +406,7 @@ class _BusinessCard extends StatelessWidget {
           Row(
             children: [
               const Text(
-                'Business',
+                'Pro + WhatsApp',
                 style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 20,
@@ -421,9 +432,9 @@ class _BusinessCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          const Text(
-            '₹2,499 / month',
-            style: TextStyle(
+          Text(
+            '₹${SubscriptionScreen.whatsappPriceInr} / month',
+            style: const TextStyle(
               color: AppColors.textSecondary,
               fontSize: 18,
               fontWeight: FontWeight.w600,
@@ -436,10 +447,9 @@ class _BusinessCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           for (final f in const [
+            'WhatsApp Business connected to Closr',
+            'AI replies sent straight from the app',
             'Team members & shared inbox',
-            'WhatsApp Business API integration',
-            'API access',
-            'Priority support',
           ])
             Padding(
               padding: const EdgeInsets.only(bottom: AppSpacing.xs),

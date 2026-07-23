@@ -96,6 +96,15 @@ class _FixedEnquiries extends EnquiriesController {
   Future<void> load() async {}
 }
 
+final _trialSub = Subscription(
+  id: 's1',
+  userId: 'u1',
+  plan: 'pro_monthly',
+  status: 'trialing',
+  trialEnd: DateTime.now().add(const Duration(days: 30)),
+  createdAt: DateTime(2026, 1, 1),
+);
+
 Widget _harness({
   List<Order> orders = const [],
   List<Enquiry> enquiries = const [],
@@ -103,6 +112,7 @@ Widget _harness({
   void Function(int)? onNavigate,
   FakeAiWorkItemsService? workItems,
   Map<String, dynamic>? profile,
+  Subscription? sub,
 }) {
   final captured = events ?? [];
   return ProviderScope(
@@ -122,7 +132,8 @@ Widget _harness({
       conversationsServiceProvider.overrideWithValue(_FakeConv()),
       customerSummaryServiceProvider.overrideWithValue(_FakeSummary()),
       draftReplyServiceProvider.overrideWithValue(_FakeDraft()),
-      entitlementProvider.overrideWith((_) => EntitlementStatus.trialing),
+      subscriptionProvider
+          .overrideWith((ref) => Stream.value(sub ?? _trialSub)),
     ],
     child: MaterialApp(
       home: TodayScreen(onNavigate: onNavigate ?? (_) {}),
@@ -211,7 +222,7 @@ void main() {
         conversationsServiceProvider.overrideWithValue(_FakeConv()),
         customerSummaryServiceProvider.overrideWithValue(_FakeSummary()),
         draftReplyServiceProvider.overrideWithValue(_FakeDraft()),
-        entitlementProvider.overrideWith((_) => EntitlementStatus.trialing),
+        subscriptionProvider.overrideWith((ref) => Stream.value(_trialSub)),
       ],
       child: MaterialApp(
         navigatorObservers: [observer],
@@ -486,5 +497,47 @@ void main() {
     // Workspace screen is unique: it has a Chat tab.
     expect(find.text('Chat'), findsOneWidget);
     expect(navigated, isNull);
+  });
+
+  group('plan nudge', () {
+    testWidgets('hidden while the trial has plenty of time left', (t) async {
+      await t.pumpWidget(_harness());
+      await t.pumpAndSettle();
+      expect(find.byKey(const Key('today_plan_nudge')), findsNothing);
+    });
+
+    testWidgets('shows countdown when the trial ends within 3 days', (t) async {
+      final endingSub = Subscription(
+        id: 's1',
+        userId: 'u1',
+        plan: 'pro_monthly',
+        status: 'trialing',
+        trialEnd: DateTime.now().add(const Duration(days: 2)),
+        createdAt: DateTime(2026, 1, 1),
+      );
+      await t.pumpWidget(_harness(sub: endingSub));
+      await t.pumpAndSettle();
+      expect(find.byKey(const Key('today_plan_nudge')), findsOneWidget);
+      expect(find.textContaining('trial ends in'), findsOneWidget);
+    });
+
+    testWidgets('shows trial-ended copy and opens the plans screen when gated',
+        (t) async {
+      final gatedSub = Subscription(
+        id: 's1',
+        userId: 'u1',
+        plan: 'pro_monthly',
+        status: 'expired',
+        createdAt: DateTime(2026, 1, 1),
+      );
+      await t.pumpWidget(_harness(sub: gatedSub));
+      await t.pumpAndSettle();
+      expect(find.byKey(const Key('today_plan_nudge')), findsOneWidget);
+      expect(find.textContaining('trial has ended'), findsOneWidget);
+
+      await t.tap(find.byKey(const Key('today_plan_nudge')));
+      await t.pumpAndSettle();
+      expect(find.text('Free forever'), findsOneWidget);
+    });
   });
 }

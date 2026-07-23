@@ -40,8 +40,9 @@ class FaqsScreen extends StatelessWidget {
     ),
     (
       'How do I upgrade to Pro?',
-      'Go to Business → Go Pro to unlock AI capture, broadcasts and branded '
-          'invoices.',
+      'Go to Business → Go Pro. Pro (₹499/month) unlocks AI capture, the '
+          'daily chase list, AI-drafted replies and the Closr AI assistant. '
+          'Core features stay free.',
     ),
     (
       'How do I contact support?',

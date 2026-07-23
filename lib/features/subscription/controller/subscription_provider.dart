@@ -22,11 +22,12 @@ final subscriptionProvider = StreamProvider.autoDispose<Subscription?>((
   yield* svc.watchSubscription();
 });
 
-/// Derives the entitlement from the subscription stream.
-/// Defaults to gated while loading or if no subscription exists.
-final entitlementProvider = Provider.autoDispose<EntitlementStatus>((ref) {
+/// Whether AI features are available: valid trial or paid Pro subscription.
+/// Every AI gate in the app watches this. Defaults to false while loading or
+/// if no subscription row exists.
+final aiAccessProvider = Provider.autoDispose<bool>((ref) {
   final async = ref.watch(subscriptionProvider);
-  return async.valueOrNull?.entitlement ?? EntitlementStatus.gated;
+  return async.valueOrNull?.hasAiAccess ?? false;
 });
 
 // ---------------------------------------------------------------------------
@@ -63,7 +64,9 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       state = state.copyWith(loading: false);
       return uri;
     } catch (e) {
-      state = state.copyWith(loading: false, error: e.toString());
+      // Strip Dart's "Exception: " prefix — this string renders on screen.
+      final message = e.toString().replaceFirst('Exception: ', '');
+      state = state.copyWith(loading: false, error: message);
       return null;
     }
   }

@@ -9,6 +9,11 @@ const STRIPE_WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET") ?? "";
 
 const CORS = { "Access-Control-Allow-Origin": "*" };
 
+// createClient's generics don't unify across call sites under deno check;
+// the handlers below only need the untyped query interface.
+// deno-lint-ignore no-explicit-any
+type Db = any;
+
 function plainJson(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -45,7 +50,7 @@ Deno.serve(async (req) => {
 // ---------------------------------------------------------------------------
 
 async function _handleStripe(
-  supabase: ReturnType<typeof createClient>,
+  supabase: Db,
   rawBody: ArrayBuffer,
   bodyText: string,
   signature: string,
@@ -176,7 +181,7 @@ async function _verifyStripeSignature(
 // ---------------------------------------------------------------------------
 
 async function _handleRazorpay(
-  supabase: ReturnType<typeof createClient>,
+  supabase: Db,
   bodyText: string,
   signature: string,
 ): Promise<Response> {
@@ -205,7 +210,7 @@ async function _handleRazorpay(
     ? `rzp_evt_${rzpEventEntityId}`
     : rzpSubId
     ? `rzp_${rzpSubId}_${eventType}_${Math.floor(Date.now() / 86400000)}`
-    : `rzp_fallback_${eventType}_${Date.now()}`;
+    : `rzp_fallback_${eventType}_${Math.floor(Date.now() / 86400000)}`;
 
   // Idempotency.
   const { error: dupErr } = await supabase.from("billing_events").insert({
@@ -300,6 +305,7 @@ function _timingSafeEqual(a: string, b: string): boolean {
   const bBytes = new TextEncoder().encode(b);
   if (aBytes.length !== bBytes.length) return false;
   // crypto.subtle.timingSafeEqual is available in Deno.
-  return (crypto.subtle as unknown as { timingSafeEqual(a: ArrayBuffer, b: ArrayBuffer): boolean })
-    .timingSafeEqual(aBytes, bBytes);
+  return (crypto.subtle as unknown as {
+    timingSafeEqual(a: ArrayBufferView, b: ArrayBufferView): boolean;
+  }).timingSafeEqual(aBytes, bBytes);
 }

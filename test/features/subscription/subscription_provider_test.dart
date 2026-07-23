@@ -77,7 +77,7 @@ void main() {
     expect(result, isNull);
   });
 
-  test('entitlementProvider derives active from active subscription', () async {
+  test('aiAccessProvider is true for an active Pro subscription', () async {
     final activeSub = Subscription(
       id: 's1',
       userId: 'u1',
@@ -90,20 +90,18 @@ void main() {
 
     // Wait for stream to emit
     await container.read(subscriptionProvider.future);
-    final entitlement = container.read(entitlementProvider);
-    expect(entitlement, EntitlementStatus.active);
+    expect(container.read(aiAccessProvider), isTrue);
   });
 
-  test('entitlementProvider defaults to gated when no subscription', () async {
+  test('aiAccessProvider defaults to false when no subscription', () async {
     final container = _makeContainer(sub: null);
     addTearDown(container.dispose);
 
     await container.read(subscriptionProvider.future);
-    final entitlement = container.read(entitlementProvider);
-    expect(entitlement, EntitlementStatus.gated);
+    expect(container.read(aiAccessProvider), isFalse);
   });
 
-  test('entitlementProvider is trialing for active trial', () async {
+  test('aiAccessProvider is true during a valid trial', () async {
     final trialSub = Subscription(
       id: 's1',
       userId: 'u1',
@@ -116,7 +114,22 @@ void main() {
     addTearDown(container.dispose);
 
     await container.read(subscriptionProvider.future);
-    expect(container.read(entitlementProvider), EntitlementStatus.trialing);
+    expect(container.read(aiAccessProvider), isTrue);
+  });
+
+  test('aiAccessProvider is false for an active non-AI plan', () async {
+    final starterSub = Subscription(
+      id: 's1',
+      userId: 'u1',
+      plan: 'starter_monthly',
+      status: 'active',
+      createdAt: DateTime(2026, 1, 1),
+    );
+    final container = _makeContainer(sub: starterSub);
+    addTearDown(container.dispose);
+
+    await container.read(subscriptionProvider.future);
+    expect(container.read(aiAccessProvider), isFalse);
   });
 
   test(

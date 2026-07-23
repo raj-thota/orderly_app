@@ -5,7 +5,6 @@ import 'package:orderly_app/core/theme/app_spacing.dart';
 import 'package:orderly_app/features/assistant/controller/assistant_chat_provider.dart';
 import 'package:orderly_app/features/assistant/data/assistant_message.dart';
 import 'package:orderly_app/features/subscription/controller/subscription_provider.dart';
-import 'package:orderly_app/features/subscription/data/subscription.dart';
 import 'package:orderly_app/features/subscription/presentation/subscription_screen.dart';
 
 class AssistantScreen extends ConsumerStatefulWidget {
@@ -44,8 +43,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(assistantChatProvider);
-    final entitlement = ref.watch(entitlementProvider);
-    final isGated = entitlement == EntitlementStatus.gated;
+    final isGated = !ref.watch(aiAccessProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,

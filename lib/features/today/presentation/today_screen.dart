@@ -14,6 +14,9 @@ import 'package:orderly_app/features/notifications/presentation/notifications_sc
 import 'package:orderly_app/features/orders/controller/orders_provider.dart';
 import 'package:orderly_app/features/orders/presentation/order_detail_screen.dart';
 import 'package:orderly_app/features/profile/presentation/profile_screen.dart';
+import 'package:orderly_app/features/subscription/controller/subscription_provider.dart';
+import 'package:orderly_app/features/subscription/data/subscription.dart';
+import 'package:orderly_app/features/subscription/presentation/subscription_screen.dart';
 import 'package:orderly_app/features/today/data/brief_narrative.dart';
 import 'package:orderly_app/features/today/data/home_insight.dart';
 import 'package:orderly_app/features/today/data/recent_activity.dart';
@@ -601,6 +604,10 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                 _buildGreeting(name, now),
                 const SizedBox(height: AppSpacing.lg),
 
+                // Plan nudge: only when the trial is about to end or has
+                // ended — the one moment the paywall is actually relevant.
+                const _PlanNudge(),
+
                 // 2 — AI brief (hero)
                 _buildHeroBrief(brief, workState, now),
 
@@ -1178,6 +1185,70 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
           ],
         ),
       ],
+    );
+  }
+}
+
+/// Compact upgrade nudge shown only when it matters: trial ending within
+/// 3 days, or trial over (AI paused). Hidden for active subscribers and
+/// through most of the trial so the home screen never feels like an ad.
+class _PlanNudge extends ConsumerWidget {
+  const _PlanNudge();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sub = ref.watch(subscriptionProvider).valueOrNull;
+    if (sub == null) return const SizedBox.shrink();
+
+    final String text;
+    switch (sub.entitlement) {
+      case EntitlementStatus.active:
+        return const SizedBox.shrink();
+      case EntitlementStatus.trialing:
+        final days = sub.trialDaysLeft;
+        if (days > 3) return const SizedBox.shrink();
+        text = 'Your Pro trial ends in $days day${days == 1 ? '' : 's'} — '
+            'keep the AI working for you.';
+      case EntitlementStatus.gated:
+        text = 'Your trial has ended — AI is paused. '
+            'Core features stay free.';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+      child: Material(
+        color: AppColors.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: InkWell(
+          key: const Key('today_plan_nudge'),
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Row(
+              children: [
+                const Icon(Icons.workspace_premium_rounded,
+                    color: AppColors.primary, size: 20),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    text,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      height: 1.35,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded,
+                    color: AppColors.textSecondary),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

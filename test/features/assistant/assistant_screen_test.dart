@@ -26,11 +26,20 @@ class _FakeFast implements AssistantService {
   Future<void> confirmWorkItem(ProposedWorkItem item) async {}
 }
 
+final _trialSub = Subscription(
+  id: 's1',
+  userId: 'u1',
+  plan: 'pro_monthly',
+  status: 'trialing',
+  trialEnd: DateTime.now().add(const Duration(days: 30)),
+  createdAt: DateTime(2026, 1, 1),
+);
+
 Widget _wrap(AssistantService svc) {
   return ProviderScope(
     overrides: [
       assistantServiceProvider.overrideWithValue(svc),
-      entitlementProvider.overrideWith((_) => EntitlementStatus.trialing),
+      subscriptionProvider.overrideWith((ref) => Stream.value(_trialSub)),
     ],
     child: const MaterialApp(home: AssistantScreen()),
   );

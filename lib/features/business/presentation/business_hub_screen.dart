@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orderly_app/core/theme/app_colors.dart';
 import 'package:orderly_app/core/theme/app_spacing.dart';
 import 'package:orderly_app/features/assistant/presentation/assistant_screen.dart';
@@ -7,17 +8,29 @@ import 'package:orderly_app/features/catalog/presentation/product_form_screen.da
 import 'package:orderly_app/features/invoices/presentation/invoices_screen.dart';
 import 'package:orderly_app/features/profile/presentation/profile_screen.dart';
 import 'package:orderly_app/features/settings/presentation/settings_screen.dart';
+import 'package:orderly_app/features/subscription/controller/subscription_provider.dart';
+import 'package:orderly_app/features/subscription/data/subscription.dart';
 import 'package:orderly_app/features/subscription/presentation/subscription_screen.dart';
 
 /// Business tab: hub for everything that isn't the daily pipeline.
 /// Customers entry arrives in M6; Analytics later.
-class BusinessHubScreen extends StatelessWidget {
+class BusinessHubScreen extends ConsumerWidget {
   const BusinessHubScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     void push(Widget screen) => Navigator.push(
         context, MaterialPageRoute(builder: (_) => screen));
+
+    final sub = ref.watch(subscriptionProvider).valueOrNull;
+    final (planTitle, planSubtitle) = switch (sub?.entitlement) {
+      EntitlementStatus.active => ('Closr Pro', 'Active · manage your plan'),
+      EntitlementStatus.trialing => (
+          'Go Pro',
+          'Trial · ${sub!.trialDaysLeft} day${sub.trialDaysLeft == 1 ? '' : 's'} left',
+        ),
+      _ => ('Go Pro', 'Unlock AI · ₹499/month'),
+    };
 
     final tiles = [
       (Icons.auto_awesome_rounded, 'Closr AI', 'Your AI business assistant',
@@ -28,7 +41,7 @@ class BusinessHubScreen extends StatelessWidget {
           () => push(const InvoicesScreen())),
       (Icons.badge_rounded, 'Business Profile', 'Name, contact, payment, GST',
           () => push(const ProfileScreen())),
-      (Icons.workspace_premium_rounded, 'Go Pro', 'Closr Pro subscription',
+      (Icons.workspace_premium_rounded, planTitle, planSubtitle,
           () => push(const SubscriptionScreen())),
       (Icons.settings_rounded, 'Settings', 'Notifications, invoices, support',
           () => push(const SettingsScreen())),

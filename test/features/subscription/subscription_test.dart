@@ -6,11 +6,12 @@ Subscription _sub({
   DateTime? trialEnd,
   DateTime? currentPeriodEnd,
   String? gateway,
+  String plan = 'pro_monthly',
 }) =>
     Subscription(
       id: 's1',
       userId: 'u1',
-      plan: 'pro_monthly',
+      plan: plan,
       status: status,
       trialEnd: trialEnd,
       currentPeriodEnd: currentPeriodEnd,
@@ -97,25 +98,51 @@ void main() {
     });
   });
 
-  group('isAiUnlocked', () {
-    test('trialing and active both unlock AI', () {
+  group('hasAiAccess', () {
+    test('valid trial and active Pro both unlock AI', () {
       final trialing = _sub(
           status: 'trialing',
           trialEnd: DateTime.now().add(const Duration(days: 5)));
       final active = _sub(status: 'active', gateway: 'razorpay');
-      expect(trialing.isAiUnlocked, isTrue);
-      expect(active.isAiUnlocked, isTrue);
+      expect(trialing.hasAiAccess, isTrue);
+      expect(active.hasAiAccess, isTrue);
     });
 
     test('gated statuses lock AI', () {
-      expect(_sub(status: 'expired').isAiUnlocked, isFalse);
-      expect(_sub(status: 'cancelled').isAiUnlocked, isFalse);
+      expect(_sub(status: 'expired').hasAiAccess, isFalse);
+      expect(_sub(status: 'cancelled').hasAiAccess, isFalse);
       expect(
           _sub(
                   status: 'trialing',
                   trialEnd: DateTime.now().subtract(const Duration(days: 1)))
-              .isAiUnlocked,
+              .hasAiAccess,
           isFalse);
+    });
+
+    test('an active non-AI plan does not unlock AI', () {
+      expect(
+          _sub(status: 'active', plan: 'starter_monthly').hasAiAccess, isFalse);
+    });
+  });
+
+  group('trialDaysLeft', () {
+    test('rounds up and never reports 0 while the trial is valid', () {
+      expect(
+          _sub(trialEnd: DateTime.now().add(const Duration(days: 6, hours: 2)))
+              .trialDaysLeft,
+          7);
+      expect(
+          _sub(trialEnd: DateTime.now().add(const Duration(minutes: 30)))
+              .trialDaysLeft,
+          1);
+    });
+
+    test('is 0 when expired or not trialing', () {
+      expect(
+          _sub(trialEnd: DateTime.now().subtract(const Duration(days: 1)))
+              .trialDaysLeft,
+          0);
+      expect(_sub(status: 'active').trialDaysLeft, 0);
     });
   });
 }
